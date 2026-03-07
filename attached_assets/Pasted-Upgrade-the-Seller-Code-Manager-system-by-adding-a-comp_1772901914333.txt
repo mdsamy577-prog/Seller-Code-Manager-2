@@ -1,0 +1,184 @@
+Upgrade the Seller Code Manager system by adding a complete Seller Registration and Approval workflow.
+
+Do not modify any existing seller management features.
+
+Add the following features:
+
+1. Seller Registration Link (Admin Dashboard)
+
+Add a new section in the admin dashboard called:
+
+Seller Registration
+
+Display the public registration URL:
+
+/apply
+
+Add a "Copy Link" button so admins can easily copy and share the registration link with sellers.
+
+This link will be used by sellers to apply for a seller code.
+
+---
+
+2. Public Seller Application Page
+
+Create a public page at:
+
+/apply
+
+At the top of the page show a section called:
+
+Seller Code Subscription
+
+Display pricing information:
+
+1 Month – 200 BDT
+3 Months – 500 BDT
+6 Months – 900 BDT
+1 Year – 1500 BDT
+
+Below the pricing section show the application form.
+
+Form fields:
+
+Name (required)
+Phone Number (required)
+Facebook Profile Link (required)
+Duration (required)
+
+Duration options:
+
+1 Month
+3 Months
+6 Months
+1 Year
+
+Add a Submit Application button.
+
+When submitted:
+
+Save the data in a database table called:
+
+seller_applications
+
+Columns:
+
+id
+name
+phone
+facebook_link
+duration
+status (default = pending)
+created_at
+
+Show this success message after submission:
+
+"Your application has been received. Admin will review and approve your seller account."
+
+---
+
+3. Admin Applications Page
+
+Create an admin page at:
+
+/applications
+
+Display all seller applications from the seller_applications table.
+
+Table columns:
+
+Name
+Phone
+Facebook Link
+Duration
+Status
+Actions
+
+Status values:
+
+Pending
+Approved
+Rejected
+
+Actions must include:
+
+Approve
+Reject
+
+---
+
+4. Approve Logic
+
+When an admin clicks Approve:
+
+Automatically generate a unique 6-digit seller code.
+
+Create a new seller in the existing sellers table using:
+
+name = application.name
+phone = application.phone
+facebook_link = application.facebook_link
+seller_code = generated code
+
+Set dates automatically:
+
+start_date = today
+
+expiry_date based on duration:
+
+1 Month → today + 30 days
+3 Months → today + 90 days
+6 Months → today + 180 days
+1 Year → today + 365 days
+
+Set:
+
+status = Active
+
+After seller creation:
+
+Update the application status to "Approved".
+
+---
+
+5. Reject Logic
+
+When Reject is clicked:
+
+Update the application status to:
+
+Rejected
+
+Do not create a seller record.
+
+---
+
+6. Seller Code Generator
+
+Create a function that generates a unique 6-digit seller code.
+
+Rules:
+
+Numeric only
+Must be unique
+If duplicate exists, generate another code.
+
+Example:
+
+483920
+739221
+128593
+
+---
+
+7. System Flow
+
+Seller opens registration link
+Seller fills the form
+Application status = Pending
+Admin reviews application
+Admin clicks Approve
+System automatically creates the seller
+Seller appears in the Seller Code Manager dashboard
+
+Do not modify the existing seller dashboard UI or functionality.

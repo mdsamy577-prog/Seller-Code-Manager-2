@@ -23,6 +23,7 @@ import {
   Copy,
   Check,
   ClipboardList,
+  LogOut,
 } from "lucide-react";
 import { SiMeta } from "react-icons/si";
 import { useLocation } from "wouter";
@@ -612,6 +613,19 @@ export default function SellerCodeManager() {
   const [editingCodeValue, setEditingCodeValue] = useState("");
   const { toast } = useToast();
 
+  const logoutMutation = useMutation({
+    mutationFn: async () => {
+      await apiRequest("POST", "/api/auth/logout");
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/status"] });
+      toast({ title: "Logged out successfully" });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
+
   const { data: sellers = [], isLoading } = useQuery<Seller[]>({
     queryKey: ["/api/sellers"],
   });
@@ -694,6 +708,15 @@ export default function SellerCodeManager() {
             <Button onClick={handleAdd} data-testid="button-add-seller">
               <Plus className="w-4 h-4 mr-2" />
               Add Seller
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => logoutMutation.mutate()}
+              disabled={logoutMutation.isPending}
+              data-testid="button-logout"
+            >
+              <LogOut className="w-4 h-4 mr-2" />
+              {logoutMutation.isPending ? "Logging out..." : "Logout"}
             </Button>
           </div>
         </div>

@@ -1,6 +1,5 @@
-import { type User, type InsertUser, type Seller, type InsertSeller, type InsertSellerApplication, type SellerApplication, sellers, appSettings, sellerApplications } from "@shared/schema";
-import { randomUUID } from "crypto";
-import { eq, or, ilike } from "drizzle-orm";
+import { type User, type InsertUser, type Seller, type InsertSeller, type InsertSellerApplication, type SellerApplication, users, sellers, appSettings, sellerApplications } from "@shared/schema";
+import { eq, or, ilike, count } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import pg from "pg";
 
@@ -29,20 +28,38 @@ export interface IStorage {
   updateSellerApplicationStatus(id: number, status: string): Promise<SellerApplication | undefined>;
   getSellerByCode(code: string): Promise<Seller | undefined>;
   deleteSellerApplication(id: number): Promise<boolean>;
+  updateUserPassword(id: string, hashedPassword: string): Promise<void>;
+  getUserCount(): Promise<number>;
+  getAllUsers(): Promise<User[]>;
 }
 
 export class DatabaseStorage implements IStorage {
   async getUser(id: string): Promise<User | undefined> {
-    return undefined;
+    const result = await db.select().from(users).where(eq(users.id, id));
+    return result[0];
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
-    return undefined;
+    const result = await db.select().from(users).where(eq(users.username, username));
+    return result[0];
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
-    const id = randomUUID();
-    return { ...insertUser, id };
+    const result = await db.insert(users).values(insertUser).returning();
+    return result[0];
+  }
+
+  async updateUserPassword(id: string, hashedPassword: string): Promise<void> {
+    await db.update(users).set({ password: hashedPassword }).where(eq(users.id, id));
+  }
+
+  async getUserCount(): Promise<number> {
+    const result = await db.select({ value: count() }).from(users);
+    return result[0].value;
+  }
+
+  async getAllUsers(): Promise<User[]> {
+    return await db.select().from(users);
   }
 
   async getAllSellers(): Promise<Seller[]> {

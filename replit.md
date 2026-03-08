@@ -1,13 +1,24 @@
 # Seller Code Manager
 
 ## Overview
-A web application for managing Facebook group seller codes. Tracks seller information, subscription durations, and automatically manages expiry status. Includes a public application form, admin review system, and Messenger reminder links.
+A web application for managing Facebook group seller codes. Tracks seller information, subscription durations, and automatically manages expiry status. Includes a public application form, admin review system, and authentication.
 
 ## Architecture
 - **Frontend**: React with Vite, TanStack Query, shadcn/ui components, Tailwind CSS
 - **Backend**: Express.js REST API
 - **Database**: PostgreSQL with Drizzle ORM
 - **Routing**: wouter
+- **Auth**: Session-based with Passport.js (local strategy), scrypt password hashing
+
+## Authentication
+- One-time admin setup on first visit (creates single admin account)
+- Session-based authentication with Passport.js local strategy
+- Password hashing with scrypt (crypto module)
+- Recovery phrase for emergency password reset
+- All admin pages/API routes require authentication
+- `/apply` page remains fully public (no auth required)
+- Login page with "Forgot access?" recovery option
+- Logout button in dashboard header
 
 ## Seller Code Format
 Code structure: `DDMM-SSSDD`
@@ -31,9 +42,6 @@ Code structure: `DDMM-SSSDD`
 - Row highlighting based on status
 - Search by name, phone number, or seller code
 - Facebook links open in new tab
-- Facebook Messenger link: opens m.me with pre-filled reminder message per seller (no API needed)
-- Messenger Settings panel: configure Facebook Page username through UI
-- Settings stored in database (app_settings table)
 - Public seller application form at /apply (Bengali UI) with payment instructions (Bkash/Nagad), pricing plans, and fields: name, phone, Facebook link, seller type, duration, payment method, sender number
 - Professional Bengali thank you page after submission
 - Admin Seller Applications page at /applications — view all applications with seller type, duration, payment method, sender number, approve or reject
@@ -42,14 +50,26 @@ Code structure: `DDMM-SSSDD`
 
 ## File Structure
 - `shared/schema.ts` - Database schema and Zod validation
-- `server/routes.ts` - REST API endpoints, code generation, expiry calculation
+- `server/auth.ts` - Password hashing and verification utilities
+- `server/routes.ts` - REST API endpoints, code generation, expiry calculation, auth routes
 - `server/storage.ts` - Database storage layer with Drizzle
+- `server/index.ts` - Express app setup, session config, passport config
 - `client/src/pages/seller-code-manager.tsx` - Main admin dashboard
 - `client/src/pages/seller-application.tsx` - Public application form (/apply, Bengali)
 - `client/src/pages/seller-applications.tsx` - Admin applications review (/applications)
-- `client/src/App.tsx` - Router setup (/, /apply, /applications)
+- `client/src/pages/login.tsx` - Login page with recovery option
+- `client/src/pages/admin-setup.tsx` - One-time admin account setup
+- `client/src/App.tsx` - Router setup with auth gating
 
 ## API Endpoints
+### Auth (public)
+- GET /api/auth/status - Check auth status and setup state
+- POST /api/auth/setup - One-time admin account creation
+- POST /api/auth/login - Login
+- POST /api/auth/logout - Logout
+- POST /api/auth/recover - Password recovery via recovery phrase
+
+### Protected (require auth)
 - GET /api/sellers - List all sellers
 - GET /api/sellers/search?q= - Search sellers
 - GET /api/sellers/:id - Get seller by ID
@@ -59,6 +79,9 @@ Code structure: `DDMM-SSSDD`
 - GET /api/settings/messenger - Get Messenger config status
 - POST /api/settings/messenger - Save Facebook Page username
 - GET /api/applications - List all applications
-- POST /api/applications - Submit seller application
 - POST /api/applications/:id/approve - Approve (auto-creates seller with code)
 - POST /api/applications/:id/reject - Reject application
+- DELETE /api/applications/:id - Delete application
+
+### Public
+- POST /api/applications - Submit seller application

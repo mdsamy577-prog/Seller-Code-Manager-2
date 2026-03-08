@@ -1,7 +1,9 @@
-import type { Express } from "express";
+import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { insertSellerSchema, insertSellerApplicationSchema } from "@shared/schema";
+import passport from "passport";
+import { hashPassword, verifyPassword } from "./auth";
 
 const DURATION_DAYS: Record<string, number> = {
   "15_days": 15,
@@ -53,11 +55,109 @@ async function generateSellerCode(joinDate: string, duration: string): Promise<s
   return `${dd}${mm}-${serialStr}${durationCode}`;
 }
 
+function requireAuth(req: Request, res: Response, next: NextFunction) {
+  if (req.isAuthenticated()) {
+    return next();
+  }
+  return res.status(401).json({ message: "Authentication required" });
+}
+
 export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
-  app.get("/api/sellers", async (_req, res) => {
+  app.get("/api/auth/status", async (req, res) => {
+    try {
+      const userCount = await storage.getUserCount();
+      res.json({
+        setupRequired: userCount === 0,
+        authenticated: req.isAuthenticated(),
+        user: req.isAuthenticated() && req.user ? { username: (req.user as any).username } : undefined,
+      });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to check auth status" });
+    }
+  });
+
+  app.post("/api/auth/setup", async (req, res) => {
+    try {
+      const userCount = await storage.getUserCount();
+      if (userCount > 0) {
+        return res.status(403).json({ message: "Admin account already exists" });
+      }
+      const { username, password, recoveryPhrase } = req.body;
+      if (!username || !password || !recoveryPhrase) {
+        return res.status(400).json({ message: "Username, password, and recovery phrase are required" });
+      }
+      if (password.length < 6) {
+        return res.status(400).json({ message: "Password must be at least 6 characters" });
+      }
+      const hashedPassword = hashPassword(password);
+      const hashedRecovery = hashPassword(recoveryPhrase);
+      await storage.createUser({ username, password: hashedPassword, recoveryPhrase: hashedRecovery });
+      res.status(201).json({ message: "Admin account created successfully" });
+    } catch (error: any) {
+      if (error.code === "23505") {
+        return res.status(409).json({ message: "Username already exists" });
+      }
+      res.status(500).json({ message: "Failed to create admin account" });
+    }
+  });
+
+  app.post("/api/auth/login", (req, res, next) => {
+    passport.authenticate("local", (err: any, user: any, info: any) => {
+      if (err) return next(err);
+      if (!user) return res.status(401).json({ message: info?.message || "Invalid credentials" });
+      req.logIn(user, (err) => {
+        if (err) return next(err);
+        return res.json({ message: "Login successful", user: { username: user.username } });
+      });
+    })(req, res, next);
+  });
+
+  app.post("/api/auth/logout", (req, res) => {
+    req.logout((err) => {
+      if (err) return res.status(500).json({ message: "Failed to logout" });
+      req.session.destroy((err) => {
+        if (err) return res.status(500).json({ message: "Failed to destroy session" });
+        res.json({ message: "Logged out successfully" });
+      });
+    });
+  });
+
+  app.post("/api/auth/recover", async (req, res) => {
+    try {
+      const { recoveryPhrase, newPassword } = req.body;
+      if (!recoveryPhrase || !newPassword) {
+        return res.status(400).json({ message: "Recovery phrase and new password are required" });
+      }
+      if (newPassword.length < 6) {
+        return res.status(400).json({ message: "Password must be at least 6 characters" });
+      }
+      const userCount = await storage.getUserCount();
+      if (userCount === 0) {
+        return res.status(400).json({ message: "No admin account exists" });
+      }
+      const allUsers = await storage.getAllUsers();
+      let foundUser = null;
+      for (const u of allUsers) {
+        if (verifyPassword(recoveryPhrase, u.recoveryPhrase)) {
+          foundUser = u;
+          break;
+        }
+      }
+      if (!foundUser) {
+        return res.status(401).json({ message: "Invalid recovery phrase" });
+      }
+      const hashedPassword = hashPassword(newPassword);
+      await storage.updateUserPassword(foundUser.id, hashedPassword);
+      res.json({ message: "Password reset successful. You can now login with your new password." });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to process recovery" });
+    }
+  });
+
+  app.get("/api/sellers", requireAuth, async (_req, res) => {
     try {
       const sellers = await storage.getAllSellers();
       res.json(sellers);
@@ -66,7 +166,7 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/sellers/search", async (req, res) => {
+  app.get("/api/sellers/search", requireAuth, async (req, res) => {
     try {
       const query = req.query.q as string;
       if (!query) {
@@ -80,7 +180,7 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/sellers/:id", async (req, res) => {
+  app.get("/api/sellers/:id", requireAuth, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       const seller = await storage.getSellerById(id);
@@ -93,7 +193,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/sellers", async (req, res) => {
+  app.post("/api/sellers", requireAuth, async (req, res) => {
     try {
       const { name, phone, facebookLink, duration, startDate } = req.body;
       if (!name || !phone || !facebookLink || !duration || !startDate) {
@@ -111,7 +211,7 @@ export async function registerRoutes(
     }
   });
 
-  app.patch("/api/sellers/:id", async (req, res) => {
+  app.patch("/api/sellers/:id", requireAuth, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       const existing = await storage.getSellerById(id);
@@ -141,7 +241,7 @@ export async function registerRoutes(
     }
   });
 
-  app.delete("/api/sellers/:id", async (req, res) => {
+  app.delete("/api/sellers/:id", requireAuth, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       const deleted = await storage.deleteSeller(id);
@@ -154,7 +254,7 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/settings/messenger", async (_req, res) => {
+  app.get("/api/settings/messenger", requireAuth, async (_req, res) => {
     try {
       const pageName = await storage.getSetting("FACEBOOK_PAGE_NAME");
       res.json({
@@ -166,7 +266,7 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/applications", async (_req, res) => {
+  app.get("/api/applications", requireAuth, async (_req, res) => {
     try {
       const applications = await storage.getAllSellerApplications();
       res.json(applications);
@@ -175,7 +275,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/applications/:id/approve", async (req, res) => {
+  app.post("/api/applications/:id/approve", requireAuth, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       if (isNaN(id)) {
@@ -211,7 +311,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/applications/:id/reject", async (req, res) => {
+  app.post("/api/applications/:id/reject", requireAuth, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       if (isNaN(id)) {
@@ -231,7 +331,7 @@ export async function registerRoutes(
     }
   });
 
-  app.delete("/api/applications/:id", async (req, res) => {
+  app.delete("/api/applications/:id", requireAuth, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       if (isNaN(id)) {
@@ -260,7 +360,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/settings/messenger", async (req, res) => {
+  app.post("/api/settings/messenger", requireAuth, async (req, res) => {
     try {
       const { pageName } = req.body;
       if (typeof pageName === "string" && pageName.trim()) {

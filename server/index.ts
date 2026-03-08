@@ -3,6 +3,19 @@ import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
 import { seedDatabase } from "./seed";
+import session from "express-session";
+import createMemoryStore from "memorystore";
+import passport from "passport";
+import { Strategy as LocalStrategy } from "passport-local";
+import { storage } from "./storage";
+import { hashPassword, verifyPassword } from "./auth";
+import type { User } from "@shared/schema";
+
+declare module "express-session" {
+  interface SessionData {
+    passport: { user: string };
+  }
+}
 
 const app = express();
 const httpServer = createServer(app);
@@ -22,6 +35,54 @@ app.use(
 );
 
 app.use(express.urlencoded({ extended: false }));
+
+const MemoryStore = createMemoryStore(session);
+
+const isProduction = process.env.NODE_ENV === "production";
+
+app.use(
+  session({
+    secret: process.env.SESSION_SECRET || "seller-code-manager-secret-key-change-in-production",
+    resave: false,
+    saveUninitialized: false,
+    store: new MemoryStore({ checkPeriod: 86400000 }),
+    cookie: {
+      maxAge: 24 * 60 * 60 * 1000,
+      httpOnly: true,
+      secure: isProduction,
+      sameSite: "lax",
+    },
+  })
+);
+
+app.use(passport.initialize());
+app.use(passport.session());
+
+passport.use(
+  new LocalStrategy(async (username, password, done) => {
+    try {
+      const user = await storage.getUserByUsername(username);
+      if (!user) return done(null, false, { message: "Invalid username or password" });
+      if (!verifyPassword(password, user.password)) return done(null, false, { message: "Invalid username or password" });
+      return done(null, user);
+    } catch (err) {
+      return done(err);
+    }
+  })
+);
+
+passport.serializeUser((user: any, done) => {
+  done(null, user.id);
+});
+
+passport.deserializeUser(async (id: string, done) => {
+  try {
+    const user = await storage.getUser(id);
+    done(null, user || false);
+  } catch (err) {
+    done(err);
+  }
+});
 
 export function log(message: string, source = "express") {
   const formattedTime = new Date().toLocaleTimeString("en-US", {

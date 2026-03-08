@@ -40,16 +40,8 @@ type ApplicationFormValues = z.infer<typeof applicationFormSchema>;
 
 const pricingPlans = [
   { duration: "১ মাস", price: "২০০ টাকা" },
-  { duration: "২ মাস", price: "৩৮০ টাকা" },
-  { duration: "৩ মাস", price: "৫৫০ টাকা" },
-  { duration: "৪ মাস", price: "৭০০ টাকা" },
-  { duration: "৫ মাস", price: "৮৫০ টাকা" },
   { duration: "৬ মাস", price: "১০০০ টাকা" },
-  { duration: "৭ মাস", price: "১১০০ টাকা" },
-  { duration: "৮ মাস", price: "১২০০ টাকা" },
   { duration: "৯ মাস", price: "১৩০০ টাকা" },
-  { duration: "১০ মাস", price: "১৪০০ টাকা" },
-  { duration: "১১ মাস", price: "১৫০০ টাকা" },
   { duration: "১২ মাস", price: "১৬০০ টাকা" },
 ];
 
@@ -247,11 +239,11 @@ export default function SellerApplication() {
                   name="duration"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>মেয়াদ</FormLabel>
+                      <FormLabel>মেয়াদ সিলেক্ট করুন</FormLabel>
                       <Select onValueChange={field.onChange} defaultValue={field.value}>
                         <FormControl>
                           <SelectTrigger data-testid="select-apply-duration">
-                            <SelectValue placeholder="মেয়াদ নির্বাচন করুন" />
+                            <SelectValue placeholder="আপনার পছন্দের মেয়াদ নির্বাচন করুন" />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>

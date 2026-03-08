@@ -346,11 +346,11 @@ export default function SellerApplication() {
                   name="email"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>ইমেইল (ঐচ্ছিক)</FormLabel>
+                      <FormLabel>ইমেইল / জিমেইল</FormLabel>
                       <FormControl>
                         <div className="relative">
                           <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                          <Input placeholder="আপনার ইমেইল লিখুন" className="pl-9" {...field} data-testid="input-apply-email" />
+                          <Input placeholder="আপনার ইমেইল অথবা জিমেইল লিখুন" className="pl-9" {...field} data-testid="input-apply-email" />
                         </div>
                       </FormControl>
                       <FormMessage />

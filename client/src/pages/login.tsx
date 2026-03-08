@@ -166,82 +166,69 @@ export default function Login() {
               </form>
             </Form>
           ) : (
-            <Form {...recoveryForm}>
-              <form onSubmit={recoveryForm.handleSubmit((data) => recoveryMutation.mutate(data))} className="space-y-4">
-                <FormField
-                  control={recoveryForm.control}
-                  name="recoveryPhrase"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Recovery Phrase</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Enter your recovery phrase" {...field} data-testid="input-recovery-phrase" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
+            <form onSubmit={recoveryForm.handleSubmit((data) => recoveryMutation.mutate(data))} className="space-y-4">
+              <div className="space-y-2">
+                <label htmlFor="recoveryPhrase" className="text-sm font-medium leading-none">Recovery Phrase</label>
+                <Input
+                  id="recoveryPhrase"
+                  placeholder="Enter your recovery phrase"
+                  {...recoveryForm.register("recoveryPhrase")}
+                  data-testid="input-recovery-phrase"
                 />
-                <FormField
-                  control={recoveryForm.control}
-                  name="newPassword"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>New Password</FormLabel>
-                      <FormControl>
-                        <div className="relative">
-                          <Input
-                            type={showNewPassword ? "text" : "password"}
-                            placeholder="Enter new password"
-                            {...field}
-                            data-testid="input-recovery-new-password"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => setShowNewPassword(!showNewPassword)}
-                            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
-                            data-testid="button-toggle-new-password"
-                          >
-                            {showNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                          </button>
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={recoveryForm.control}
-                  name="confirmPassword"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Confirm Password</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="password"
-                          placeholder="Confirm new password"
-                          {...field}
-                          data-testid="input-recovery-confirm-password"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <Button type="submit" className="w-full" disabled={recoveryMutation.isPending} data-testid="button-recovery-submit">
-                  {recoveryMutation.isPending ? "Resetting..." : "Reset Password"}
-                </Button>
-                <div className="text-center">
+                {recoveryForm.formState.errors.recoveryPhrase && (
+                  <p className="text-sm font-medium text-destructive">{recoveryForm.formState.errors.recoveryPhrase.message}</p>
+                )}
+              </div>
+              <div className="space-y-2">
+                <label htmlFor="newPassword" className="text-sm font-medium leading-none">New Password</label>
+                <div className="relative">
+                  <Input
+                    id="newPassword"
+                    type={showNewPassword ? "text" : "password"}
+                    placeholder="Enter new password"
+                    {...recoveryForm.register("newPassword")}
+                    data-testid="input-recovery-new-password"
+                  />
                   <button
                     type="button"
-                    onClick={() => setShowRecovery(false)}
-                    className="text-sm text-muted-foreground hover:underline"
-                    data-testid="link-back-to-login"
+                    onClick={() => setShowNewPassword(!showNewPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+                    data-testid="button-toggle-new-password"
                   >
-                    Back to login
+                    {showNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
                 </div>
-              </form>
-            </Form>
+                {recoveryForm.formState.errors.newPassword && (
+                  <p className="text-sm font-medium text-destructive">{recoveryForm.formState.errors.newPassword.message}</p>
+                )}
+              </div>
+              <div className="space-y-2">
+                <label htmlFor="confirmPassword" className="text-sm font-medium leading-none">Confirm Password</label>
+                <Input
+                  id="confirmPassword"
+                  type="password"
+                  placeholder="Confirm new password"
+                  {...recoveryForm.register("confirmPassword")}
+                  data-testid="input-recovery-confirm-password"
+                />
+                {recoveryForm.formState.errors.confirmPassword && (
+                  <p className="text-sm font-medium text-destructive">{recoveryForm.formState.errors.confirmPassword.message}</p>
+                )}
+              </div>
+              <Button type="submit" className="w-full" disabled={recoveryMutation.isPending} data-testid="button-recovery-submit">
+                {recoveryMutation.isPending ? "Resetting..." : "Reset Password"}
+              </Button>
+              <div className="text-center">
+                <button
+                  type="button"
+                  onClick={() => setShowRecovery(false)}
+                  className="text-sm text-muted-foreground hover:underline"
+                  data-testid="link-back-to-login"
+                >
+                  Back to login
+                </button>
+              </div>
+            </form>
           )}
         </CardContent>
       </Card>

@@ -608,6 +608,8 @@ export default function SellerCodeManager() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingSeller, setEditingSeller] = useState<Seller | undefined>();
   const [deleteId, setDeleteId] = useState<number | null>(null);
+  const [editingCodeId, setEditingCodeId] = useState<number | null>(null);
+  const [editingCodeValue, setEditingCodeValue] = useState("");
   const { toast } = useToast();
 
   const { data: sellers = [], isLoading } = useQuery<Seller[]>({
@@ -642,13 +644,31 @@ export default function SellerCodeManager() {
     },
   });
 
+  const updateCodeMutation = useMutation({
+    mutationFn: async ({ id, sellerCode, seller }: { id: number; sellerCode: string; seller: Seller }) => {
+      const res = await apiRequest("PATCH", `/api/sellers/${id}`, {
+        name: seller.name,
+        phone: seller.phone,
+        facebookLink: seller.facebookLink,
+        duration: seller.duration,
+        startDate: seller.startDate,
+        sellerCode,
+      });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/sellers"] });
+      toast({ title: "Seller code updated successfully" });
+      setEditingCodeId(null);
+      setEditingCodeValue("");
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
+
   const handleAdd = () => {
     setEditingSeller(undefined);
-    setDialogOpen(true);
-  };
-
-  const handleEdit = (seller: Seller) => {
-    setEditingSeller(seller);
     setDialogOpen(true);
   };
 
@@ -760,10 +780,50 @@ export default function SellerCodeManager() {
                           </a>
                         </TableCell>
                         <TableCell data-testid={`text-code-${seller.id}`}>
-                          <Badge variant="secondary" className="no-default-active-elevate font-mono">
-                            <Hash className="h-3 w-3 mr-1" />
-                            {seller.sellerCode}
-                          </Badge>
+                          {editingCodeId === seller.id ? (
+                            <div className="flex items-center gap-1">
+                              <Input
+                                value={editingCodeValue}
+                                onChange={(e) => setEditingCodeValue(e.target.value)}
+                                className="h-7 w-32 font-mono text-sm"
+                                autoFocus
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter") {
+                                    updateCodeMutation.mutate({ id: seller.id, sellerCode: editingCodeValue, seller });
+                                  } else if (e.key === "Escape") {
+                                    setEditingCodeId(null);
+                                    setEditingCodeValue("");
+                                  }
+                                }}
+                              />
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="h-7 w-7"
+                                onClick={() => updateCodeMutation.mutate({ id: seller.id, sellerCode: editingCodeValue, seller })}
+                                disabled={updateCodeMutation.isPending}
+                              >
+                                <Check className="h-4 w-4 text-emerald-600" />
+                              </Button>
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="h-7 w-7"
+                                onClick={() => { setEditingCodeId(null); setEditingCodeValue(""); }}
+                              >
+                                <X className="h-4 w-4 text-muted-foreground" />
+                              </Button>
+                            </div>
+                          ) : (
+                            <Badge
+                              variant="secondary"
+                              className="no-default-active-elevate font-mono cursor-pointer hover:bg-muted"
+                              onClick={() => { setEditingCodeId(seller.id); setEditingCodeValue(seller.sellerCode); }}
+                            >
+                              <Hash className="h-3 w-3 mr-1" />
+                              {seller.sellerCode}
+                            </Badge>
+                          )}
                         </TableCell>
                         <TableCell data-testid={`text-start-${seller.id}`}>
                           <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
@@ -782,14 +842,6 @@ export default function SellerCodeManager() {
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center justify-end gap-1">
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              onClick={() => handleEdit(seller)}
-                              data-testid={`button-edit-${seller.id}`}
-                            >
-                              <Pencil className="h-4 w-4" />
-                            </Button>
                             <Button
                               size="icon"
                               variant="ghost"

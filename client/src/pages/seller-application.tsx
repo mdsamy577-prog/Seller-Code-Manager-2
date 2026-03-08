@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { User, Phone, CheckCircle2, Wallet, Hash } from "lucide-react";
+import { User, Phone, CheckCircle2, Wallet, Hash, Copy } from "lucide-react";
 import { SiMeta } from "react-icons/si";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -135,17 +135,47 @@ export default function SellerApplication() {
             <div className="space-y-2">
               <div className="flex items-center justify-between rounded-lg border p-3">
                 <span className="font-medium">বিকাশ</span>
-                <span className="font-mono font-bold text-primary" data-testid="text-bkash-number">01827259372</span>
+                <div className="flex items-center gap-2">
+                  <span className="font-mono font-bold text-primary" data-testid="text-bkash-number">01827259372</span>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-7 px-2 text-xs"
+                    onClick={() => {
+                      navigator.clipboard.writeText("01827259372");
+                      toast({ title: "নাম্বার কপি হয়েছে" });
+                    }}
+                  >
+                    <Copy className="h-3 w-3 mr-1" />
+                    Copy
+                  </Button>
+                </div>
               </div>
               <div className="flex items-center justify-between rounded-lg border p-3">
                 <span className="font-medium">নগদ</span>
-                <span className="font-mono font-bold text-primary" data-testid="text-nagad-number">01972002118</span>
+                <div className="flex items-center gap-2">
+                  <span className="font-mono font-bold text-primary" data-testid="text-nagad-number">01972002118</span>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-7 px-2 text-xs"
+                    onClick={() => {
+                      navigator.clipboard.writeText("01972002118");
+                      toast({ title: "নাম্বার কপি হয়েছে" });
+                    }}
+                  >
+                    <Copy className="h-3 w-3 mr-1" />
+                    Copy
+                  </Button>
+                </div>
               </div>
             </div>
             <p className="text-sm text-muted-foreground text-center">শুধুমাত্র সেন্ড মানি করুন</p>
             <div className="rounded-lg bg-amber-500/10 border border-amber-500/25 p-3 text-center">
               <p className="text-sm font-medium text-amber-700 dark:text-amber-400" data-testid="text-payment-instruction">
-                অনুগ্রহ করে প্রথমে সাবস্ক্রিপশন ফি সেন্ড মানি করুন, তারপর নিচের ফর্মটি পূরণ করুন।
+                অনুগ্রহ করে প্রথমে নিচ থেকে সাবস্ক্রিপশন প্যাকেজ নির্বাচন করুন, তারপর উপরের নাম্বারে Send Money করুন।
               </p>
             </div>
           </CardContent>

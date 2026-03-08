@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { User, Phone, CheckCircle2, Wallet, Hash, Copy, Mail, BookOpen } from "lucide-react";
+import { User, Phone, CheckCircle2, Wallet, Hash, Copy, Mail, BookOpen, ShieldCheck, Send } from "lucide-react";
 import { SiMeta } from "react-icons/si";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -117,8 +117,8 @@ export default function SellerApplication() {
 
   if (submitted) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-6">
-        <Card className="w-full max-w-md text-center">
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950 flex items-center justify-center p-6">
+        <Card className="w-full max-w-md text-center shadow-xl border-0 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm">
           <CardContent className="pt-8 pb-8 space-y-5">
             <div className="mx-auto rounded-full bg-emerald-500/15 p-4 w-fit">
               <CheckCircle2 className="h-10 w-10 text-emerald-600 dark:text-emerald-400" />
@@ -143,272 +143,304 @@ export default function SellerApplication() {
   }
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-6">
-      <div className="w-full max-w-md space-y-6">
-        <Card data-testid="card-payment-info">
-          <CardHeader className="text-center">
-            <CardTitle className="text-2xl font-bold" data-testid="text-payment-title">পেমেন্ট পদ্ধতি</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <div className="flex items-center justify-between rounded-lg border p-3">
-                <span className="font-medium">বিকাশ</span>
-                <div className="flex items-center gap-2">
-                  <span className="font-mono font-bold text-primary" data-testid="text-bkash-number">01827259372</span>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="h-7 px-2 text-xs"
-                    onClick={() => {
-                      navigator.clipboard.writeText("01827259372");
-                      toast({ title: "নাম্বার কপি হয়েছে" });
-                    }}
-                  >
-                    <Copy className="h-3 w-3 mr-1" />
-                    Copy
-                  </Button>
-                </div>
-              </div>
-              <div className="flex items-center justify-between rounded-lg border p-3">
-                <span className="font-medium">নগদ</span>
-                <div className="flex items-center gap-2">
-                  <span className="font-mono font-bold text-primary" data-testid="text-nagad-number">01972002118</span>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="h-7 px-2 text-xs"
-                    onClick={() => {
-                      navigator.clipboard.writeText("01972002118");
-                      toast({ title: "নাম্বার কপি হয়েছে" });
-                    }}
-                  >
-                    <Copy className="h-3 w-3 mr-1" />
-                    Copy
-                  </Button>
-                </div>
-              </div>
-            </div>
-            <p className="text-sm text-muted-foreground text-center">শুধুমাত্র সেন্ড মানি করুন</p>
-            <div className="rounded-lg bg-amber-500/10 border border-amber-500/25 p-3 text-center">
-              <p className="text-sm font-medium text-amber-700 dark:text-amber-400" data-testid="text-payment-instruction">
-                অনুগ্রহ করে প্রথমে নিচ থেকে সাবস্ক্রিপশন প্যাকেজ নির্বাচন করুন, তারপর উপরের নাম্বারে Send Money করুন।
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card data-testid="card-pricing">
-          <CardHeader className="text-center">
-            <CardTitle className="text-xl font-bold" data-testid="text-pricing-title">সাবস্ক্রিপশন প্যাকেজ</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 gap-3">
-              {dashboardPackages.map((key) => (
-                <div
-                  key={key}
-                  className="rounded-lg border p-3 text-center"
-                  data-testid={`pricing-${monthLabels[key]}`}
-                >
-                  <div className="text-sm font-medium text-muted-foreground">{monthLabels[key]}</div>
-                  <div className="text-lg font-bold mt-1">{currentPricing[key]}</div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-
-        {groupRules && (
-          <div className="text-center">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setRulesOpen(true)}
-            >
-              <BookOpen className="h-4 w-4 mr-2" />
-              গ্রুপ রুলস দেখে নিন
-            </Button>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950">
+      <div className="sticky top-0 z-10 bg-white/80 dark:bg-gray-900/80 backdrop-blur-md border-b border-blue-100 dark:border-gray-800">
+        <div className="max-w-md mx-auto px-4 py-3 flex items-center justify-center gap-3">
+          <div className="rounded-full bg-gradient-to-br from-blue-600 to-indigo-600 p-2">
+            <ShieldCheck className="h-5 w-5 text-white" />
           </div>
-        )}
+          <h1 className="text-lg font-bold bg-gradient-to-r from-blue-700 to-indigo-700 dark:from-blue-400 dark:to-indigo-400 bg-clip-text text-transparent">
+            সেলার কোড ম্যানেজার
+          </h1>
+        </div>
+      </div>
 
-        <Dialog open={rulesOpen} onOpenChange={setRulesOpen}>
-          <DialogContent className="sm:max-w-lg max-h-[80vh] overflow-y-auto" aria-describedby={undefined}>
-            <DialogHeader>
-              <DialogTitle>গ্রুপ রুলস</DialogTitle>
-            </DialogHeader>
-            <div className="whitespace-pre-wrap text-sm text-muted-foreground leading-relaxed">
-              {groupRules}
+      <div className="flex justify-center p-4 sm:p-6 pb-12">
+        <div className="w-full max-w-md space-y-5">
+
+          <Card className="shadow-lg border-0 bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm overflow-hidden" data-testid="card-payment-info">
+            <div className="h-1 bg-gradient-to-r from-pink-500 via-rose-500 to-orange-500" />
+            <CardHeader className="text-center pb-3">
+              <div className="mx-auto rounded-full bg-rose-500/10 p-2.5 w-fit mb-2">
+                <Wallet className="h-5 w-5 text-rose-600 dark:text-rose-400" />
+              </div>
+              <CardTitle className="text-2xl font-bold" data-testid="text-payment-title">পেমেন্ট পদ্ধতি</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <div className="flex items-center justify-between rounded-xl border border-pink-200 dark:border-pink-900/40 bg-gradient-to-r from-pink-50 to-rose-50 dark:from-pink-950/20 dark:to-rose-950/20 p-3.5 transition-all hover:shadow-md">
+                  <div className="flex items-center gap-2">
+                    <div className="rounded-full bg-pink-600 px-2.5 py-0.5">
+                      <span className="text-xs font-bold text-white">bKash</span>
+                    </div>
+                    <span className="font-medium">বিকাশ</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono font-bold text-pink-700 dark:text-pink-400" data-testid="text-bkash-number">01827259372</span>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-7 px-2 text-xs border-pink-300 dark:border-pink-800 hover:bg-pink-100 dark:hover:bg-pink-900/30"
+                      onClick={() => {
+                        navigator.clipboard.writeText("01827259372");
+                        toast({ title: "নাম্বার কপি হয়েছে" });
+                      }}
+                    >
+                      <Copy className="h-3 w-3 mr-1" />
+                      Copy
+                    </Button>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between rounded-xl border border-orange-200 dark:border-orange-900/40 bg-gradient-to-r from-orange-50 to-amber-50 dark:from-orange-950/20 dark:to-amber-950/20 p-3.5 transition-all hover:shadow-md">
+                  <div className="flex items-center gap-2">
+                    <div className="rounded-full bg-orange-600 px-2.5 py-0.5">
+                      <span className="text-xs font-bold text-white">Nagad</span>
+                    </div>
+                    <span className="font-medium">নগদ</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono font-bold text-orange-700 dark:text-orange-400" data-testid="text-nagad-number">01972002118</span>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-7 px-2 text-xs border-orange-300 dark:border-orange-800 hover:bg-orange-100 dark:hover:bg-orange-900/30"
+                      onClick={() => {
+                        navigator.clipboard.writeText("01972002118");
+                        toast({ title: "নাম্বার কপি হয়েছে" });
+                      }}
+                    >
+                      <Copy className="h-3 w-3 mr-1" />
+                      Copy
+                    </Button>
+                  </div>
+                </div>
+              </div>
+              <p className="text-sm text-muted-foreground text-center">শুধুমাত্র সেন্ড মানি করুন</p>
+              <div className="rounded-xl bg-amber-500/10 border border-amber-500/25 p-3.5 text-center">
+                <p className="text-sm font-medium text-amber-700 dark:text-amber-400" data-testid="text-payment-instruction">
+                  অনুগ্রহ করে প্রথমে নিচ থেকে সাবস্ক্রিপশন প্যাকেজ নির্বাচন করুন, তারপর উপরের নাম্বারে Send Money করুন।
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="shadow-lg border-0 bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm overflow-hidden" data-testid="card-pricing">
+            <div className="h-1 bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500" />
+            <CardHeader className="text-center pb-3">
+              <CardTitle className="text-xl font-bold" data-testid="text-pricing-title">সাবস্ক্রিপশন প্যাকেজ</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 gap-3">
+                {dashboardPackages.map((key) => (
+                  <div
+                    key={key}
+                    className="rounded-xl border border-blue-200 dark:border-blue-900/40 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20 p-4 text-center transition-all duration-200 hover:shadow-lg hover:scale-[1.03] hover:border-blue-400 dark:hover:border-blue-600 cursor-default"
+                    data-testid={`pricing-${monthLabels[key]}`}
+                  >
+                    <div className="text-sm font-medium text-muted-foreground">{monthLabels[key]}</div>
+                    <div className="text-lg font-bold mt-1 text-blue-700 dark:text-blue-400">{currentPricing[key]}</div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          {groupRules && (
+            <div className="text-center">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setRulesOpen(true)}
+                className="rounded-full border-blue-300 dark:border-blue-800 hover:bg-blue-50 dark:hover:bg-blue-950/30"
+              >
+                <BookOpen className="h-4 w-4 mr-2" />
+                গ্রুপ রুলস দেখে নিন
+              </Button>
             </div>
-          </DialogContent>
-        </Dialog>
+          )}
 
-        <Card>
-          <CardHeader className="text-center">
-            <CardTitle className="text-xl font-bold" data-testid="text-apply-title">সেলার আবেদন</CardTitle>
-            <CardDescription>
-              আমাদের ফেসবুক গ্রুপে সেলার হতে নিচের ফর্মটি পূরণ করুন।
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
-                <FormField
-                  control={form.control}
-                  name="name"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>নাম</FormLabel>
-                      <FormControl>
-                        <div className="relative">
-                          <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                          <Input placeholder="আপনার পূর্ণ নাম লিখুন" className="pl-9" {...field} data-testid="input-apply-name" />
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="phone"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>মোবাইল নাম্বার</FormLabel>
-                      <FormControl>
-                        <div className="relative">
-                          <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                          <Input placeholder="আপনার মোবাইল নাম্বার লিখুন" className="pl-9" {...field} data-testid="input-apply-phone" />
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="facebookLink"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>সাবস্ক্রিপশন নেওয়ার ফেসবুক আইডি / পেজের লিংক</FormLabel>
-                      <FormControl>
-                        <div className="relative">
-                          <SiMeta className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                          <Input placeholder="https://facebook.com/yourprofile" className="pl-9" {...field} data-testid="input-apply-facebook" />
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="sellerType"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>সেলার ধরন নির্বাচন করুন</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+          <Dialog open={rulesOpen} onOpenChange={setRulesOpen}>
+            <DialogContent className="sm:max-w-lg max-h-[80vh] overflow-y-auto" aria-describedby={undefined}>
+              <DialogHeader>
+                <DialogTitle>গ্রুপ রুলস</DialogTitle>
+              </DialogHeader>
+              <div className="whitespace-pre-wrap text-sm text-muted-foreground leading-relaxed">
+                {groupRules}
+              </div>
+            </DialogContent>
+          </Dialog>
+
+          <Card className="shadow-lg border-0 bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm overflow-hidden">
+            <div className="h-1 bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500" />
+            <CardHeader className="text-center pb-3">
+              <CardTitle className="text-xl font-bold" data-testid="text-apply-title">সেলার আবেদন</CardTitle>
+              <CardDescription>
+                আমাদের ফেসবুক গ্রুপে সেলার হতে নিচের ফর্মটি পূরণ করুন।
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Form {...form}>
+                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
+                  <FormField
+                    control={form.control}
+                    name="name"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>নাম</FormLabel>
                         <FormControl>
-                          <SelectTrigger data-testid="select-apply-seller-type">
-                            <SelectValue placeholder="সেলার ধরন নির্বাচন করুন" />
-                          </SelectTrigger>
+                          <div className="relative">
+                            <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <Input placeholder="আপনার পূর্ণ নাম লিখুন" className="pl-9 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-shadow" {...field} data-testid="input-apply-name" />
+                          </div>
                         </FormControl>
-                        <SelectContent>
-                          <SelectItem value="personal_facebook_id">পার্সোনাল ফেসবুক আইডি</SelectItem>
-                          <SelectItem value="facebook_business_page">ফেসবুক বিজনেস পেজ</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="duration"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>মেয়াদ সিলেক্ট করুন</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="phone"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>মোবাইল নাম্বার</FormLabel>
                         <FormControl>
-                          <SelectTrigger data-testid="select-apply-duration">
-                            <SelectValue placeholder="আপনার পছন্দের মেয়াদ নির্বাচন করুন" />
-                          </SelectTrigger>
+                          <div className="relative">
+                            <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <Input placeholder="আপনার মোবাইল নাম্বার লিখুন" className="pl-9 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-shadow" {...field} data-testid="input-apply-phone" />
+                          </div>
                         </FormControl>
-                        <SelectContent>
-                          {Object.keys(monthLabels).map((key) => (
-                            <SelectItem key={key} value={key}>{monthLabels[key]} - {currentPricing[key]}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="paymentMethod"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>পেমেন্টের মাধ্যম নির্বাচন করুন</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="facebookLink"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>সাবস্ক্রিপশন নেওয়ার ফেসবুক আইডি / পেজের লিংক</FormLabel>
                         <FormControl>
-                          <SelectTrigger data-testid="select-apply-payment-method">
-                            <SelectValue placeholder="পেমেন্ট মাধ্যম নির্বাচন করুন" />
-                          </SelectTrigger>
+                          <div className="relative">
+                            <SiMeta className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <Input placeholder="https://facebook.com/yourprofile" className="pl-9 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-shadow" {...field} data-testid="input-apply-facebook" />
+                          </div>
                         </FormControl>
-                        <SelectContent>
-                          <SelectItem value="bkash">বিকাশ</SelectItem>
-                          <SelectItem value="nagad">নগদ</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="senderNumber"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>যে নাম্বার থেকে টাকা পাঠানো হয়েছে</FormLabel>
-                      <FormControl>
-                        <div className="relative">
-                          <Hash className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                          <Input placeholder="যে নাম্বার থেকে টাকা পাঠিয়েছেন সেই নাম্বার লিখুন" className="pl-9" {...field} data-testid="input-apply-sender-number" />
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="email"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>ইমেইল / জিমেইল</FormLabel>
-                      <FormControl>
-                        <div className="relative">
-                          <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                          <Input placeholder="আপনার ইমেইল অথবা জিমেইল লিখুন" className="pl-9" {...field} data-testid="input-apply-email" />
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <Button
-                  type="submit"
-                  className="w-full"
-                  disabled={submitMutation.isPending}
-                  data-testid="button-submit-application"
-                >
-                  {submitMutation.isPending ? "জমা হচ্ছে..." : "আবেদন জমা দিন"}
-                </Button>
-              </form>
-            </Form>
-          </CardContent>
-        </Card>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="sellerType"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>সেলার ধরন নির্বাচন করুন</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger data-testid="select-apply-seller-type">
+                              <SelectValue placeholder="সেলার ধরন নির্বাচন করুন" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="personal_facebook_id">পার্সোনাল ফেসবুক আইডি</SelectItem>
+                            <SelectItem value="facebook_business_page">ফেসবুক বিজনেস পেজ</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="duration"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>মেয়াদ সিলেক্ট করুন</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger data-testid="select-apply-duration">
+                              <SelectValue placeholder="আপনার পছন্দের মেয়াদ নির্বাচন করুন" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {Object.keys(monthLabels).map((key) => (
+                              <SelectItem key={key} value={key}>{monthLabels[key]} - {currentPricing[key]}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="paymentMethod"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>পেমেন্টের মাধ্যম নির্বাচন করুন</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger data-testid="select-apply-payment-method">
+                              <SelectValue placeholder="পেমেন্ট মাধ্যম নির্বাচন করুন" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="bkash">বিকাশ</SelectItem>
+                            <SelectItem value="nagad">নগদ</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="senderNumber"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>যে নাম্বার থেকে টাকা পাঠানো হয়েছে</FormLabel>
+                        <FormControl>
+                          <div className="relative">
+                            <Hash className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <Input placeholder="যে নাম্বার থেকে টাকা পাঠিয়েছেন সেই নাম্বার লিখুন" className="pl-9 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-shadow" {...field} data-testid="input-apply-sender-number" />
+                          </div>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="email"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>ইমেইল / জিমেইল</FormLabel>
+                        <FormControl>
+                          <div className="relative">
+                            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <Input placeholder="আপনার ইমেইল অথবা জিমেইল লিখুন" className="pl-9 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-shadow" {...field} data-testid="input-apply-email" />
+                          </div>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <Button
+                    type="submit"
+                    className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold py-5 text-base shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 transition-all duration-200"
+                    disabled={submitMutation.isPending}
+                    data-testid="button-submit-application"
+                  >
+                    <Send className="h-4 w-4 mr-2" />
+                    {submitMutation.isPending ? "জমা হচ্ছে..." : "আবেদন জমা দিন"}
+                  </Button>
+                </form>
+              </Form>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </div>
   );

@@ -1,0 +1,78 @@
+Please update the email templates used in the system and convert all the customer-facing email content into Bengali (Bangla).
+
+Currently the emails are being sent in English. Since most of our users are from Bangladesh, the email language should be fully in Bangla so that customers can easily understand the messages.
+
+There are three main email templates in the system that need to be translated:
+
+1. Seller Code Activated (Approval Email)
+   This email is sent when a seller application is approved and the seller code becomes active.
+   
+   Title should be:
+   "সেলার কোড সক্রিয় হয়েছে"
+   
+   Message example:
+   "প্রিয় [Seller Name],
+   
+   আপনার সেলার আবেদন সফলভাবে অনুমোদন করা হয়েছে।
+   নিচে আপনার সেলার তথ্য দেওয়া হলো:
+   
+   সেলার নাম: [Seller Name]
+   সেলার কোড: [Seller Code]
+   শুরুর তারিখ: [Start Date]
+   মেয়াদ শেষ: [Expiry Date]
+   
+   আমাদের সাথে যুক্ত হওয়ার জন্য ধন্যবাদ।"
+
+---
+
+2. Subscription Expiry Reminder (Before Expiry Email)
+   This email is sent when the seller subscription is about to expire (for example within 3 days).
+   
+   Title should be:
+   "সাবস্ক্রিপশন মেয়াদ শেষ হওয়ার সতর্কবার্তা"
+   
+   Message example:
+   "প্রিয় [Seller Name],
+   
+   আপনার সেলার সাবস্ক্রিপশন শীঘ্রই শেষ হতে যাচ্ছে।
+   সেলার কোড ব্যবহার চালিয়ে যেতে অনুগ্রহ করে আপনার সাবস্ক্রিপশন নবায়ন করুন।
+   
+   সেলার নাম: [Seller Name]
+   সেলার কোড: [Seller Code]
+   মেয়াদ শেষের তারিখ: [Expiry Date]"
+   
+   Button text:
+   "সাবস্ক্রিপশন নবায়ন করুন"
+
+---
+
+3. Subscription Expired (After Expiry Email)
+   This email is sent when the seller subscription has already expired.
+   
+   Title should be:
+   "সাবস্ক্রিপশন মেয়াদ শেষ হয়েছে"
+   
+   Message example:
+   "প্রিয় [Seller Name],
+   
+   আপনার সেলার সাবস্ক্রিপশন শেষ হয়ে গেছে এবং আপনার সেলার কোড বর্তমানে সক্রিয় নয়।
+   
+   পুনরায় ব্যবহার করতে চাইলে অনুগ্রহ করে আপনার সাবস্ক্রিপশন নবায়ন করুন।
+   
+   সেলার নাম: [Seller Name]
+   সেলার কোড: [Seller Code]
+   মেয়াদ শেষ হয়েছে: [Expiry Date]"
+   
+   Button text:
+   "সাবস্ক্রিপশন নবায়ন করুন"
+
+---
+
+Important instructions:
+
+• Keep the same email design, layout, colors, and structure.
+• Only change the text language from English to Bangla.
+• Dynamic fields such as Seller Name, Seller Code, Start Date, Expiry Date should remain dynamic as they are now.
+• Do not change any backend functionality or email sending logic.
+
+The goal is simply to make the email messages fully understandable for Bangladeshi users by displaying all customer-facing text in Bangla.

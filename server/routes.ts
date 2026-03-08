@@ -19,6 +19,18 @@ const DURATION_MONTHS: Record<string, number> = {
   "10_months": 10,
   "11_months": 11,
   "12_months": 12,
+  "1": 1,
+  "2": 2,
+  "3": 3,
+  "4": 4,
+  "5": 5,
+  "6": 6,
+  "7": 7,
+  "8": 8,
+  "9": 9,
+  "10": 10,
+  "11": 11,
+  "12": 12,
 };
 
 const DURATION_CODES: Record<string, string> = {
@@ -26,6 +38,18 @@ const DURATION_CODES: Record<string, string> = {
   "1_month": "01",
   "2_months": "02",
   "6_months": "06",
+  "1": "01",
+  "2": "02",
+  "3": "03",
+  "4": "04",
+  "5": "05",
+  "6": "06",
+  "7": "07",
+  "8": "08",
+  "9": "09",
+  "10": "10",
+  "11": "11",
+  "12": "12",
 };
 
 function calculateExpiryDate(startDate: string, duration: string): string {

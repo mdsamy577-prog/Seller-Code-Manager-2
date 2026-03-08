@@ -7,7 +7,16 @@ const DURATION_DAYS: Record<string, number> = {
   "15_days": 15,
   "1_month": 30,
   "2_months": 60,
+  "3_months": 90,
+  "4_months": 120,
+  "5_months": 150,
   "6_months": 180,
+  "7_months": 210,
+  "8_months": 240,
+  "9_months": 270,
+  "10_months": 300,
+  "11_months": 330,
+  "12_months": 365,
 };
 
 const DURATION_CODES: Record<string, string> = {
@@ -115,9 +124,12 @@ export async function registerRoutes(
         return res.status(400).json({ message: "Invalid seller data", errors: parsed.error.errors });
       }
 
-      const startDate = parsed.data.startDate;
       const duration = parsed.data.duration;
-      const expiryDate = calculateExpiryDate(startDate, duration);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const currentExpiry = new Date(existing.expiryDate);
+      const baseDate = currentExpiry >= today ? existing.expiryDate : `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+      const expiryDate = calculateExpiryDate(baseDate, duration);
 
       const seller = await storage.updateSeller(id, { ...parsed.data, expiryDate });
       res.json(seller);

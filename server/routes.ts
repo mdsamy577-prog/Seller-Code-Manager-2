@@ -394,15 +394,10 @@ export async function registerRoutes(
 
   app.get("/api/settings/email", requireAuth, async (_req, res) => {
     try {
-      const settings = await storage.getSettings([
-        "SENDER_EMAIL",
-        "EMAIL_APP_PASSWORD",
-        "SENDER_NAME",
-      ]);
+      const senderName = await storage.getSetting("SENDER_NAME");
       res.json({
-        senderEmail: settings.SENDER_EMAIL || "",
-        hasPassword: !!settings.EMAIL_APP_PASSWORD,
-        senderName: settings.SENDER_NAME || "",
+        senderName: senderName || "",
+        hasApiKey: !!process.env.RESEND_API_KEY,
       });
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch email settings" });
@@ -411,18 +406,7 @@ export async function registerRoutes(
 
   app.post("/api/settings/email", requireAuth, async (req, res) => {
     try {
-      const { senderEmail, emailAppPassword, senderName } = req.body;
-      if (!senderEmail || typeof senderEmail !== "string") {
-        return res.status(400).json({ message: "Sender email is required" });
-      }
-      const existingPassword = await storage.getSetting("EMAIL_APP_PASSWORD");
-      if (!emailAppPassword && !existingPassword) {
-        return res.status(400).json({ message: "Email app password is required" });
-      }
-      await storage.setSetting("SENDER_EMAIL", senderEmail.trim());
-      if (emailAppPassword) {
-        await storage.setSetting("EMAIL_APP_PASSWORD", emailAppPassword.trim());
-      }
+      const { senderName } = req.body;
       await storage.setSetting("SENDER_NAME", (senderName || "").trim());
       res.json({ message: "Email settings saved successfully" });
     } catch (error) {

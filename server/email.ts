@@ -1,28 +1,11 @@
-import nodemailer from "nodemailer";
+import { Resend } from "resend";
 import { storage } from "./storage";
 
-interface EmailConfig {
-  senderEmail: string;
-  emailAppPassword: string;
-  senderName: string;
-}
+const resend = new Resend(process.env.RESEND_API_KEY);
 
-async function getEmailConfig(): Promise<EmailConfig | null> {
-  const settings = await storage.getSettings([
-    "SENDER_EMAIL",
-    "EMAIL_APP_PASSWORD",
-    "SENDER_NAME",
-  ]);
-
-  if (!settings.SENDER_EMAIL || !settings.EMAIL_APP_PASSWORD) {
-    return null;
-  }
-
-  return {
-    senderEmail: settings.SENDER_EMAIL,
-    emailAppPassword: settings.EMAIL_APP_PASSWORD,
-    senderName: settings.SENDER_NAME || "Seller Code Manager",
-  };
+async function getSenderName(): Promise<string> {
+  const name = await storage.getSetting("SENDER_NAME");
+  return name || "CPS&S Seller Code";
 }
 
 function formatDateBangla(dateStr: string): string {
@@ -42,20 +25,12 @@ export async function sendSellerCodeEmail(
   startDate: string,
   expiryDate: string
 ): Promise<boolean> {
-  const config = await getEmailConfig();
-  if (!config) {
-    console.log("Email not configured, skipping email notification");
+  if (!process.env.RESEND_API_KEY) {
+    console.log("RESEND_API_KEY not configured, skipping email notification");
     return false;
   }
 
-  const transporter = nodemailer.createTransport({
-    service: "gmail",
-    auth: {
-      user: config.senderEmail,
-      pass: config.emailAppPassword,
-    },
-  });
-
+  const senderName = await getSenderName();
   const formattedStart = formatDateBangla(startDate);
   const formattedExpiry = formatDateBangla(expiryDate);
 
@@ -91,8 +66,8 @@ export async function sendSellerCodeEmail(
   `;
 
   try {
-    await transporter.sendMail({
-      from: `"${config.senderName}" <${config.senderEmail}>`,
+    await resend.emails.send({
+      from: `${senderName} <onboarding@resend.dev>`,
       to: recipientEmail,
       subject: `\u09B8\u09C7\u09B2\u09BE\u09B0 \u0995\u09CB\u09A1: ${sellerCode}`,
       html: htmlBody,
@@ -112,20 +87,12 @@ export async function sendReminderEmail(
   expiryDate: string,
   reminderType: "before_expiry" | "expiry_day" | "after_expiry"
 ): Promise<boolean> {
-  const config = await getEmailConfig();
-  if (!config) {
-    console.log("Email not configured, skipping reminder");
+  if (!process.env.RESEND_API_KEY) {
+    console.log("RESEND_API_KEY not configured, skipping reminder");
     return false;
   }
 
-  const transporter = nodemailer.createTransport({
-    service: "gmail",
-    auth: {
-      user: config.senderEmail,
-      pass: config.emailAppPassword,
-    },
-  });
-
+  const senderName = await getSenderName();
   const formattedExpiry = formatDateBangla(expiryDate);
   const renewalLink = "https://seller-code.onrender.com/apply";
 
@@ -187,8 +154,8 @@ export async function sendReminderEmail(
   `;
 
   try {
-    await transporter.sendMail({
-      from: `"${config.senderName}" <${config.senderEmail}>`,
+    await resend.emails.send({
+      from: `${senderName} <onboarding@resend.dev>`,
       to: recipientEmail,
       subject,
       html: htmlBody,

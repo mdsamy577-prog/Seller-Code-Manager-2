@@ -25,8 +25,6 @@ import {
   ClipboardList,
   LogOut,
   Mail,
-  Eye,
-  EyeOff,
   Send,
   Settings,
   BookOpen,
@@ -476,24 +474,19 @@ function RegistrationLink() {
 
 function EmailSettings() {
   const { toast } = useToast();
-  const [showPassword, setShowPassword] = useState(false);
-  const [senderEmail, setSenderEmail] = useState("");
-  const [emailAppPassword, setEmailAppPassword] = useState("");
   const [senderName, setSenderName] = useState("");
   const [testEmail, setTestEmail] = useState("");
   const [initialized, setInitialized] = useState(false);
 
   const { data: emailSettings, isLoading } = useQuery<{
-    senderEmail: string;
-    hasPassword: boolean;
     senderName: string;
+    hasApiKey: boolean;
   }>({
     queryKey: ["/api/settings/email"],
   });
 
   useEffect(() => {
     if (emailSettings && !initialized) {
-      setSenderEmail(emailSettings.senderEmail);
       setSenderName(emailSettings.senderName);
       setInitialized(true);
     }
@@ -502,8 +495,6 @@ function EmailSettings() {
   const saveMutation = useMutation({
     mutationFn: async () => {
       const res = await apiRequest("POST", "/api/settings/email", {
-        senderEmail,
-        emailAppPassword,
         senderName,
       });
       return res.json();
@@ -511,7 +502,6 @@ function EmailSettings() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/settings/email"] });
       toast({ title: "Email settings saved" });
-      setEmailAppPassword("");
     },
     onError: (error: Error) => {
       toast({ title: "Error", description: error.message, variant: "destructive" });
@@ -534,8 +524,6 @@ function EmailSettings() {
 
   if (isLoading) return null;
 
-  const hasExistingConfig = emailSettings?.senderEmail && emailSettings?.hasPassword;
-
   return (
     <Card>
       <CardHeader>
@@ -551,43 +539,19 @@ function EmailSettings() {
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="space-y-2">
-          <label className="text-sm font-medium">Sender Email Address</label>
-          <div className="relative">
-            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              type="email"
-              placeholder="your-email@gmail.com"
-              className="pl-9"
-              value={senderEmail}
-              onChange={(e) => setSenderEmail(e.target.value)}
-            />
+          <label className="text-sm font-medium">API Status</label>
+          <div className="flex items-center gap-2">
+            {emailSettings?.hasApiKey ? (
+              <Badge variant="outline" className="text-emerald-600 border-emerald-300">Resend API Key Configured</Badge>
+            ) : (
+              <Badge variant="outline" className="text-destructive border-destructive/30">Resend API Key Missing</Badge>
+            )}
           </div>
-        </div>
-        <div className="space-y-2">
-          <label className="text-sm font-medium">Email App Password</label>
-          <div className="relative">
-            <Input
-              type={showPassword ? "text" : "password"}
-              placeholder={hasExistingConfig ? "••••••••••••••••  (saved)" : "Gmail App Password"}
-              value={emailAppPassword}
-              onChange={(e) => setEmailAppPassword(e.target.value)}
-            />
-            <button
-              type="button"
-              onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
-            >
-              {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-            </button>
-          </div>
-          <p className="text-xs text-muted-foreground">
-            For Gmail, use an App Password (Google Account → Security → App Passwords)
-          </p>
         </div>
         <div className="space-y-2">
           <label className="text-sm font-medium">Sender Name (Optional)</label>
           <Input
-            placeholder="Seller Code Manager"
+            placeholder="CPS&S Seller Code"
             value={senderName}
             onChange={(e) => setSenderName(e.target.value)}
           />
@@ -595,12 +559,12 @@ function EmailSettings() {
         <Button
           className="w-full"
           onClick={() => saveMutation.mutate()}
-          disabled={saveMutation.isPending || !senderEmail || (!emailAppPassword && !hasExistingConfig)}
+          disabled={saveMutation.isPending}
         >
           {saveMutation.isPending ? "Saving..." : "Save Email Settings"}
         </Button>
 
-        {hasExistingConfig && (
+        {emailSettings?.hasApiKey && (
           <div className="border-t pt-4 mt-4 space-y-3">
             <label className="text-sm font-medium">Send Test Email</label>
             <div className="flex gap-2">

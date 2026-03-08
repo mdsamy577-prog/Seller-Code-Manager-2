@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -24,6 +24,11 @@ import {
   Check,
   ClipboardList,
   LogOut,
+  Mail,
+  Eye,
+  EyeOff,
+  Send,
+  Settings,
 } from "lucide-react";
 import { SiMeta } from "react-icons/si";
 import { useLocation } from "wouter";
@@ -399,6 +404,158 @@ function RegistrationLink() {
             {copied ? <Check className="h-4 w-4 text-emerald-600" /> : <Copy className="h-4 w-4" />}
           </Button>
         </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function EmailSettings() {
+  const { toast } = useToast();
+  const [showPassword, setShowPassword] = useState(false);
+  const [senderEmail, setSenderEmail] = useState("");
+  const [emailAppPassword, setEmailAppPassword] = useState("");
+  const [senderName, setSenderName] = useState("");
+  const [testEmail, setTestEmail] = useState("");
+  const [initialized, setInitialized] = useState(false);
+
+  const { data: emailSettings, isLoading } = useQuery<{
+    senderEmail: string;
+    hasPassword: boolean;
+    senderName: string;
+  }>({
+    queryKey: ["/api/settings/email"],
+  });
+
+  useEffect(() => {
+    if (emailSettings && !initialized) {
+      setSenderEmail(emailSettings.senderEmail);
+      setSenderName(emailSettings.senderName);
+      setInitialized(true);
+    }
+  }, [emailSettings, initialized]);
+
+  const saveMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/settings/email", {
+        senderEmail,
+        emailAppPassword,
+        senderName,
+      });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/settings/email"] });
+      toast({ title: "Email settings saved" });
+      setEmailAppPassword("");
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const testMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/settings/email/test", { testEmail });
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Test email sent", description: `Check ${testEmail} for the test email.` });
+      setTestEmail("");
+    },
+    onError: (error: Error) => {
+      toast({ title: "Test failed", description: error.message, variant: "destructive" });
+    },
+  });
+
+  if (isLoading) return null;
+
+  const hasExistingConfig = emailSettings?.senderEmail && emailSettings?.hasPassword;
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center gap-2">
+          <Settings className="h-5 w-5 text-muted-foreground" />
+          <div>
+            <CardTitle className="text-lg">Email Settings</CardTitle>
+            <CardDescription>
+              Configure email to automatically send seller codes after approval
+            </CardDescription>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="space-y-2">
+          <label className="text-sm font-medium">Sender Email Address</label>
+          <div className="relative">
+            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              type="email"
+              placeholder="your-email@gmail.com"
+              className="pl-9"
+              value={senderEmail}
+              onChange={(e) => setSenderEmail(e.target.value)}
+            />
+          </div>
+        </div>
+        <div className="space-y-2">
+          <label className="text-sm font-medium">Email App Password</label>
+          <div className="relative">
+            <Input
+              type={showPassword ? "text" : "password"}
+              placeholder={hasExistingConfig ? "••••••••••••••••  (saved)" : "Gmail App Password"}
+              value={emailAppPassword}
+              onChange={(e) => setEmailAppPassword(e.target.value)}
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+            >
+              {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            </button>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            For Gmail, use an App Password (Google Account → Security → App Passwords)
+          </p>
+        </div>
+        <div className="space-y-2">
+          <label className="text-sm font-medium">Sender Name (Optional)</label>
+          <Input
+            placeholder="Seller Code Manager"
+            value={senderName}
+            onChange={(e) => setSenderName(e.target.value)}
+          />
+        </div>
+        <Button
+          className="w-full"
+          onClick={() => saveMutation.mutate()}
+          disabled={saveMutation.isPending || !senderEmail || (!emailAppPassword && !hasExistingConfig)}
+        >
+          {saveMutation.isPending ? "Saving..." : "Save Email Settings"}
+        </Button>
+
+        {hasExistingConfig && (
+          <div className="border-t pt-4 mt-4 space-y-3">
+            <label className="text-sm font-medium">Send Test Email</label>
+            <div className="flex gap-2">
+              <Input
+                type="email"
+                placeholder="test@example.com"
+                value={testEmail}
+                onChange={(e) => setTestEmail(e.target.value)}
+              />
+              <Button
+                variant="outline"
+                onClick={() => testMutation.mutate()}
+                disabled={testMutation.isPending || !testEmail}
+              >
+                <Send className="h-4 w-4 mr-1" />
+                {testMutation.isPending ? "Sending..." : "Test"}
+              </Button>
+            </div>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
@@ -885,6 +1042,8 @@ export default function SellerCodeManager() {
         </Card>
 
         <RegistrationLink />
+
+        <EmailSettings />
 
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogContent className="sm:max-w-lg" aria-describedby={undefined}>

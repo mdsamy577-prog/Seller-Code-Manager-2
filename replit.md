@@ -47,10 +47,14 @@ Code structure: `DDMM-SSSDD`
 - Admin Seller Applications page at /applications — view all applications with seller type, duration, payment method, email icon (tooltip shows email on hover), sender number, approve or reject
 - Auto-generated seller code on approval (creates seller record automatically)
 - Seller Registration Link section on admin dashboard with copy-to-clipboard
+- Email Settings section in admin dashboard (configure Gmail SMTP sender email, app password, sender name)
+- Automatic email notification with seller code on application approval (if applicant provided email)
+- Test email functionality to verify email configuration
 
 ## File Structure
 - `shared/schema.ts` - Database schema and Zod validation
 - `server/auth.ts` - Password hashing and verification utilities
+- `server/email.ts` - Email sending utility (nodemailer/Gmail SMTP)
 - `server/routes.ts` - REST API endpoints, code generation, expiry calculation, auth routes
 - `server/storage.ts` - Database storage layer with Drizzle
 - `server/index.ts` - Express app setup, session config, passport config
@@ -78,8 +82,11 @@ Code structure: `DDMM-SSSDD`
 - DELETE /api/sellers/:id - Delete seller
 - GET /api/settings/messenger - Get Messenger config status
 - POST /api/settings/messenger - Save Facebook Page username
+- GET /api/settings/email - Get email settings (sender email, has password, sender name)
+- POST /api/settings/email - Save email settings (sender email, app password, sender name)
+- POST /api/settings/email/test - Send a test email
 - GET /api/applications - List all applications
-- POST /api/applications/:id/approve - Approve (auto-creates seller with code)
+- POST /api/applications/:id/approve - Approve (auto-creates seller with code, sends email if configured)
 - POST /api/applications/:id/reject - Reject application
 - DELETE /api/applications/:id - Delete application
 

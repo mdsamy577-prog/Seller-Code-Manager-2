@@ -4,6 +4,7 @@ import { storage } from "./storage";
 import { insertSellerSchema, insertSellerApplicationSchema } from "@shared/schema";
 import passport from "passport";
 import { hashPassword, verifyPassword } from "./auth";
+import { sendSellerCodeEmail } from "./email";
 
 const DURATION_DAYS: Record<string, number> = {
   "15_days": 15,
@@ -305,7 +306,19 @@ export async function registerRoutes(
       });
 
       const updated = await storage.updateSellerApplicationStatus(id, "approved");
-      res.json(updated);
+
+      let emailSent = false;
+      if (application.email) {
+        emailSent = await sendSellerCodeEmail(
+          application.email,
+          application.name,
+          sellerCode,
+          startDate,
+          expiryDate
+        );
+      }
+
+      res.json({ ...updated, emailSent });
     } catch (error) {
       res.status(500).json({ message: "Failed to approve application" });
     }
@@ -369,6 +382,67 @@ export async function registerRoutes(
       res.json({ message: "Messenger settings saved successfully" });
     } catch (error) {
       res.status(500).json({ message: "Failed to save settings" });
+    }
+  });
+
+  app.get("/api/settings/email", requireAuth, async (_req, res) => {
+    try {
+      const settings = await storage.getSettings([
+        "SENDER_EMAIL",
+        "EMAIL_APP_PASSWORD",
+        "SENDER_NAME",
+      ]);
+      res.json({
+        senderEmail: settings.SENDER_EMAIL || "",
+        hasPassword: !!settings.EMAIL_APP_PASSWORD,
+        senderName: settings.SENDER_NAME || "",
+      });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch email settings" });
+    }
+  });
+
+  app.post("/api/settings/email", requireAuth, async (req, res) => {
+    try {
+      const { senderEmail, emailAppPassword, senderName } = req.body;
+      if (!senderEmail || typeof senderEmail !== "string") {
+        return res.status(400).json({ message: "Sender email is required" });
+      }
+      const existingPassword = await storage.getSetting("EMAIL_APP_PASSWORD");
+      if (!emailAppPassword && !existingPassword) {
+        return res.status(400).json({ message: "Email app password is required" });
+      }
+      await storage.setSetting("SENDER_EMAIL", senderEmail.trim());
+      if (emailAppPassword) {
+        await storage.setSetting("EMAIL_APP_PASSWORD", emailAppPassword.trim());
+      }
+      await storage.setSetting("SENDER_NAME", (senderName || "").trim());
+      res.json({ message: "Email settings saved successfully" });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to save email settings" });
+    }
+  });
+
+  app.post("/api/settings/email/test", requireAuth, async (req, res) => {
+    try {
+      const { testEmail } = req.body;
+      if (!testEmail) {
+        return res.status(400).json({ message: "Test email address is required" });
+      }
+      const sent = await sendSellerCodeEmail(
+        testEmail,
+        "Test Seller",
+        "TEST-00101",
+        new Date().toISOString().split("T")[0],
+        new Date(Date.now() + 30 * 86400000).toISOString().split("T")[0]
+      );
+      if (sent) {
+        res.json({ message: "Test email sent successfully" });
+      } else {
+        res.status(500).json({ message: "Failed to send test email. Check your email settings." });
+      }
+    } catch (error) {
+      res.status(500).json({ message: "Failed to send test email" });
     }
   });
 

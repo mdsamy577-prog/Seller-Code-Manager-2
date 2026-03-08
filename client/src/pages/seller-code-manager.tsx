@@ -29,11 +29,14 @@ import {
   EyeOff,
   Send,
   Settings,
+  BookOpen,
+  Save,
 } from "lucide-react";
 import { SiMeta } from "react-icons/si";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import {
@@ -355,6 +358,66 @@ function PendingApplications() {
             </TableBody>
           </Table>
         </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function GroupRules() {
+  const { toast } = useToast();
+  const [rules, setRules] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/settings/group-rules")
+      .then((res) => res.json())
+      .then((data) => {
+        setRules(data.rules || "");
+        setLoaded(true);
+      })
+      .catch(() => setLoaded(true));
+  }, []);
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      await apiRequest("POST", "/api/settings/group-rules", { rules });
+      toast({ title: "Group rules saved successfully" });
+    } catch {
+      toast({ title: "Failed to save group rules", variant: "destructive" });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (!loaded) return null;
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center gap-2">
+          <BookOpen className="h-5 w-5 text-muted-foreground" />
+          <div>
+            <CardTitle className="text-lg">Group Rules</CardTitle>
+            <CardDescription>
+              Write group rules that users can view on the apply page
+            </CardDescription>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <Textarea
+          value={rules}
+          onChange={(e) => setRules(e.target.value)}
+          placeholder="Write your group rules here..."
+          rows={8}
+          className="resize-y"
+        />
+        <Button onClick={handleSave} disabled={saving} size="sm">
+          <Save className="h-4 w-4 mr-2" />
+          {saving ? "Saving..." : "Save Rules"}
+        </Button>
       </CardContent>
     </Card>
   );
@@ -1014,6 +1077,8 @@ export default function SellerCodeManager() {
         <RegistrationLink />
 
         <EmailSettings />
+
+        <GroupRules />
 
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogContent className="sm:max-w-lg" aria-describedby={undefined}>

@@ -453,5 +453,24 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/settings/group-rules", async (_req, res) => {
+    try {
+      const rules = await storage.getSetting("GROUP_RULES");
+      res.json({ rules: rules || "" });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch group rules" });
+    }
+  });
+
+  app.post("/api/settings/group-rules", requireAuth, async (req, res) => {
+    try {
+      const { rules } = req.body;
+      await storage.setSetting("GROUP_RULES", rules || "");
+      res.json({ message: "Group rules saved successfully" });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to save group rules" });
+    }
+  });
+
   return httpServer;
 }

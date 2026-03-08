@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { User, Phone, CheckCircle2, Wallet, Hash, Copy, Mail } from "lucide-react";
+import { User, Phone, CheckCircle2, Wallet, Hash, Copy, Mail, BookOpen } from "lucide-react";
 import { SiMeta } from "react-icons/si";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,6 +22,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -79,6 +85,16 @@ export default function SellerApplication() {
 
   const sellerType = form.watch("sellerType");
   const currentPricing = sellerType === "facebook_business_page" ? businessPricing : personalPricing;
+
+  const [rulesOpen, setRulesOpen] = useState(false);
+  const [groupRules, setGroupRules] = useState("");
+
+  useEffect(() => {
+    fetch("/api/settings/group-rules")
+      .then((res) => res.json())
+      .then((data) => setGroupRules(data.rules || ""))
+      .catch(() => {});
+  }, []);
 
   const submitMutation = useMutation({
     mutationFn: async (data: ApplicationFormValues) => {
@@ -202,6 +218,30 @@ export default function SellerApplication() {
             </div>
           </CardContent>
         </Card>
+
+        {groupRules && (
+          <div className="text-center">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setRulesOpen(true)}
+            >
+              <BookOpen className="h-4 w-4 mr-2" />
+              গ্রুপ রুলস দেখে নিন
+            </Button>
+          </div>
+        )}
+
+        <Dialog open={rulesOpen} onOpenChange={setRulesOpen}>
+          <DialogContent className="sm:max-w-lg max-h-[80vh] overflow-y-auto" aria-describedby={undefined}>
+            <DialogHeader>
+              <DialogTitle>গ্রুপ রুলস</DialogTitle>
+            </DialogHeader>
+            <div className="whitespace-pre-wrap text-sm text-muted-foreground leading-relaxed">
+              {groupRules}
+            </div>
+          </DialogContent>
+        </Dialog>
 
         <Card>
           <CardHeader className="text-center">

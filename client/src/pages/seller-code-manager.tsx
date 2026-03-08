@@ -557,7 +557,10 @@ function SellerForm({
 
   const updateMutation = useMutation({
     mutationFn: async (data: SellerFormValues) => {
-      const res = await apiRequest("PATCH", `/api/sellers/${seller!.id}`, data);
+      const res = await apiRequest("PATCH", `/api/sellers/${seller!.id}`, {
+        ...data,
+        sellerCode: seller!.sellerCode,
+      });
       return res.json();
     },
     onSuccess: () => {

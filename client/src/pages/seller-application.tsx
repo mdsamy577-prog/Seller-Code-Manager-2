@@ -248,7 +248,7 @@ export default function SellerApplication() {
                   name="facebookLink"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>ফেসবুক প্রোফাইল লিংক</FormLabel>
+                      <FormLabel>সাবস্ক্রিপশন নেওয়ার ফেসবুক আইডি / পেজের লিংক</FormLabel>
                       <FormControl>
                         <div className="relative">
                           <SiMeta className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />

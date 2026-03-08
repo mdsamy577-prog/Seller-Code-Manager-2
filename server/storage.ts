@@ -1,5 +1,5 @@
-import { type User, type InsertUser, type Seller, type InsertSeller, type InsertSellerApplication, type SellerApplication, users, sellers, appSettings, sellerApplications } from "@shared/schema";
-import { eq, or, ilike, count } from "drizzle-orm";
+import { type User, type InsertUser, type Seller, type InsertSeller, type InsertSellerApplication, type SellerApplication, users, sellers, appSettings, sellerApplications, emailReminderLog } from "@shared/schema";
+import { eq, or, ilike, count, and } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import pg from "pg";
 
@@ -31,6 +31,9 @@ export interface IStorage {
   updateUserPassword(id: string, hashedPassword: string): Promise<void>;
   getUserCount(): Promise<number>;
   getAllUsers(): Promise<User[]>;
+  getSellersWithEmail(): Promise<Seller[]>;
+  hasReminderBeenSent(sellerId: number, reminderType: string, date: string): Promise<boolean>;
+  logReminderSent(sellerId: number, reminderType: string, date: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -145,6 +148,26 @@ export class DatabaseStorage implements IStorage {
   async getSellerByCode(code: string): Promise<Seller | undefined> {
     const result = await db.select().from(sellers).where(eq(sellers.sellerCode, code));
     return result[0];
+  }
+
+  async getSellersWithEmail(): Promise<Seller[]> {
+    const allSellers = await db.select().from(sellers);
+    return allSellers.filter(s => s.email);
+  }
+
+  async hasReminderBeenSent(sellerId: number, reminderType: string, date: string): Promise<boolean> {
+    const result = await db.select().from(emailReminderLog).where(
+      and(
+        eq(emailReminderLog.sellerId, sellerId),
+        eq(emailReminderLog.reminderType, reminderType),
+        eq(emailReminderLog.sentDate, date)
+      )
+    );
+    return result.length > 0;
+  }
+
+  async logReminderSent(sellerId: number, reminderType: string, date: string): Promise<void> {
+    await db.insert(emailReminderLog).values({ sellerId, reminderType, sentDate: date });
   }
 }
 

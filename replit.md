@@ -50,11 +50,14 @@ Code structure: `DDMM-SSSDD`
 - Email Settings section in admin dashboard (configure Gmail SMTP sender email, app password, sender name)
 - Automatic email notification with seller code on application approval (if applicant provided email)
 - Test email functionality to verify email configuration
+- Automatic subscription reminder emails via daily cron job (9 AM): 3/2/1 days before expiry, on expiry day, daily for 3-4 days after, then weekly reminders
+- Duplicate prevention via `email_reminder_log` table (no duplicate reminders per seller per day)
 
 ## File Structure
 - `shared/schema.ts` - Database schema and Zod validation
 - `server/auth.ts` - Password hashing and verification utilities
-- `server/email.ts` - Email sending utility (nodemailer/Gmail SMTP)
+- `server/email.ts` - Email sending utility (nodemailer/Gmail SMTP, includes reminder emails)
+- `server/cron.ts` - Daily cron job for subscription reminder emails (node-cron)
 - `server/routes.ts` - REST API endpoints, code generation, expiry calculation, auth routes
 - `server/storage.ts` - Database storage layer with Drizzle
 - `server/index.ts` - Express app setup, session config, passport config

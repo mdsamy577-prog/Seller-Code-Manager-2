@@ -9,6 +9,7 @@ import passport from "passport";
 import { Strategy as LocalStrategy } from "passport-local";
 import { storage } from "./storage";
 import { hashPassword, verifyPassword } from "./auth";
+import { startCronJobs } from "./cron";
 import type { User } from "@shared/schema";
 
 declare module "express-session" {
@@ -164,6 +165,7 @@ app.use((req, res, next) => {
     },
     () => {
       log(`serving on port ${port}`);
+      startCronJobs();
     },
   );
 })();

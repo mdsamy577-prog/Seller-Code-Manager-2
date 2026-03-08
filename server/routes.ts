@@ -303,6 +303,7 @@ export async function registerRoutes(
         duration: application.duration,
         startDate,
         expiryDate,
+        email: application.email || undefined,
       });
 
       const updated = await storage.updateSellerApplicationStatus(id, "approved");

@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, date, integer } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, date, integer, uniqueIndex } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -28,7 +28,17 @@ export const sellers = pgTable("sellers", {
   duration: text("duration").notNull(),
   startDate: date("start_date").notNull(),
   expiryDate: date("expiry_date").notNull(),
+  email: text("email"),
 });
+
+export const emailReminderLog = pgTable("email_reminder_log", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  sellerId: integer("seller_id").notNull(),
+  reminderType: text("reminder_type").notNull(),
+  sentDate: text("sent_date").notNull(),
+}, (table) => [
+  uniqueIndex("unique_reminder_per_day").on(table.sellerId, table.reminderType, table.sentDate),
+]);
 
 export const insertSellerSchema = createInsertSchema(sellers).pick({
   name: true,
@@ -37,6 +47,7 @@ export const insertSellerSchema = createInsertSchema(sellers).pick({
   sellerCode: true,
   duration: true,
   startDate: true,
+  email: true,
 });
 
 export type InsertSeller = z.infer<typeof insertSellerSchema>;

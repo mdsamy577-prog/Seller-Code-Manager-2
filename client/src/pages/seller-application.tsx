@@ -38,12 +38,25 @@ const applicationFormSchema = z.object({
 
 type ApplicationFormValues = z.infer<typeof applicationFormSchema>;
 
-const pricingPlans = [
-  { duration: "১ মাস", price: "২০০ টাকা" },
-  { duration: "৬ মাস", price: "১০০০ টাকা" },
-  { duration: "৯ মাস", price: "১৩০০ টাকা" },
-  { duration: "১২ মাস", price: "১৬০০ টাকা" },
-];
+const personalPricing: Record<string, string> = {
+  "1": "২০০ টাকা", "2": "৩৮০ টাকা", "3": "৫৫০ টাকা", "4": "৭০০ টাকা",
+  "5": "৮৫০ টাকা", "6": "১০০০ টাকা", "7": "১১০০ টাকা", "8": "১২০০ টাকা",
+  "9": "১৩০০ টাকা", "10": "১৪০০ টাকা", "11": "১৫০০ টাকা", "12": "১৬০০ টাকা",
+};
+
+const businessPricing: Record<string, string> = {
+  "1": "৩০০ টাকা", "2": "৫৫০ টাকা", "3": "৮০০ টাকা", "4": "১০০০ টাকা",
+  "5": "১২০০ টাকা", "6": "১৪০০ টাকা", "7": "১৬০০ টাকা", "8": "১৮০০ টাকা",
+  "9": "২০০০ টাকা", "10": "২২০০ টাকা", "11": "২৪০০ টাকা", "12": "২৬০০ টাকা",
+};
+
+const monthLabels: Record<string, string> = {
+  "1": "১ মাস", "2": "২ মাস", "3": "৩ মাস", "4": "৪ মাস",
+  "5": "৫ মাস", "6": "৬ মাস", "7": "৭ মাস", "8": "৮ মাস",
+  "9": "৯ মাস", "10": "১০ মাস", "11": "১১ মাস", "12": "১২ মাস",
+};
+
+const dashboardPackages = ["1", "6", "9", "12"];
 
 export default function SellerApplication() {
   const { toast } = useToast();
@@ -61,6 +74,9 @@ export default function SellerApplication() {
       senderNumber: "",
     },
   });
+
+  const sellerType = form.watch("sellerType");
+  const currentPricing = sellerType === "facebook_business_page" ? businessPricing : personalPricing;
 
   const submitMutation = useMutation({
     mutationFn: async (data: ApplicationFormValues) => {
@@ -141,14 +157,14 @@ export default function SellerApplication() {
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 gap-3">
-              {pricingPlans.map((plan) => (
+              {dashboardPackages.map((key) => (
                 <div
-                  key={plan.duration}
+                  key={key}
                   className="rounded-lg border p-3 text-center"
-                  data-testid={`pricing-${plan.duration}`}
+                  data-testid={`pricing-${monthLabels[key]}`}
                 >
-                  <div className="text-sm font-medium text-muted-foreground">{plan.duration}</div>
-                  <div className="text-lg font-bold mt-1">{plan.price}</div>
+                  <div className="text-sm font-medium text-muted-foreground">{monthLabels[key]}</div>
+                  <div className="text-lg font-bold mt-1">{currentPricing[key]}</div>
                 </div>
               ))}
             </div>
@@ -218,7 +234,7 @@ export default function SellerApplication() {
                   name="sellerType"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>সেলার ধরন</FormLabel>
+                      <FormLabel>সেলার ধরন নির্বাচন করুন</FormLabel>
                       <Select onValueChange={field.onChange} defaultValue={field.value}>
                         <FormControl>
                           <SelectTrigger data-testid="select-apply-seller-type">
@@ -247,18 +263,9 @@ export default function SellerApplication() {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="1">১ মাস - ২০০ টাকা</SelectItem>
-                          <SelectItem value="2">২ মাস - ৩৮০ টাকা</SelectItem>
-                          <SelectItem value="3">৩ মাস - ৫৫০ টাকা</SelectItem>
-                          <SelectItem value="4">৪ মাস - ৭০০ টাকা</SelectItem>
-                          <SelectItem value="5">৫ মাস - ৮৫০ টাকা</SelectItem>
-                          <SelectItem value="6">৬ মাস - ১০০০ টাকা</SelectItem>
-                          <SelectItem value="7">৭ মাস - ১১০০ টাকা</SelectItem>
-                          <SelectItem value="8">৮ মাস - ১২০০ টাকা</SelectItem>
-                          <SelectItem value="9">৯ মাস - ১৩০০ টাকা</SelectItem>
-                          <SelectItem value="10">১০ মাস - ১৪০০ টাকা</SelectItem>
-                          <SelectItem value="11">১১ মাস - ১৫০০ টাকা</SelectItem>
-                          <SelectItem value="12">১২ মাস - ১৬০০ টাকা</SelectItem>
+                          {Object.keys(monthLabels).map((key) => (
+                            <SelectItem key={key} value={key}>{monthLabels[key]} - {currentPricing[key]}</SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                       <FormMessage />
@@ -270,7 +277,7 @@ export default function SellerApplication() {
                   name="paymentMethod"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>পেমেন্ট মাধ্যম</FormLabel>
+                      <FormLabel>পেমেন্টের মাধ্যম নির্বাচন করুন</FormLabel>
                       <Select onValueChange={field.onChange} defaultValue={field.value}>
                         <FormControl>
                           <SelectTrigger data-testid="select-apply-payment-method">

@@ -936,6 +936,7 @@ export default function SellerCodeManager() {
                       <TableHead>Start Date</TableHead>
                       <TableHead>Expiry Date</TableHead>
                       <TableHead>Status</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -966,50 +967,13 @@ export default function SellerCodeManager() {
                           </a>
                         </TableCell>
                         <TableCell data-testid={`text-code-${seller.id}`}>
-                          {editingCodeId === seller.id ? (
-                            <div className="flex items-center gap-1">
-                              <Input
-                                value={editingCodeValue}
-                                onChange={(e) => setEditingCodeValue(e.target.value)}
-                                className="h-7 w-32 font-mono text-sm"
-                                autoFocus
-                                onKeyDown={(e) => {
-                                  if (e.key === "Enter") {
-                                    updateCodeMutation.mutate({ id: seller.id, sellerCode: editingCodeValue, seller });
-                                  } else if (e.key === "Escape") {
-                                    setEditingCodeId(null);
-                                    setEditingCodeValue("");
-                                  }
-                                }}
-                              />
-                              <Button
-                                size="icon"
-                                variant="ghost"
-                                className="h-7 w-7"
-                                onClick={() => updateCodeMutation.mutate({ id: seller.id, sellerCode: editingCodeValue, seller })}
-                                disabled={updateCodeMutation.isPending}
-                              >
-                                <Check className="h-4 w-4 text-emerald-600" />
-                              </Button>
-                              <Button
-                                size="icon"
-                                variant="ghost"
-                                className="h-7 w-7"
-                                onClick={() => { setEditingCodeId(null); setEditingCodeValue(""); }}
-                              >
-                                <X className="h-4 w-4 text-muted-foreground" />
-                              </Button>
-                            </div>
-                          ) : (
-                            <Badge
-                              variant="secondary"
-                              className="no-default-active-elevate font-mono cursor-pointer hover:bg-muted"
-                              onClick={() => { setEditingCodeId(seller.id); setEditingCodeValue(seller.sellerCode); }}
-                            >
-                              <Hash className="h-3 w-3 mr-1" />
-                              {seller.sellerCode}
-                            </Badge>
-                          )}
+                          <Badge
+                            variant="secondary"
+                            className="no-default-active-elevate font-mono"
+                          >
+                            <Hash className="h-3 w-3 mr-1" />
+                            {seller.sellerCode}
+                          </Badge>
                         </TableCell>
                         <TableCell data-testid={`text-start-${seller.id}`}>
                           <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
@@ -1025,6 +989,18 @@ export default function SellerCodeManager() {
                         </TableCell>
                         <TableCell>
                           <StatusBadge expiryDate={seller.expiryDate} />
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center justify-end">
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              onClick={() => setDeleteId(seller.id)}
+                              data-testid={`button-delete-${seller.id}`}
+                            >
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))}

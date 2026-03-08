@@ -107,12 +107,11 @@ export default function SellerApplication() {
             <div className="mx-auto rounded-full bg-emerald-500/15 p-4 w-fit">
               <CheckCircle2 className="h-10 w-10 text-emerald-600 dark:text-emerald-400" />
             </div>
-            <h2 className="text-xl font-semibold" data-testid="text-success-title">ধন্যবাদ।</h2>
+            <h2 className="text-xl font-semibold" data-testid="text-success-title">ধন্যবাদ!</h2>
             <div className="space-y-3 text-muted-foreground" data-testid="text-success-message">
-              <p>আপনার আবেদন সফলভাবে গ্রহণ করা হয়েছে।</p>
-              <p>আমাদের টিম আপনার পেমেন্ট যাচাই করে খুব শীঘ্রই আপনার সেলার কোড একটিভ করে দেবে।</p>
-              <p>অনুগ্রহ করে কিছুক্ষণ অপেক্ষা করুন।</p>
-              <p className="font-medium text-foreground">ধন্যবাদ।</p>
+              <p>আপনার আবেদন গ্রহণ করা হয়েছে।</p>
+              <p>পেমেন্ট যাচাইয়ের পর আপনার সেলার কোড এক্টিভ করা হবে।</p>
+              <p>ইমেইল দিয়ে থাকলে সেলার কোডটি আপনার ইমেইলে পাঠানো হবে।</p>
             </div>
             <Button
               variant="outline"
@@ -351,7 +350,7 @@ export default function SellerApplication() {
                       <FormControl>
                         <div className="relative">
                           <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                          <Input placeholder="আপনার ইমেইল দিন (দিতে না চাইলে খালি রাখুন)" className="pl-9" {...field} data-testid="input-apply-email" />
+                          <Input placeholder="আপনার ইমেইল লিখুন" className="pl-9" {...field} data-testid="input-apply-email" />
                         </div>
                       </FormControl>
                       <FormMessage />

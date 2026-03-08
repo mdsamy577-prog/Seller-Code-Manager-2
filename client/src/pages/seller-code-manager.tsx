@@ -734,14 +734,18 @@ export default function SellerCodeManager() {
     queryKey: ["/api/settings/messenger"],
   });
 
+  const sortedSellers = [...sellers].sort(
+    (a, b) => new Date(a.expiryDate).getTime() - new Date(b.expiryDate).getTime()
+  );
+
   const filteredSellers = searchQuery
-    ? sellers.filter(
+    ? sortedSellers.filter(
         (s) =>
           s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
           s.phone.toLowerCase().includes(searchQuery.toLowerCase()) ||
           s.sellerCode.toLowerCase().includes(searchQuery.toLowerCase())
       )
-    : sellers;
+    : sortedSellers;
 
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {

@@ -42,9 +42,9 @@ Code structure: `DDMM-SSSDD`
 - Row highlighting based on status
 - Search by name, phone number, or seller code
 - Facebook links open in new tab
-- Public seller application form at /apply (Bengali UI) with payment instructions (Bkash/Nagad), pricing plans, and fields: name, phone, Facebook link, seller type, duration, payment method, sender number
+- Public seller application form at /apply (Bengali UI) with payment instructions (Bkash/Nagad), pricing plans, and fields: name, phone, Facebook link, seller type, duration, payment method, sender number, optional email
 - Professional Bengali thank you page after submission
-- Admin Seller Applications page at /applications — view all applications with seller type, duration, payment method, sender number, approve or reject
+- Admin Seller Applications page at /applications — view all applications with seller type, duration, payment method, email icon (tooltip shows email on hover), sender number, approve or reject
 - Auto-generated seller code on approval (creates seller record automatically)
 - Seller Registration Link section on admin dashboard with copy-to-clipboard
 

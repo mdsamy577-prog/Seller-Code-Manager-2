@@ -11,11 +11,17 @@ import {
   ClipboardList,
   Phone,
   Trash2,
+  Mail,
 } from "lucide-react";
 import { SiMeta } from "react-icons/si";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import {
   Table,
   TableBody,
@@ -203,6 +209,7 @@ export default function SellerApplications() {
                       <TableHead className="whitespace-nowrap">Type</TableHead>
                       <TableHead className="whitespace-nowrap">Duration</TableHead>
                       <TableHead className="whitespace-nowrap">Payment</TableHead>
+                      <TableHead className="whitespace-nowrap w-10"></TableHead>
                       <TableHead className="whitespace-nowrap">Sender</TableHead>
                       <TableHead className="whitespace-nowrap">Status</TableHead>
                       <TableHead className="whitespace-nowrap text-right">Actions</TableHead>
@@ -245,6 +252,20 @@ export default function SellerApplications() {
                           <Badge variant="secondary" className="no-default-active-elevate text-xs">
                             {paymentMethodLabels[app.paymentMethod] || app.paymentMethod}
                           </Badge>
+                        </TableCell>
+                        <TableCell className="py-2 text-center">
+                          {app.email && (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <button type="button" className="inline-flex items-center justify-center text-muted-foreground hover:text-primary transition-colors">
+                                  <Mail className="h-4 w-4" />
+                                </button>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>{app.email}</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          )}
                         </TableCell>
                         <TableCell className="text-sm py-2" data-testid={`text-app-sender-number-${app.id}`}>
                           {app.senderNumber}

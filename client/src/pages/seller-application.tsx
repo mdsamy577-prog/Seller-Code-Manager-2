@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { User, Phone, CheckCircle2, Wallet, Hash, Copy } from "lucide-react";
+import { User, Phone, CheckCircle2, Wallet, Hash, Copy, Mail } from "lucide-react";
 import { SiMeta } from "react-icons/si";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -34,6 +34,7 @@ const applicationFormSchema = z.object({
   sellerType: z.enum(["personal_facebook_id", "facebook_business_page"]),
   paymentMethod: z.enum(["bkash", "nagad"]),
   senderNumber: z.string().min(1, "Sender number is required"),
+  email: z.string().email("সঠিক ইমেইল দিন").or(z.literal("")).optional(),
 });
 
 type ApplicationFormValues = z.infer<typeof applicationFormSchema>;
@@ -72,6 +73,7 @@ export default function SellerApplication() {
       sellerType: "personal_facebook_id",
       paymentMethod: "bkash",
       senderNumber: "",
+      email: "",
     },
   });
 
@@ -93,7 +95,8 @@ export default function SellerApplication() {
   });
 
   const onSubmit = (data: ApplicationFormValues) => {
-    submitMutation.mutate(data);
+    const payload = { ...data, email: data.email?.trim() || undefined };
+    submitMutation.mutate(payload);
   };
 
   if (submitted) {
@@ -333,6 +336,22 @@ export default function SellerApplication() {
                         <div className="relative">
                           <Hash className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                           <Input placeholder="যে নাম্বার থেকে টাকা পাঠিয়েছেন সেই নাম্বার লিখুন" className="pl-9" {...field} data-testid="input-apply-sender-number" />
+                        </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="email"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>ইমেইল (ঐচ্ছিক)</FormLabel>
+                      <FormControl>
+                        <div className="relative">
+                          <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                          <Input placeholder="আপনার ইমেইল দিন (দিতে না চাইলে খালি রাখুন)" className="pl-9" {...field} data-testid="input-apply-email" />
                         </div>
                       </FormControl>
                       <FormMessage />

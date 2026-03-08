@@ -58,6 +58,7 @@ export const sellerApplications = pgTable("seller_applications", {
   sellerType: text("seller_type").notNull().default("personal_facebook_id"),
   paymentMethod: text("payment_method").notNull().default("bkash"),
   senderNumber: text("sender_number").notNull().default(""),
+  email: text("email"),
   status: text("status").notNull().default("pending"),
   createdAt: text("created_at").notNull().default(sql`now()`),
 });
@@ -70,6 +71,7 @@ export const insertSellerApplicationSchema = createInsertSchema(sellerApplicatio
   sellerType: true,
   paymentMethod: true,
   senderNumber: true,
+  email: true,
 });
 
 export type InsertSellerApplication = z.infer<typeof insertSellerApplicationSchema>;

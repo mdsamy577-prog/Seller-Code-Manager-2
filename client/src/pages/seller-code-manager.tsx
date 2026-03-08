@@ -81,7 +81,7 @@ const sellerFormSchema = z.object({
   name: z.string().min(1, "Name is required"),
   phone: z.string().min(1, "Phone number is required"),
   facebookLink: z.string().url("Must be a valid URL"),
-  duration: z.enum(["15_days", "1_month", "2_months", "6_months"]),
+  duration: z.enum(["15_days", "1_month", "2_months", "3_months", "4_months", "5_months", "6_months", "7_months", "8_months", "9_months", "10_months", "11_months", "12_months"]),
   startDate: z.string().min(1, "Start date is required"),
 });
 
@@ -173,7 +173,16 @@ const durationLabels: Record<string, string> = {
   "15_days": "15 Days",
   "1_month": "1 Month",
   "2_months": "2 Months",
+  "3_months": "3 Months",
+  "4_months": "4 Months",
+  "5_months": "5 Months",
   "6_months": "6 Months",
+  "7_months": "7 Months",
+  "8_months": "8 Months",
+  "9_months": "9 Months",
+  "10_months": "10 Months",
+  "11_months": "11 Months",
+  "12_months": "12 Months",
 };
 
 const sellerTypeLabels: Record<string, string> = {
@@ -630,7 +639,16 @@ function SellerForm({
                     <SelectItem value="15_days">15 Days</SelectItem>
                     <SelectItem value="1_month">1 Month</SelectItem>
                     <SelectItem value="2_months">2 Months</SelectItem>
+                    <SelectItem value="3_months">3 Months</SelectItem>
+                    <SelectItem value="4_months">4 Months</SelectItem>
+                    <SelectItem value="5_months">5 Months</SelectItem>
                     <SelectItem value="6_months">6 Months</SelectItem>
+                    <SelectItem value="7_months">7 Months</SelectItem>
+                    <SelectItem value="8_months">8 Months</SelectItem>
+                    <SelectItem value="9_months">9 Months</SelectItem>
+                    <SelectItem value="10_months">10 Months</SelectItem>
+                    <SelectItem value="11_months">11 Months</SelectItem>
+                    <SelectItem value="12_months">12 Months</SelectItem>
                   </SelectContent>
                 </Select>
                 <FormMessage />

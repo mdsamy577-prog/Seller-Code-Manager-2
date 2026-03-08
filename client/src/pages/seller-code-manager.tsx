@@ -90,10 +90,14 @@ const sellerFormSchema = z.object({
 
 type SellerFormValues = z.infer<typeof sellerFormSchema>;
 
-function getSellerStatus(expiryDate: string): "active" | "expired" {
+function getSellerStatus(expiryDate: string): "active" | "expiring" | "expired" {
   const now = new Date();
   const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
   if (expiryDate < todayStr) return "expired";
+  const today = new Date(todayStr);
+  const expiry = new Date(expiryDate);
+  const diffDays = Math.round((expiry.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+  if (diffDays <= 3) return "expiring";
   return "active";
 }
 
@@ -101,12 +105,14 @@ function StatusBadge({ expiryDate }: { expiryDate: string }) {
   const status = getSellerStatus(expiryDate);
   const config = {
     active: { label: "Active", className: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/25" },
+    expiring: { label: "Expiring Soon", className: "bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/25" },
     expired: { label: "Expired", className: "bg-red-500/15 text-red-700 dark:text-red-400 border-red-500/25" },
   };
   const { label, className } = config[status];
   return (
     <Badge variant="outline" className={`${className} no-default-active-elevate`} data-testid={`badge-status-${status}`}>
       {status === "active" && <CheckCircle2 className="w-3 h-3 mr-1" />}
+      {status === "expiring" && <AlertTriangle className="w-3 h-3 mr-1" />}
       {status === "expired" && <XCircle className="w-3 h-3 mr-1" />}
       {label}
     </Badge>
@@ -116,15 +122,17 @@ function StatusBadge({ expiryDate }: { expiryDate: string }) {
 function getRowClass(expiryDate: string): string {
   const status = getSellerStatus(expiryDate);
   if (status === "expired") return "bg-red-500/5 dark:bg-red-500/10";
+  if (status === "expiring") return "bg-amber-500/5 dark:bg-amber-500/10";
   return "";
 }
 
 function StatsCards({ sellers }: { sellers: Seller[] }) {
   const active = sellers.filter((s) => getSellerStatus(s.expiryDate) === "active").length;
+  const expiring = sellers.filter((s) => getSellerStatus(s.expiryDate) === "expiring").length;
   const expired = sellers.filter((s) => getSellerStatus(s.expiryDate) === "expired").length;
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
       <Card>
         <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 pb-2">
           <CardTitle className="text-sm font-medium text-muted-foreground">Total Sellers</CardTitle>
@@ -141,6 +149,15 @@ function StatsCards({ sellers }: { sellers: Seller[] }) {
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400" data-testid="text-active-count">{active}</div>
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium text-muted-foreground">Expiring Soon</CardTitle>
+          <AlertTriangle className="h-4 w-4 text-amber-500" />
+        </CardHeader>
+        <CardContent>
+          <div className="text-2xl font-bold text-amber-600 dark:text-amber-400" data-testid="text-expiring-count">{expiring}</div>
         </CardContent>
       </Card>
       <Card>

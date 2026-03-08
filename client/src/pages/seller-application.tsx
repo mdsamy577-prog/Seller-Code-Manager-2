@@ -30,7 +30,7 @@ const applicationFormSchema = z.object({
   name: z.string().min(1, "Name is required"),
   phone: z.string().min(1, "Phone number is required"),
   facebookLink: z.string().url("Must be a valid Facebook profile URL"),
-  duration: z.enum(["15_days", "1_month", "2_months", "6_months"]),
+  duration: z.enum(["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"]),
   sellerType: z.enum(["personal_facebook_id", "facebook_business_page"]),
   paymentMethod: z.enum(["bkash", "nagad"]),
   senderNumber: z.string().min(1, "Sender number is required"),
@@ -39,10 +39,18 @@ const applicationFormSchema = z.object({
 type ApplicationFormValues = z.infer<typeof applicationFormSchema>;
 
 const pricingPlans = [
-  { duration: "১৫ দিন", price: "১০০ টাকা" },
   { duration: "১ মাস", price: "২০০ টাকা" },
-  { duration: "২ মাস", price: "৩৫০ টাকা" },
-  { duration: "৬ মাস", price: "৯০০ টাকা" },
+  { duration: "২ মাস", price: "৩৮০ টাকা" },
+  { duration: "৩ মাস", price: "৫৫০ টাকা" },
+  { duration: "৪ মাস", price: "৭০০ টাকা" },
+  { duration: "৫ মাস", price: "৮৫০ টাকা" },
+  { duration: "৬ মাস", price: "১০০০ টাকা" },
+  { duration: "৭ মাস", price: "১১০০ টাকা" },
+  { duration: "৮ মাস", price: "১২০০ টাকা" },
+  { duration: "৯ মাস", price: "১৩০০ টাকা" },
+  { duration: "১০ মাস", price: "১৪০০ টাকা" },
+  { duration: "১১ মাস", price: "১৫০০ টাকা" },
+  { duration: "১২ মাস", price: "১৬০০ টাকা" },
 ];
 
 export default function SellerApplication() {
@@ -55,7 +63,7 @@ export default function SellerApplication() {
       name: "",
       phone: "",
       facebookLink: "",
-      duration: "1_month",
+      duration: "1",
       sellerType: "personal_facebook_id",
       paymentMethod: "bkash",
       senderNumber: "",
@@ -247,10 +255,18 @@ export default function SellerApplication() {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="15_days">১৫ দিন - ১০০ টাকা</SelectItem>
-                          <SelectItem value="1_month">১ মাস - ২০০ টাকা</SelectItem>
-                          <SelectItem value="2_months">২ মাস - ৩৫০ টাকা</SelectItem>
-                          <SelectItem value="6_months">৬ মাস - ৯০০ টাকা</SelectItem>
+                          <SelectItem value="1">১ মাস - ২০০ টাকা</SelectItem>
+                          <SelectItem value="2">২ মাস - ৩৮০ টাকা</SelectItem>
+                          <SelectItem value="3">৩ মাস - ৫৫০ টাকা</SelectItem>
+                          <SelectItem value="4">৪ মাস - ৭০০ টাকা</SelectItem>
+                          <SelectItem value="5">৫ মাস - ৮৫০ টাকা</SelectItem>
+                          <SelectItem value="6">৬ মাস - ১০০০ টাকা</SelectItem>
+                          <SelectItem value="7">৭ মাস - ১১০০ টাকা</SelectItem>
+                          <SelectItem value="8">৮ মাস - ১২০০ টাকা</SelectItem>
+                          <SelectItem value="9">৯ মাস - ১৩০০ টাকা</SelectItem>
+                          <SelectItem value="10">১০ মাস - ১৪০০ টাকা</SelectItem>
+                          <SelectItem value="11">১১ মাস - ১৫০০ টাকা</SelectItem>
+                          <SelectItem value="12">১২ মাস - ১৬০০ টাকা</SelectItem>
                         </SelectContent>
                       </Select>
                       <FormMessage />

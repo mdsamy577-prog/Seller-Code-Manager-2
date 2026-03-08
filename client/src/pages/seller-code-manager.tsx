@@ -475,11 +475,13 @@ function RegistrationLink() {
 function EmailSettings() {
   const { toast } = useToast();
   const [senderName, setSenderName] = useState("");
+  const [replyEmail, setReplyEmail] = useState("");
   const [testEmail, setTestEmail] = useState("");
   const [initialized, setInitialized] = useState(false);
 
   const { data: emailSettings, isLoading } = useQuery<{
     senderName: string;
+    replyEmail: string;
     hasApiKey: boolean;
   }>({
     queryKey: ["/api/settings/email"],
@@ -488,6 +490,7 @@ function EmailSettings() {
   useEffect(() => {
     if (emailSettings && !initialized) {
       setSenderName(emailSettings.senderName);
+      setReplyEmail(emailSettings.replyEmail);
       setInitialized(true);
     }
   }, [emailSettings, initialized]);
@@ -496,6 +499,7 @@ function EmailSettings() {
     mutationFn: async () => {
       const res = await apiRequest("POST", "/api/settings/email", {
         senderName,
+        replyEmail,
       });
       return res.json();
     },
@@ -555,6 +559,22 @@ function EmailSettings() {
             value={senderName}
             onChange={(e) => setSenderName(e.target.value)}
           />
+        </div>
+        <div className="space-y-2">
+          <label className="text-sm font-medium">Reply Email Address (Optional)</label>
+          <div className="relative">
+            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              type="email"
+              placeholder="reply@example.com"
+              className="pl-9"
+              value={replyEmail}
+              onChange={(e) => setReplyEmail(e.target.value)}
+            />
+          </div>
+          <p className="text-xs text-muted-foreground">
+            When customers reply to emails, replies will go to this address
+          </p>
         </div>
         <Button
           className="w-full"

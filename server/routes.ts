@@ -395,8 +395,10 @@ export async function registerRoutes(
   app.get("/api/settings/email", requireAuth, async (_req, res) => {
     try {
       const senderName = await storage.getSetting("SENDER_NAME");
+      const replyEmail = await storage.getSetting("REPLY_EMAIL");
       res.json({
         senderName: senderName || "",
+        replyEmail: replyEmail || "",
         hasApiKey: !!process.env.RESEND_API_KEY,
       });
     } catch (error) {
@@ -406,8 +408,9 @@ export async function registerRoutes(
 
   app.post("/api/settings/email", requireAuth, async (req, res) => {
     try {
-      const { senderName } = req.body;
+      const { senderName, replyEmail } = req.body;
       await storage.setSetting("SENDER_NAME", (senderName || "").trim());
+      await storage.setSetting("REPLY_EMAIL", (replyEmail || "").trim());
       res.json({ message: "Email settings saved successfully" });
     } catch (error) {
       res.status(500).json({ message: "Failed to save email settings" });

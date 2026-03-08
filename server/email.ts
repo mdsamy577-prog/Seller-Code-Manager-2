@@ -8,6 +8,11 @@ async function getSenderName(): Promise<string> {
   return name || "CPS&S Seller Code";
 }
 
+async function getReplyEmail(): Promise<string | undefined> {
+  const email = await storage.getSetting("REPLY_EMAIL");
+  return email || undefined;
+}
+
 function formatDateBangla(dateStr: string): string {
   const [y, m, d] = dateStr.split("-").map(Number);
   const date = new Date(y, m - 1, d);
@@ -31,6 +36,7 @@ export async function sendSellerCodeEmail(
   }
 
   const senderName = await getSenderName();
+  const replyTo = await getReplyEmail();
   const formattedStart = formatDateBangla(startDate);
   const formattedExpiry = formatDateBangla(expiryDate);
 
@@ -69,6 +75,7 @@ export async function sendSellerCodeEmail(
     await resend.emails.send({
       from: `${senderName} <onboarding@resend.dev>`,
       to: recipientEmail,
+      reply_to: replyTo,
       subject: `\u09B8\u09C7\u09B2\u09BE\u09B0 \u0995\u09CB\u09A1: ${sellerCode}`,
       html: htmlBody,
     });
@@ -93,6 +100,7 @@ export async function sendReminderEmail(
   }
 
   const senderName = await getSenderName();
+  const replyTo = await getReplyEmail();
   const formattedExpiry = formatDateBangla(expiryDate);
   const renewalLink = "https://seller-code.onrender.com/apply";
 
@@ -157,6 +165,7 @@ export async function sendReminderEmail(
     await resend.emails.send({
       from: `${senderName} <onboarding@resend.dev>`,
       to: recipientEmail,
+      reply_to: replyTo,
       subject,
       html: htmlBody,
     });

@@ -67,6 +67,10 @@ export async function sendSellerCodeEmail(
           </tr>
         </table>
         <p style="font-size: 14px; color: #6b7280;">\u0986\u09AE\u09BE\u09A6\u09C7\u09B0 \u09B8\u09BE\u09A5\u09C7 \u09AF\u09C1\u0995\u09CD\u09A4 \u09B9\u0993\u09AF\u09BC\u09BE\u09B0 \u099C\u09A8\u09CD\u09AF \u09A7\u09A8\u09CD\u09AF\u09AC\u09BE\u09A6\u0964</p>
+        <div style="border-top: 1px solid #e5e7eb; margin-top: 20px; padding-top: 16px; text-align: center;">
+          <p style="font-size: 13px; color: #9ca3af; margin: 0 0 8px 0;">\u09B8\u09BE\u09AA\u09CB\u09B0\u09CD\u099F\u09C7\u09B0 \u099C\u09A8\u09CD\u09AF \u09AF\u09CB\u0997\u09BE\u09AF\u09CB\u0997 \u0995\u09B0\u09C1\u09A8</p>
+          <a href="https://www.facebook.com/CPSSbd.1" style="background-color: #1877f2; color: white; padding: 8px 20px; text-decoration: none; border-radius: 5px; font-size: 14px; font-weight: bold; display: inline-block;">Facebook Page</a>
+        </div>
       </div>
     </div>
   `;
@@ -157,6 +161,10 @@ export async function sendReminderEmail(
           <a href="${renewalLink}" style="background-color: #1e40af; color: white; padding: 14px 28px; text-decoration: none; border-radius: 6px; font-size: 16px; font-weight: bold; display: inline-block;">\u09B8\u09BE\u09AC\u09B8\u09CD\u0995\u09CD\u09B0\u09BF\u09AA\u09B6\u09A8 \u09A8\u09AC\u09BE\u09AF\u09BC\u09A8 \u0995\u09B0\u09C1\u09A8</a>
         </div>
         <p style="font-size: 13px; color: #9ca3af; text-align: center;">\u0989\u09AA\u09B0\u09C7\u09B0 \u09AC\u09BE\u099F\u09A8\u09C7 \u0995\u09CD\u09B2\u09BF\u0995 \u0995\u09B0\u09C1\u09A8 \u0985\u09A5\u09AC\u09BE \u09AD\u09BF\u099C\u09BF\u099F \u0995\u09B0\u09C1\u09A8: ${renewalLink}</p>
+        <div style="border-top: 1px solid #e5e7eb; margin-top: 20px; padding-top: 16px; text-align: center;">
+          <p style="font-size: 13px; color: #9ca3af; margin: 0 0 8px 0;">\u09B8\u09BE\u09AA\u09CB\u09B0\u09CD\u099F\u09C7\u09B0 \u099C\u09A8\u09CD\u09AF \u09AF\u09CB\u0997\u09BE\u09AF\u09CB\u0997 \u0995\u09B0\u09C1\u09A8</p>
+          <a href="https://www.facebook.com/CPSSbd.1" style="background-color: #1877f2; color: white; padding: 8px 20px; text-decoration: none; border-radius: 5px; font-size: 14px; font-weight: bold; display: inline-block;">Facebook Page</a>
+        </div>
       </div>
     </div>
   `;

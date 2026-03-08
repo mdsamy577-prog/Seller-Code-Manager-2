@@ -28,6 +28,7 @@ export interface IStorage {
   getSellerApplicationById(id: number): Promise<SellerApplication | undefined>;
   updateSellerApplicationStatus(id: number, status: string): Promise<SellerApplication | undefined>;
   getSellerByCode(code: string): Promise<Seller | undefined>;
+  deleteSellerApplication(id: number): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -117,6 +118,11 @@ export class DatabaseStorage implements IStorage {
   async updateSellerApplicationStatus(id: number, status: string): Promise<SellerApplication | undefined> {
     const result = await db.update(sellerApplications).set({ status }).where(eq(sellerApplications.id, id)).returning();
     return result[0];
+  }
+
+  async deleteSellerApplication(id: number): Promise<boolean> {
+    const result = await db.delete(sellerApplications).where(eq(sellerApplications.id, id)).returning();
+    return result.length > 0;
   }
 
   async getSellerByCode(code: string): Promise<Seller | undefined> {

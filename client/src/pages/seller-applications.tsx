@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -9,6 +10,7 @@ import {
   Clock,
   ClipboardList,
   Phone,
+  Trash2,
 } from "lucide-react";
 import { SiMeta } from "react-icons/si";
 import { Button } from "@/components/ui/button";
@@ -22,6 +24,16 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 
 const durationLabels: Record<string, string> = {
@@ -72,6 +84,7 @@ function TableSkeleton() {
 
 export default function SellerApplications() {
   const { toast } = useToast();
+  const [deleteId, setDeleteId] = useState<number | null>(null);
 
   const { data: applications = [], isLoading } = useQuery<SellerApplication[]>({
     queryKey: ["/api/applications"],
@@ -106,13 +119,27 @@ export default function SellerApplications() {
     },
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: async (id: number) => {
+      await apiRequest("DELETE", `/api/applications/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/applications"] });
+      toast({ title: "Application deleted" });
+      setDeleteId(null);
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
+
   const pendingCount = applications.filter((a) => a.status === "pending").length;
   const approvedCount = applications.filter((a) => a.status === "approved").length;
   const rejectedCount = applications.filter((a) => a.status === "rejected").length;
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="max-w-7xl mx-auto p-6 space-y-6">
+      <div className="max-w-6xl mx-auto p-6 space-y-6">
         <div>
           <h1 className="text-2xl font-bold tracking-tight" data-testid="text-applications-title">Seller Applications</h1>
           <p className="text-muted-foreground mt-1">Review and manage seller applications</p>
@@ -166,88 +193,97 @@ export default function SellerApplications() {
                 </p>
               </div>
             ) : (
-              <div className="rounded-md border overflow-x-auto">
+              <div className="rounded-md border">
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Name</TableHead>
-                      <TableHead>Phone</TableHead>
-                      <TableHead>Facebook Link</TableHead>
-                      <TableHead>Seller Type</TableHead>
-                      <TableHead>Duration</TableHead>
-                      <TableHead>Payment Method</TableHead>
-                      <TableHead>Sender Number</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
+                      <TableHead className="whitespace-nowrap">Name</TableHead>
+                      <TableHead className="whitespace-nowrap">Phone</TableHead>
+                      <TableHead className="whitespace-nowrap">Facebook</TableHead>
+                      <TableHead className="whitespace-nowrap">Type</TableHead>
+                      <TableHead className="whitespace-nowrap">Duration</TableHead>
+                      <TableHead className="whitespace-nowrap">Payment</TableHead>
+                      <TableHead className="whitespace-nowrap">Sender</TableHead>
+                      <TableHead className="whitespace-nowrap">Status</TableHead>
+                      <TableHead className="whitespace-nowrap text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {applications.map((app) => (
                       <TableRow key={app.id} data-testid={`row-application-${app.id}`}>
-                        <TableCell className="font-medium" data-testid={`text-app-name-${app.id}`}>{app.name}</TableCell>
-                        <TableCell data-testid={`text-app-phone-${app.id}`}>
-                          <span className="flex items-center gap-1.5">
-                            <Phone className="h-3.5 w-3.5 text-muted-foreground" />
+                        <TableCell className="font-medium text-sm py-2" data-testid={`text-app-name-${app.id}`}>{app.name}</TableCell>
+                        <TableCell className="text-sm py-2" data-testid={`text-app-phone-${app.id}`}>
+                          <span className="flex items-center gap-1">
+                            <Phone className="h-3 w-3 text-muted-foreground" />
                             {app.phone}
                           </span>
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="py-2">
                           <a
                             href={app.facebookLink}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1.5 text-primary"
+                            className="inline-flex items-center gap-1 text-primary text-sm"
                             data-testid={`link-app-facebook-${app.id}`}
                           >
-                            <SiMeta className="h-3.5 w-3.5" />
-                            <span className="text-sm">Profile</span>
-                            <ExternalLink className="h-3 w-3" />
+                            <SiMeta className="h-3 w-3" />
+                            Profile
+                            <ExternalLink className="h-2.5 w-2.5" />
                           </a>
                         </TableCell>
-                        <TableCell data-testid={`text-app-seller-type-${app.id}`}>
-                          <Badge variant="secondary" className="no-default-active-elevate">
+                        <TableCell className="py-2" data-testid={`text-app-seller-type-${app.id}`}>
+                          <Badge variant="secondary" className="no-default-active-elevate text-xs">
                             {sellerTypeLabels[app.sellerType] || app.sellerType}
                           </Badge>
                         </TableCell>
-                        <TableCell data-testid={`text-app-duration-${app.id}`}>
-                          <Badge variant="secondary" className="no-default-active-elevate">
+                        <TableCell className="py-2" data-testid={`text-app-duration-${app.id}`}>
+                          <Badge variant="secondary" className="no-default-active-elevate text-xs">
                             {durationLabels[app.duration] || app.duration}
                           </Badge>
                         </TableCell>
-                        <TableCell data-testid={`text-app-payment-method-${app.id}`}>
-                          <Badge variant="secondary" className="no-default-active-elevate">
+                        <TableCell className="py-2" data-testid={`text-app-payment-method-${app.id}`}>
+                          <Badge variant="secondary" className="no-default-active-elevate text-xs">
                             {paymentMethodLabels[app.paymentMethod] || app.paymentMethod}
                           </Badge>
                         </TableCell>
-                        <TableCell data-testid={`text-app-sender-number-${app.id}`}>
+                        <TableCell className="text-sm py-2" data-testid={`text-app-sender-number-${app.id}`}>
                           {app.senderNumber}
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="py-2">
                           <StatusBadge status={app.status} />
                         </TableCell>
-                        <TableCell>
-                          <div className="flex items-center justify-end gap-2">
+                        <TableCell className="py-2">
+                          <div className="flex items-center justify-end gap-1">
                             <Button
                               size="sm"
                               variant={app.status === "approved" ? "default" : "outline"}
-                              className={app.status !== "approved" ? "text-emerald-700 border-emerald-300 hover:bg-emerald-50 dark:text-emerald-400 dark:border-emerald-700 dark:hover:bg-emerald-950" : "bg-emerald-600 hover:bg-emerald-700"}
+                              className={`h-7 text-xs px-2 ${app.status !== "approved" ? "text-emerald-700 border-emerald-300 hover:bg-emerald-50 dark:text-emerald-400 dark:border-emerald-700 dark:hover:bg-emerald-950" : "bg-emerald-600 hover:bg-emerald-700"}`}
                               onClick={() => approveMutation.mutate(app.id)}
                               disabled={approveMutation.isPending || rejectMutation.isPending || app.status !== "pending"}
                               data-testid={`button-approve-${app.id}`}
                             >
-                              <CheckCircle2 className="h-3.5 w-3.5 mr-1" />
+                              <CheckCircle2 className="h-3 w-3 mr-1" />
                               Approve
                             </Button>
                             <Button
                               size="sm"
                               variant={app.status === "rejected" ? "default" : "outline"}
-                              className={app.status !== "rejected" ? "text-red-700 border-red-300 hover:bg-red-50 dark:text-red-400 dark:border-red-700 dark:hover:bg-red-950" : "bg-red-600 hover:bg-red-700"}
+                              className={`h-7 text-xs px-2 ${app.status !== "rejected" ? "text-red-700 border-red-300 hover:bg-red-50 dark:text-red-400 dark:border-red-700 dark:hover:bg-red-950" : "bg-red-600 hover:bg-red-700"}`}
                               onClick={() => rejectMutation.mutate(app.id)}
                               disabled={approveMutation.isPending || rejectMutation.isPending || app.status !== "pending"}
                               data-testid={`button-reject-${app.id}`}
                             >
-                              <XCircle className="h-3.5 w-3.5 mr-1" />
+                              <XCircle className="h-3 w-3 mr-1" />
                               Reject
+                            </Button>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-7 w-7"
+                              onClick={() => setDeleteId(app.id)}
+                              data-testid={`button-delete-app-${app.id}`}
+                            >
+                              <Trash2 className="h-3.5 w-3.5 text-destructive" />
                             </Button>
                           </div>
                         </TableCell>
@@ -259,6 +295,26 @@ export default function SellerApplications() {
             )}
           </CardContent>
         </Card>
+
+        <AlertDialog open={deleteId !== null} onOpenChange={() => setDeleteId(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Are you sure you want to delete this seller application?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => deleteId && deleteMutation.mutate(deleteId)}
+                className="bg-destructive text-destructive-foreground"
+              >
+                {deleteMutation.isPending ? "Deleting..." : "Delete"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </div>
   );

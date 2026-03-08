@@ -231,6 +231,22 @@ export async function registerRoutes(
     }
   });
 
+  app.delete("/api/applications/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid application ID" });
+      }
+      const deleted = await storage.deleteSellerApplication(id);
+      if (!deleted) {
+        return res.status(404).json({ message: "Application not found" });
+      }
+      res.json({ message: "Application deleted" });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete application" });
+    }
+  });
+
   app.post("/api/applications", async (req, res) => {
     try {
       const parsed = insertSellerApplicationSchema.safeParse(req.body);

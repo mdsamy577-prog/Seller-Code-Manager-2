@@ -19,15 +19,12 @@ import {
   Calendar,
   Clock,
   X,
-  Settings,
-  MessageCircle,
-  Save,
   Link,
   Copy,
   Check,
   ClipboardList,
 } from "lucide-react";
-import { SiMeta, SiFacebook } from "react-icons/si";
+import { SiMeta } from "react-icons/si";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -406,119 +403,6 @@ function RegistrationLink() {
   );
 }
 
-function MessengerSettings() {
-  const { toast } = useToast();
-  const [pageNameValue, setPageNameValue] = useState("");
-
-  const { data: settings, isLoading } = useQuery<{
-    configured: boolean;
-    pageName: string;
-  }>({
-    queryKey: ["/api/settings/messenger"],
-  });
-
-  const saveMutation = useMutation({
-    mutationFn: async (data: { pageName: string }) => {
-      const res = await apiRequest("POST", "/api/settings/messenger", data);
-      return res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/settings/messenger"] });
-      toast({ title: "Messenger settings saved successfully" });
-      setPageNameValue("");
-    },
-    onError: (error: Error) => {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
-    },
-  });
-
-  const handleSave = () => {
-    if (!pageNameValue.trim()) {
-      toast({ title: "Nothing to save", description: "Enter a Facebook Page name or username.", variant: "destructive" });
-      return;
-    }
-    saveMutation.mutate({ pageName: pageNameValue.trim() });
-  };
-
-  if (isLoading) {
-    return (
-      <Card>
-        <CardHeader>
-          <Skeleton className="h-6 w-48" />
-        </CardHeader>
-        <CardContent>
-          <Skeleton className="h-32 w-full" />
-        </CardContent>
-      </Card>
-    );
-  }
-
-  return (
-    <Card data-testid="card-messenger-settings">
-      <CardHeader>
-        <div className="flex items-center gap-2">
-          <Settings className="h-5 w-5 text-muted-foreground" />
-          <div>
-            <CardTitle className="text-lg" data-testid="text-messenger-settings-title">Messenger Settings</CardTitle>
-            <CardDescription>
-              Configure your Facebook Page name to enable Messenger reminder links
-            </CardDescription>
-          </div>
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="flex items-center gap-2 mb-2">
-          <Badge
-            variant="outline"
-            className={`no-default-active-elevate ${settings?.configured
-              ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/25"
-              : "bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/25"
-            }`}
-            data-testid="badge-messenger-status"
-          >
-            {settings?.configured ? (
-              <>
-                <CheckCircle2 className="w-3 h-3 mr-1" />
-                Configured
-              </>
-            ) : (
-              <>
-                <AlertTriangle className="w-3 h-3 mr-1" />
-                Not Configured
-              </>
-            )}
-          </Badge>
-        </div>
-
-        <div>
-          <label className="text-sm font-medium mb-1.5 block">Facebook Page Username</label>
-          <Input
-            placeholder={settings?.configured ? `Current: ${settings.pageName} (enter new value to update)` : "Enter your Facebook Page username (e.g. YourPageName)"}
-            value={pageNameValue}
-            onChange={(e) => setPageNameValue(e.target.value)}
-            data-testid="input-page-name"
-          />
-          {settings?.configured && (
-            <p className="text-xs text-muted-foreground mt-1">Current Page: {settings.pageName}</p>
-          )}
-          <p className="text-xs text-muted-foreground mt-1">
-            This is your Facebook Page username from the URL: facebook.com/<strong>YourPageName</strong>
-          </p>
-        </div>
-
-        <Button
-          onClick={handleSave}
-          disabled={saveMutation.isPending || !pageNameValue.trim()}
-          data-testid="button-save-messenger-settings"
-        >
-          <Save className="w-4 h-4 mr-2" />
-          {saveMutation.isPending ? "Saving..." : "Save Settings"}
-        </Button>
-      </CardContent>
-    </Card>
-  );
-}
-
 function SellerForm({
   seller,
   onClose,
@@ -730,12 +614,6 @@ export default function SellerCodeManager() {
     queryKey: ["/api/sellers"],
   });
 
-  const { data: messengerSettings } = useQuery<{
-    configured: boolean;
-    pageName: string;
-  }>({
-    queryKey: ["/api/settings/messenger"],
-  });
 
   const sortedSellers = [...sellers].sort(
     (a, b) => new Date(a.expiryDate).getTime() - new Date(b.expiryDate).getTime()
@@ -779,11 +657,6 @@ export default function SellerCodeManager() {
     setEditingSeller(undefined);
   };
 
-  const buildMessengerLink = (seller: Seller): string | null => {
-    if (!messengerSettings?.configured || !messengerSettings.pageName) return null;
-    const message = `Hello ${seller.name}\nYour seller code ${seller.sellerCode} will expire soon.\nPlease renew your seller code.`;
-    return `https://m.me/${messengerSettings.pageName}?text=${encodeURIComponent(message)}`;
-  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -909,31 +782,6 @@ export default function SellerCodeManager() {
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center justify-end gap-1">
-                            {(() => {
-                              const link = buildMessengerLink(seller);
-                              return link ? (
-                                <a
-                                  href={link}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  data-testid={`button-messenger-${seller.id}`}
-                                >
-                                  <Button size="icon" variant="ghost" title="Send Messenger Reminder">
-                                    <SiFacebook className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                                  </Button>
-                                </a>
-                              ) : (
-                                <Button
-                                  size="icon"
-                                  variant="ghost"
-                                  title="Set your Facebook Page username in Messenger Settings below"
-                                  onClick={() => toast({ title: "Messenger Not Configured", description: "Add your Facebook Page username in the Messenger Settings section below.", variant: "destructive" })}
-                                  data-testid={`button-messenger-${seller.id}`}
-                                >
-                                  <SiFacebook className="h-4 w-4 text-muted-foreground opacity-50" />
-                                </Button>
-                              );
-                            })()}
                             <Button
                               size="icon"
                               variant="ghost"
@@ -962,8 +810,6 @@ export default function SellerCodeManager() {
         </Card>
 
         <RegistrationLink />
-
-        <MessengerSettings />
 
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogContent className="sm:max-w-lg" aria-describedby={undefined}>

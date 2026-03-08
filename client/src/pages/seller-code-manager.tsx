@@ -936,7 +936,6 @@ export default function SellerCodeManager() {
                       <TableHead>Start Date</TableHead>
                       <TableHead>Expiry Date</TableHead>
                       <TableHead>Status</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -1026,26 +1025,6 @@ export default function SellerCodeManager() {
                         </TableCell>
                         <TableCell>
                           <StatusBadge expiryDate={seller.expiryDate} />
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center justify-end gap-1">
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              onClick={() => { setEditingSeller(seller); setDialogOpen(true); }}
-                              data-testid={`button-edit-${seller.id}`}
-                            >
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              onClick={() => setDeleteId(seller.id)}
-                              data-testid={`button-delete-${seller.id}`}
-                            >
-                              <Trash2 className="h-4 w-4 text-destructive" />
-                            </Button>
-                          </div>
                         </TableCell>
                       </TableRow>
                     ))}

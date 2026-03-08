@@ -1025,6 +1025,14 @@ export default function SellerCodeManager() {
                             <Button
                               size="icon"
                               variant="ghost"
+                              onClick={() => { setEditingSeller(seller); setDialogOpen(true); }}
+                              data-testid={`button-edit-${seller.id}`}
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              size="icon"
+                              variant="ghost"
                               onClick={() => setDeleteId(seller.id)}
                               data-testid={`button-delete-${seller.id}`}
                             >

@@ -38,7 +38,7 @@ app.use(express.urlencoded({ extended: false }));
 
 const MemoryStore = createMemoryStore(session);
 
-const isProduction = process.env.NODE_ENV === "production";
+app.set("trust proxy", 1);
 
 app.use(
   session({
@@ -49,7 +49,7 @@ app.use(
     cookie: {
       maxAge: 24 * 60 * 60 * 1000,
       httpOnly: true,
-      secure: isProduction,
+      secure: false,
       sameSite: "lax",
     },
   })

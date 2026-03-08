@@ -70,6 +70,7 @@ import {
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -706,10 +707,15 @@ function SellerForm({
             name="startDate"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Start Date</FormLabel>
+                <FormLabel>Start Date (YYYY-MM-DD)</FormLabel>
                 <FormControl>
                   <Input type="date" {...field} data-testid="input-start-date" />
                 </FormControl>
+                <FormDescription className="text-xs">
+                  {field.value && /^\d{4}-\d{2}-\d{2}$/.test(field.value)
+                    ? format(parseISO(field.value), "MMM dd, yyyy")
+                    : ""}
+                </FormDescription>
                 <FormMessage />
               </FormItem>
             )}

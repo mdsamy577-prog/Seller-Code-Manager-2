@@ -6,20 +6,19 @@ import passport from "passport";
 import { hashPassword, verifyPassword } from "./auth";
 import { sendSellerCodeEmail } from "./email";
 
-const DURATION_DAYS: Record<string, number> = {
-  "15_days": 15,
-  "1_month": 30,
-  "2_months": 60,
-  "3_months": 90,
-  "4_months": 120,
-  "5_months": 150,
-  "6_months": 180,
-  "7_months": 210,
-  "8_months": 240,
-  "9_months": 270,
-  "10_months": 300,
-  "11_months": 330,
-  "12_months": 365,
+const DURATION_MONTHS: Record<string, number> = {
+  "1_month": 1,
+  "2_months": 2,
+  "3_months": 3,
+  "4_months": 4,
+  "5_months": 5,
+  "6_months": 6,
+  "7_months": 7,
+  "8_months": 8,
+  "9_months": 9,
+  "10_months": 10,
+  "11_months": 11,
+  "12_months": 12,
 };
 
 const DURATION_CODES: Record<string, string> = {
@@ -30,13 +29,20 @@ const DURATION_CODES: Record<string, string> = {
 };
 
 function calculateExpiryDate(startDate: string, duration: string): string {
-  const start = new Date(startDate);
-  const days = DURATION_DAYS[duration] || 30;
-  start.setDate(start.getDate() + days);
-  const y = start.getFullYear();
-  const m = String(start.getMonth() + 1).padStart(2, "0");
-  const d = String(start.getDate()).padStart(2, "0");
-  return `${y}-${m}-${d}`;
+  const [y, m, d] = startDate.split("-").map(Number);
+  const start = new Date(y, m - 1, d);
+
+  if (duration === "15_days") {
+    start.setDate(start.getDate() + 15);
+  } else {
+    const months = DURATION_MONTHS[duration] || 1;
+    start.setMonth(start.getMonth() + months);
+  }
+
+  const ry = start.getFullYear();
+  const rm = String(start.getMonth() + 1).padStart(2, "0");
+  const rd = String(start.getDate()).padStart(2, "0");
+  return `${ry}-${rm}-${rd}`;
 }
 
 async function getNextSerial(): Promise<number> {

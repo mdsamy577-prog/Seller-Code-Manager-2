@@ -91,6 +91,19 @@ function TableSkeleton() {
 export default function SellerApplications() {
   const { toast } = useToast();
   const [deleteId, setDeleteId] = useState<number | null>(null);
+  const [visibleEmails, setVisibleEmails] = useState<Set<number>>(new Set());
+
+  const toggleEmail = (id: number) => {
+    setVisibleEmails((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
 
   const { data: applications = [], isLoading } = useQuery<SellerApplication[]>({
     queryKey: ["/api/applications"],
@@ -255,16 +268,21 @@ export default function SellerApplications() {
                         </TableCell>
                         <TableCell className="py-2 text-center">
                           {app.email && (
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <button type="button" className="inline-flex items-center justify-center text-muted-foreground hover:text-primary transition-colors">
-                                  <Mail className="h-4 w-4" />
-                                </button>
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                <p>{app.email}</p>
-                              </TooltipContent>
-                            </Tooltip>
+                            <div className="inline-flex items-center gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() => toggleEmail(app.id)}
+                                className={`inline-flex items-center justify-center transition-colors ${visibleEmails.has(app.id) ? "text-primary" : "text-muted-foreground hover:text-primary"}`}
+                                data-testid={`button-toggle-email-${app.id}`}
+                              >
+                                <Mail className="h-4 w-4" />
+                              </button>
+                              {visibleEmails.has(app.id) && (
+                                <span className="text-xs text-foreground select-all" data-testid={`text-email-${app.id}`}>
+                                  {app.email}
+                                </span>
+                              )}
+                            </div>
                           )}
                         </TableCell>
                         <TableCell className="text-sm py-2" data-testid={`text-app-sender-number-${app.id}`}>

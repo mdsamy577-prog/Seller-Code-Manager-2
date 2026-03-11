@@ -84,6 +84,7 @@ export default function SellerApplication() {
   });
 
   const sellerType = form.watch("sellerType");
+  const selectedDuration = form.watch("duration");
   const currentPricing = sellerType === "facebook_business_page" ? businessPricing : personalPricing;
 
   const [rulesOpen, setRulesOpen] = useState(false);
@@ -233,16 +234,25 @@ export default function SellerApplication() {
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-2 gap-3">
-                {dashboardPackages.map((key) => (
-                  <div
-                    key={key}
-                    className="rounded-xl border border-blue-200 dark:border-blue-900/40 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20 p-4 text-center transition-all duration-200 hover:shadow-lg hover:scale-[1.03] hover:border-blue-400 dark:hover:border-blue-600 cursor-default"
-                    data-testid={`pricing-${monthLabels[key]}`}
-                  >
-                    <div className="text-sm font-medium text-muted-foreground">{monthLabels[key]}</div>
-                    <div className="text-lg font-bold mt-1 text-blue-700 dark:text-blue-400">{currentPricing[key]}</div>
-                  </div>
-                ))}
+                {dashboardPackages.map((key) => {
+                  const isSelected = selectedDuration === key;
+                  return (
+                    <button
+                      key={key}
+                      type="button"
+                      onClick={() => form.setValue("duration", key as ApplicationFormValues["duration"], { shouldValidate: true })}
+                      className={`rounded-xl border p-4 text-center transition-all duration-200 hover:shadow-lg hover:scale-[1.03] cursor-pointer w-full ${
+                        isSelected
+                          ? "border-blue-500 dark:border-blue-400 bg-gradient-to-br from-blue-100 to-indigo-100 dark:from-blue-900/40 dark:to-indigo-900/40 shadow-md ring-2 ring-blue-500/30 dark:ring-blue-400/30"
+                          : "border-blue-200 dark:border-blue-900/40 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20 hover:border-blue-400 dark:hover:border-blue-600"
+                      }`}
+                      data-testid={`pricing-${monthLabels[key]}`}
+                    >
+                      <div className={`text-sm font-medium ${isSelected ? "text-blue-700 dark:text-blue-300" : "text-muted-foreground"}`}>{monthLabels[key]}</div>
+                      <div className={`text-lg font-bold mt-1 ${isSelected ? "text-blue-800 dark:text-blue-300" : "text-blue-700 dark:text-blue-400"}`}>{currentPricing[key]}</div>
+                    </button>
+                  );
+                })}
               </div>
             </CardContent>
           </Card>

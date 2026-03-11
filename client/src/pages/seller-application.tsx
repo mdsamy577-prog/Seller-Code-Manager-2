@@ -452,11 +452,7 @@ export default function SellerApplication() {
                     )}
                   />
 
-                  <div className="flex items-center gap-3 pt-1">
-                    <div className="flex-1 h-px bg-gradient-to-r from-transparent via-violet-200 dark:via-violet-800 to-transparent" />
-                    <span className="text-[11px] font-semibold text-violet-600 dark:text-violet-400 uppercase tracking-widest px-1">যোগাযোগ (ঐচ্ছিক)</span>
-                    <div className="flex-1 h-px bg-gradient-to-r from-transparent via-violet-200 dark:via-violet-800 to-transparent" />
-                  </div>
+                  <p className="text-sm text-muted-foreground text-center pt-1">সেলার কোড এই ইমেইলে পাঠানো হবে</p>
 
                   <FormField
                     control={form.control}

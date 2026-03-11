@@ -452,7 +452,10 @@ export default function SellerApplication() {
                     )}
                   />
 
-                  <p className="text-sm text-muted-foreground text-center pt-1">সেলার কোড এই ইমেইলে পাঠানো হবে</p>
+                  <div className="flex items-center justify-center gap-1.5 pt-1">
+                    <Mail className="h-3.5 w-3.5 text-indigo-500 dark:text-indigo-400 shrink-0" />
+                    <p className="text-[13px] font-medium text-indigo-600 dark:text-indigo-400">সেলার কোড এই ইমেইলে পাঠানো হবে</p>
+                  </div>
 
                   <FormField
                     control={form.control}

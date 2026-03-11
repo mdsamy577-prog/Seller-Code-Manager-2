@@ -368,7 +368,7 @@ export default function SellerApplication() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>মেয়াদ সিলেক্ট করুন</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <Select onValueChange={field.onChange} value={field.value}>
                           <FormControl>
                             <SelectTrigger data-testid="select-apply-duration">
                               <SelectValue placeholder="আপনার পছন্দের মেয়াদ নির্বাচন করুন" />

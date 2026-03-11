@@ -226,13 +226,18 @@ export async function registerRoutes(
 
   app.post("/api/sellers", requireAuth, async (req, res) => {
     try {
-      const { name, phone, facebookLink, duration, startDate } = req.body;
+      const { name, phone, email, facebookLink, duration, startDate } = req.body;
       if (!name || !phone || !facebookLink || !duration || !startDate) {
         return res.status(400).json({ message: "Missing required fields" });
       }
       const sellerCode = await generateSellerCode(startDate, duration);
       const expiryDate = calculateExpiryDate(startDate, duration);
-      const seller = await storage.createSeller({ name, phone, facebookLink, sellerCode, duration, startDate, expiryDate });
+      const seller = await storage.createSeller({ name, phone, facebookLink, sellerCode, duration, startDate, expiryDate, email: email || undefined });
+
+      if (email) {
+        await sendSellerCodeEmail(email, name, sellerCode, startDate, expiryDate);
+      }
+
       res.status(201).json(seller);
     } catch (error: any) {
       if (error.code === "23505") {

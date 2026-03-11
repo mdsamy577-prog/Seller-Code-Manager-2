@@ -85,6 +85,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 const sellerFormSchema = z.object({
   name: z.string().min(1, "Name is required"),
   phone: z.string().min(1, "Phone number is required"),
+  email: z.string().email("Must be a valid email").optional().or(z.literal("")),
   facebookLink: z.string().url("Must be a valid URL"),
   duration: z.enum(["15_days", "1_month", "2_months", "3_months", "4_months", "5_months", "6_months", "7_months", "8_months", "9_months", "10_months", "11_months", "12_months"]),
   startDate: z.string().min(1, "Start date is required"),
@@ -605,6 +606,7 @@ function SellerForm({
     defaultValues: {
       name: seller?.name || "",
       phone: seller?.phone || "",
+      email: "",
       facebookLink: seller?.facebookLink || "",
       duration: (seller?.duration as SellerFormValues["duration"]) || "1_month",
       startDate: seller?.startDate || format(new Date(), "yyyy-MM-dd"),
@@ -683,6 +685,21 @@ function SellerForm({
             </FormItem>
           )}
         />
+        {!isEditing && (
+          <FormField
+            control={form.control}
+            name="email"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Email Address <span className="text-muted-foreground font-normal">(Optional)</span></FormLabel>
+                <FormControl>
+                  <Input placeholder="Enter email address" type="email" {...field} data-testid="input-email" />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        )}
         <FormField
           control={form.control}
           name="facebookLink"

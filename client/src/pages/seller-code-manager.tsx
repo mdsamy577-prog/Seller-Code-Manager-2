@@ -77,6 +77,11 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -1011,13 +1016,38 @@ export default function SellerCodeManager() {
                           </a>
                         </TableCell>
                         <TableCell data-testid={`text-code-${seller.id}`}>
-                          <Badge
-                            variant="secondary"
-                            className="no-default-active-elevate font-mono"
-                          >
-                            <Hash className="h-3 w-3 mr-1" />
-                            {seller.sellerCode}
-                          </Badge>
+                          <div className="flex items-center gap-1.5">
+                            <Badge
+                              variant="secondary"
+                              className="no-default-active-elevate font-mono"
+                            >
+                              <Hash className="h-3 w-3 mr-1" />
+                              {seller.sellerCode}
+                            </Badge>
+                            {seller.email && (
+                              <Popover>
+                                <PopoverTrigger asChild>
+                                  <button
+                                    type="button"
+                                    className="inline-flex items-center justify-center text-muted-foreground hover:text-primary transition-colors"
+                                    data-testid={`button-email-popup-${seller.id}`}
+                                  >
+                                    <Mail className="h-3.5 w-3.5" />
+                                  </button>
+                                </PopoverTrigger>
+                                <PopoverContent
+                                  side="top"
+                                  align="center"
+                                  sideOffset={6}
+                                  className="w-auto p-2 text-xs"
+                                >
+                                  <span className="select-all text-foreground" data-testid={`text-email-popup-${seller.id}`}>
+                                    {seller.email}
+                                  </span>
+                                </PopoverContent>
+                              </Popover>
+                            )}
+                          </div>
                         </TableCell>
                         <TableCell data-testid={`text-start-${seller.id}`}>
                           <span className="flex items-center gap-1.5 text-sm text-muted-foreground">

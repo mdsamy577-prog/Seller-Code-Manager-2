@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { User, Phone, CheckCircle2, Wallet, Hash, Copy, Mail, BookOpen, ShieldCheck, Send } from "lucide-react";
+import { User, Phone, CheckCircle2, Wallet, Hash, Copy, Mail, BookOpen, ShieldCheck, Send, ClipboardList, CreditCard, Link } from "lucide-react";
 import { SiMeta } from "react-icons/si";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -241,15 +241,21 @@ export default function SellerApplication() {
                       key={key}
                       type="button"
                       onClick={() => form.setValue("duration", key as ApplicationFormValues["duration"], { shouldValidate: true })}
-                      className={`rounded-xl border p-4 text-center transition-all duration-200 hover:shadow-lg hover:scale-[1.03] cursor-pointer w-full ${
+                      className={`rounded-2xl border-2 p-4 text-center transition-all duration-200 cursor-pointer w-full focus:outline-none ${
                         isSelected
-                          ? "border-blue-500 dark:border-blue-400 bg-gradient-to-br from-blue-100 to-indigo-100 dark:from-blue-900/40 dark:to-indigo-900/40 shadow-md ring-2 ring-blue-500/30 dark:ring-blue-400/30"
-                          : "border-blue-200 dark:border-blue-900/40 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20 hover:border-blue-400 dark:hover:border-blue-600"
+                          ? "border-blue-500 dark:border-blue-400 bg-gradient-to-br from-blue-100 to-indigo-100 dark:from-blue-900/40 dark:to-indigo-900/40 shadow-lg ring-2 ring-blue-500/25 dark:ring-blue-400/25 scale-[1.05]"
+                          : "border-blue-100 dark:border-blue-900/40 bg-gradient-to-br from-blue-50/60 to-indigo-50/60 dark:from-blue-950/10 dark:to-indigo-950/10 hover:border-blue-300 dark:hover:border-blue-700 hover:shadow-md hover:scale-[1.02]"
                       }`}
                       data-testid={`pricing-${monthLabels[key]}`}
                     >
-                      <div className={`text-sm font-medium ${isSelected ? "text-blue-700 dark:text-blue-300" : "text-muted-foreground"}`}>{monthLabels[key]}</div>
-                      <div className={`text-lg font-bold mt-1 ${isSelected ? "text-blue-800 dark:text-blue-300" : "text-blue-700 dark:text-blue-400"}`}>{currentPricing[key]}</div>
+                      <div className={`text-xs font-semibold uppercase tracking-wide mb-1 ${isSelected ? "text-blue-600 dark:text-blue-300" : "text-muted-foreground"}`}>{monthLabels[key]}</div>
+                      <div className={`text-xl font-bold ${isSelected ? "text-blue-700 dark:text-blue-200" : "text-blue-700 dark:text-blue-400"}`}>{currentPricing[key]}</div>
+                      {isSelected && (
+                        <div className="mt-1.5 inline-flex items-center gap-1 rounded-full bg-blue-500 px-2 py-0.5">
+                          <CheckCircle2 className="h-2.5 w-2.5 text-white" />
+                          <span className="text-[10px] font-semibold text-white">নির্বাচিত</span>
+                        </div>
+                      )}
                     </button>
                   );
                 })}
@@ -282,27 +288,37 @@ export default function SellerApplication() {
             </DialogContent>
           </Dialog>
 
-          <Card className="shadow-lg border-0 bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm overflow-hidden">
-            <div className="h-1 bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500" />
-            <CardHeader className="text-center pb-3">
-              <CardTitle className="text-xl font-bold" data-testid="text-apply-title">সেলার আবেদন</CardTitle>
-              <CardDescription>
+          <Card className="shadow-xl border-0 bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm overflow-hidden">
+            <div className="h-1.5 bg-gradient-to-r from-emerald-400 via-teal-500 to-cyan-500" />
+            <CardHeader className="text-center pb-2 pt-8 px-6">
+              <div className="mx-auto w-16 h-16 rounded-2xl bg-gradient-to-br from-emerald-400 to-teal-600 flex items-center justify-center mb-4 shadow-lg shadow-emerald-500/30">
+                <ClipboardList className="h-8 w-8 text-white" />
+              </div>
+              <CardTitle className="text-2xl font-bold tracking-tight" data-testid="text-apply-title">সেলার আবেদন</CardTitle>
+              <CardDescription className="text-sm mt-1.5 leading-relaxed">
                 আমাদের ফেসবুক গ্রুপে সেলার হতে নিচের ফর্মটি পূরণ করুন।
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="px-6 pb-8">
               <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
+                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5 mt-2">
+
+                  <div className="flex items-center gap-3">
+                    <div className="flex-1 h-px bg-gradient-to-r from-transparent via-emerald-200 dark:via-emerald-800 to-transparent" />
+                    <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 uppercase tracking-widest px-1">ব্যক্তিগত তথ্য</span>
+                    <div className="flex-1 h-px bg-gradient-to-r from-transparent via-emerald-200 dark:via-emerald-800 to-transparent" />
+                  </div>
+
                   <FormField
                     control={form.control}
                     name="name"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>নাম</FormLabel>
+                        <FormLabel className="text-sm font-semibold text-foreground/80">নাম</FormLabel>
                         <FormControl>
                           <div className="relative">
-                            <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                            <Input placeholder="আপনার পূর্ণ নাম লিখুন" className="pl-9 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-shadow" {...field} data-testid="input-apply-name" />
+                            <User className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/70" />
+                            <Input placeholder="আপনার পূর্ণ নাম লিখুন" className="pl-10 h-11 rounded-xl border-border/60 bg-background focus-visible:ring-2 focus-visible:ring-blue-500/25 focus-visible:border-blue-400 transition-all duration-200" {...field} data-testid="input-apply-name" />
                           </div>
                         </FormControl>
                         <FormMessage />
@@ -314,11 +330,11 @@ export default function SellerApplication() {
                     name="phone"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>মোবাইল নাম্বার</FormLabel>
+                        <FormLabel className="text-sm font-semibold text-foreground/80">মোবাইল নাম্বার</FormLabel>
                         <FormControl>
                           <div className="relative">
-                            <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                            <Input placeholder="আপনার মোবাইল নাম্বার লিখুন" className="pl-9 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-shadow" {...field} data-testid="input-apply-phone" />
+                            <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/70" />
+                            <Input placeholder="আপনার মোবাইল নাম্বার লিখুন" className="pl-10 h-11 rounded-xl border-border/60 bg-background focus-visible:ring-2 focus-visible:ring-blue-500/25 focus-visible:border-blue-400 transition-all duration-200" {...field} data-testid="input-apply-phone" />
                           </div>
                         </FormControl>
                         <FormMessage />
@@ -330,26 +346,33 @@ export default function SellerApplication() {
                     name="facebookLink"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>সাবস্ক্রিপশন নেওয়ার ফেসবুক আইডি / পেজের লিংক</FormLabel>
+                        <FormLabel className="text-sm font-semibold text-foreground/80">ফেসবুক আইডি / পেজের লিংক</FormLabel>
                         <FormControl>
                           <div className="relative">
-                            <SiMeta className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                            <Input placeholder="https://facebook.com/yourprofile" className="pl-9 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-shadow" {...field} data-testid="input-apply-facebook" />
+                            <SiMeta className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/70" />
+                            <Input placeholder="https://facebook.com/yourprofile" className="pl-10 h-11 rounded-xl border-border/60 bg-background focus-visible:ring-2 focus-visible:ring-blue-500/25 focus-visible:border-blue-400 transition-all duration-200" {...field} data-testid="input-apply-facebook" />
                           </div>
                         </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
+
+                  <div className="flex items-center gap-3 pt-1">
+                    <div className="flex-1 h-px bg-gradient-to-r from-transparent via-blue-200 dark:via-blue-800 to-transparent" />
+                    <span className="text-[11px] font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-widest px-1">সাবস্ক্রিপশন তথ্য</span>
+                    <div className="flex-1 h-px bg-gradient-to-r from-transparent via-blue-200 dark:via-blue-800 to-transparent" />
+                  </div>
+
                   <FormField
                     control={form.control}
                     name="sellerType"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>সেলার ধরন নির্বাচন করুন</FormLabel>
+                        <FormLabel className="text-sm font-semibold text-foreground/80">সেলার ধরন নির্বাচন করুন</FormLabel>
                         <Select onValueChange={field.onChange} defaultValue={field.value}>
                           <FormControl>
-                            <SelectTrigger data-testid="select-apply-seller-type">
+                            <SelectTrigger className="h-11 rounded-xl border-border/60 focus:ring-2 focus:ring-blue-500/25 focus:border-blue-400 transition-all duration-200" data-testid="select-apply-seller-type">
                               <SelectValue placeholder="সেলার ধরন নির্বাচন করুন" />
                             </SelectTrigger>
                           </FormControl>
@@ -367,10 +390,10 @@ export default function SellerApplication() {
                     name="duration"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>মেয়াদ সিলেক্ট করুন</FormLabel>
+                        <FormLabel className="text-sm font-semibold text-foreground/80">মেয়াদ সিলেক্ট করুন</FormLabel>
                         <Select onValueChange={field.onChange} value={field.value}>
                           <FormControl>
-                            <SelectTrigger data-testid="select-apply-duration">
+                            <SelectTrigger className="h-11 rounded-xl border-border/60 focus:ring-2 focus:ring-blue-500/25 focus:border-blue-400 transition-all duration-200" data-testid="select-apply-duration">
                               <SelectValue placeholder="আপনার পছন্দের মেয়াদ নির্বাচন করুন" />
                             </SelectTrigger>
                           </FormControl>
@@ -384,15 +407,22 @@ export default function SellerApplication() {
                       </FormItem>
                     )}
                   />
+
+                  <div className="flex items-center gap-3 pt-1">
+                    <div className="flex-1 h-px bg-gradient-to-r from-transparent via-pink-200 dark:via-pink-800 to-transparent" />
+                    <span className="text-[11px] font-semibold text-pink-600 dark:text-pink-400 uppercase tracking-widest px-1">পেমেন্ট তথ্য</span>
+                    <div className="flex-1 h-px bg-gradient-to-r from-transparent via-pink-200 dark:via-pink-800 to-transparent" />
+                  </div>
+
                   <FormField
                     control={form.control}
                     name="paymentMethod"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>পেমেন্টের মাধ্যম নির্বাচন করুন</FormLabel>
+                        <FormLabel className="text-sm font-semibold text-foreground/80">পেমেন্টের মাধ্যম নির্বাচন করুন</FormLabel>
                         <Select onValueChange={field.onChange} defaultValue={field.value}>
                           <FormControl>
-                            <SelectTrigger data-testid="select-apply-payment-method">
+                            <SelectTrigger className="h-11 rounded-xl border-border/60 focus:ring-2 focus:ring-blue-500/25 focus:border-blue-400 transition-all duration-200" data-testid="select-apply-payment-method">
                               <SelectValue placeholder="পেমেন্ট মাধ্যম নির্বাচন করুন" />
                             </SelectTrigger>
                           </FormControl>
@@ -410,42 +440,52 @@ export default function SellerApplication() {
                     name="senderNumber"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>যে নাম্বার থেকে টাকা পাঠানো হয়েছে</FormLabel>
+                        <FormLabel className="text-sm font-semibold text-foreground/80">যে নাম্বার থেকে টাকা পাঠানো হয়েছে</FormLabel>
                         <FormControl>
                           <div className="relative">
-                            <Hash className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                            <Input placeholder="যে নাম্বার থেকে টাকা পাঠিয়েছেন সেই নাম্বার লিখুন" className="pl-9 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-shadow" {...field} data-testid="input-apply-sender-number" />
+                            <CreditCard className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/70" />
+                            <Input placeholder="যে নাম্বার থেকে টাকা পাঠিয়েছেন সেই নাম্বার লিখুন" className="pl-10 h-11 rounded-xl border-border/60 bg-background focus-visible:ring-2 focus-visible:ring-blue-500/25 focus-visible:border-blue-400 transition-all duration-200" {...field} data-testid="input-apply-sender-number" />
                           </div>
                         </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
+
+                  <div className="flex items-center gap-3 pt-1">
+                    <div className="flex-1 h-px bg-gradient-to-r from-transparent via-violet-200 dark:via-violet-800 to-transparent" />
+                    <span className="text-[11px] font-semibold text-violet-600 dark:text-violet-400 uppercase tracking-widest px-1">যোগাযোগ (ঐচ্ছিক)</span>
+                    <div className="flex-1 h-px bg-gradient-to-r from-transparent via-violet-200 dark:via-violet-800 to-transparent" />
+                  </div>
+
                   <FormField
                     control={form.control}
                     name="email"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>ইমেইল / জিমেইল</FormLabel>
+                        <FormLabel className="text-sm font-semibold text-foreground/80">ইমেইল / জিমেইল</FormLabel>
                         <FormControl>
                           <div className="relative">
-                            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                            <Input placeholder="আপনার ইমেইল অথবা জিমেইল লিখুন" className="pl-9 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-shadow" {...field} data-testid="input-apply-email" />
+                            <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/70" />
+                            <Input placeholder="আপনার ইমেইল অথবা জিমেইল লিখুন" className="pl-10 h-11 rounded-xl border-border/60 bg-background focus-visible:ring-2 focus-visible:ring-blue-500/25 focus-visible:border-blue-400 transition-all duration-200" {...field} data-testid="input-apply-email" />
                           </div>
                         </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
-                  <Button
-                    type="submit"
-                    className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold py-5 text-base shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 transition-all duration-200"
-                    disabled={submitMutation.isPending}
-                    data-testid="button-submit-application"
-                  >
-                    <Send className="h-4 w-4 mr-2" />
-                    {submitMutation.isPending ? "জমা হচ্ছে..." : "আবেদন জমা দিন"}
-                  </Button>
+
+                  <div className="pt-2">
+                    <Button
+                      type="submit"
+                      className="w-full bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:from-blue-700 hover:via-indigo-700 hover:to-purple-700 text-white font-bold py-6 text-base rounded-xl shadow-lg shadow-indigo-500/30 hover:shadow-xl hover:shadow-indigo-500/40 hover:scale-[1.01] active:scale-[0.99] transition-all duration-200"
+                      disabled={submitMutation.isPending}
+                      data-testid="button-submit-application"
+                    >
+                      <Send className="h-4 w-4 mr-2" />
+                      {submitMutation.isPending ? "জমা হচ্ছে..." : "আবেদন জমা দিন"}
+                    </Button>
+                  </div>
                 </form>
               </Form>
             </CardContent>

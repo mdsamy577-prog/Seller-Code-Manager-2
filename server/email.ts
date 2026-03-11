@@ -1,7 +1,10 @@
 import { Resend } from "resend";
 import { storage } from "./storage";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+function getResendClient(): Resend | null {
+  if (!process.env.RESEND_API_KEY) return null;
+  return new Resend(process.env.RESEND_API_KEY);
+}
 
 async function getSenderName(): Promise<string> {
   const name = await storage.getSetting("SENDER_NAME");
@@ -74,6 +77,9 @@ export async function sendSellerCodeEmail(
       </div>
     </div>
   `;
+
+  const resend = getResendClient();
+  if (!resend) return false;
 
   try {
     await resend.emails.send({
@@ -168,6 +174,9 @@ export async function sendReminderEmail(
       </div>
     </div>
   `;
+
+  const resend = getResendClient();
+  if (!resend) return false;
 
   try {
     await resend.emails.send({

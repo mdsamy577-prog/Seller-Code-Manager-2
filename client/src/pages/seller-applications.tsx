@@ -15,12 +15,18 @@ import {
 import { SiMeta } from "react-icons/si";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import {
   Table,
   TableBody,
@@ -96,6 +102,8 @@ export default function SellerApplications() {
   const { toast } = useToast();
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const [visibleEmails, setVisibleEmails] = useState<Set<number>>(new Set());
+  const [addEmailOpen, setAddEmailOpen] = useState<Record<number, boolean>>({});
+  const [emailInputs, setEmailInputs] = useState<Record<number, string>>({});
 
   const toggleEmail = (id: number) => {
     setVisibleEmails((prev) => {
@@ -108,6 +116,26 @@ export default function SellerApplications() {
       return next;
     });
   };
+
+  const addEmailMutation = useMutation({
+    mutationFn: async ({ id, email }: { id: number; email: string }) => {
+      const res = await apiRequest("PATCH", `/api/applications/${id}/email`, { email });
+      return res.json();
+    },
+    onSuccess: (data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/applications"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/sellers"] });
+      setAddEmailOpen((prev) => ({ ...prev, [variables.id]: false }));
+      setEmailInputs((prev) => ({ ...prev, [variables.id]: "" }));
+      toast({
+        title: "Email saved",
+        description: data.emailSent ? "Seller code email sent successfully." : "Email saved. (No email notification sent — check API key.)",
+      });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
 
   const { data: applications = [], isLoading } = useQuery<SellerApplication[]>({
     queryKey: ["/api/applications"],
@@ -273,7 +301,7 @@ export default function SellerApplications() {
                           </Badge>
                         </TableCell>
                         <TableCell className="py-1.5 w-8">
-                          {app.email && (
+                          {app.email ? (
                             <div className="inline-flex items-center gap-1.5">
                               <button
                                 type="button"
@@ -289,6 +317,48 @@ export default function SellerApplications() {
                                 </span>
                               )}
                             </div>
+                          ) : (
+                            <Popover
+                              open={addEmailOpen[app.id] ?? false}
+                              onOpenChange={(open) => setAddEmailOpen((prev) => ({ ...prev, [app.id]: open }))}
+                            >
+                              <PopoverTrigger asChild>
+                                <button
+                                  type="button"
+                                  className="inline-flex items-center justify-center text-red-500 hover:text-red-700 transition-colors"
+                                  data-testid={`button-add-email-${app.id}`}
+                                >
+                                  <Mail className="h-3.5 w-3.5" />
+                                </button>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-60 p-3" side="top" align="start">
+                                <div className="space-y-2">
+                                  <p className="text-xs font-semibold">Add Email</p>
+                                  <Input
+                                    type="email"
+                                    placeholder="Enter email address"
+                                    value={emailInputs[app.id] ?? ""}
+                                    onChange={(e) => setEmailInputs((prev) => ({ ...prev, [app.id]: e.target.value }))}
+                                    onKeyDown={(e) => {
+                                      if (e.key === "Enter" && emailInputs[app.id]) {
+                                        addEmailMutation.mutate({ id: app.id, email: emailInputs[app.id] });
+                                      }
+                                    }}
+                                    className="h-7 text-xs"
+                                    data-testid={`input-add-email-${app.id}`}
+                                  />
+                                  <Button
+                                    size="sm"
+                                    className="w-full h-7 text-xs"
+                                    disabled={!emailInputs[app.id] || addEmailMutation.isPending}
+                                    onClick={() => addEmailMutation.mutate({ id: app.id, email: emailInputs[app.id] ?? "" })}
+                                    data-testid={`button-save-email-${app.id}`}
+                                  >
+                                    {addEmailMutation.isPending ? "Saving..." : "Save"}
+                                  </Button>
+                                </div>
+                              </PopoverContent>
+                            </Popover>
                           )}
                         </TableCell>
                         <TableCell className="text-xs py-1.5" data-testid={`text-app-sender-number-${app.id}`}>

@@ -380,6 +380,45 @@ export async function registerRoutes(
     }
   });
 
+  app.patch("/api/applications/:id/email", requireAuth, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ message: "Invalid application ID" });
+
+      const { email } = req.body;
+      if (!email || typeof email !== "string" || !email.includes("@")) {
+        return res.status(400).json({ message: "Valid email required" });
+      }
+
+      const application = await storage.getSellerApplicationById(id);
+      if (!application) return res.status(404).json({ message: "Application not found" });
+
+      const updated = await storage.updateSellerApplicationEmail(id, email.trim());
+
+      let emailSent = false;
+      if (application.status === "approved") {
+        const allSellers = await storage.getAllSellers();
+        const seller = allSellers.find(
+          (s) => s.name === application.name && s.phone === application.phone
+        );
+        if (seller) {
+          await storage.updateSeller(seller.id, { email: email.trim() });
+          emailSent = await sendSellerCodeEmail(
+            email.trim(),
+            seller.name,
+            seller.sellerCode,
+            seller.startDate,
+            seller.expiryDate
+          );
+        }
+      }
+
+      res.json({ ...updated, emailSent });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to update email" });
+    }
+  });
+
   app.delete("/api/applications/:id", requireAuth, async (req, res) => {
     try {
       const id = parseInt(req.params.id);

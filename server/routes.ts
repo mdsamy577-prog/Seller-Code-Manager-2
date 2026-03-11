@@ -213,7 +213,7 @@ export async function registerRoutes(
 
   app.get("/api/sellers/:id", requireAuth, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseInt(String(req.params.id));
       const seller = await storage.getSellerById(id);
       if (!seller) {
         return res.status(404).json({ message: "Seller not found" });
@@ -249,7 +249,7 @@ export async function registerRoutes(
 
   app.patch("/api/sellers/:id", requireAuth, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseInt(String(req.params.id));
       const existing = await storage.getSellerById(id);
       if (!existing) {
         return res.status(404).json({ message: "Seller not found" });
@@ -279,7 +279,7 @@ export async function registerRoutes(
 
   app.delete("/api/sellers/:id", requireAuth, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseInt(String(req.params.id));
       const deleted = await storage.deleteSeller(id);
       if (!deleted) {
         return res.status(404).json({ message: "Seller not found" });
@@ -313,7 +313,7 @@ export async function registerRoutes(
 
   app.post("/api/applications/:id/approve", requireAuth, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseInt(String(req.params.id));
       if (isNaN(id)) {
         return res.status(400).json({ message: "Invalid application ID" });
       }
@@ -362,7 +362,7 @@ export async function registerRoutes(
 
   app.post("/api/applications/:id/reject", requireAuth, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseInt(String(req.params.id));
       if (isNaN(id)) {
         return res.status(400).json({ message: "Invalid application ID" });
       }
@@ -382,7 +382,7 @@ export async function registerRoutes(
 
   app.patch("/api/applications/:id/email", requireAuth, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseInt(String(req.params.id));
       if (isNaN(id)) return res.status(400).json({ message: "Invalid application ID" });
 
       const { email } = req.body;
@@ -421,7 +421,7 @@ export async function registerRoutes(
 
   app.delete("/api/applications/:id", requireAuth, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseInt(String(req.params.id));
       if (isNaN(id)) {
         return res.status(400).json({ message: "Invalid application ID" });
       }

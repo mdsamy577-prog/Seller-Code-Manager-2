@@ -85,7 +85,7 @@ export async function sendSellerCodeEmail(
     await resend.emails.send({
       from: `${senderName} <noreply@shoprizqon.com>`,
       to: recipientEmail,
-      reply_to: replyTo,
+      replyTo,
       subject: `\u09B8\u09C7\u09B2\u09BE\u09B0 \u0995\u09CB\u09A1: ${sellerCode}`,
       html: htmlBody,
     });
@@ -182,7 +182,7 @@ export async function sendReminderEmail(
     await resend.emails.send({
       from: `${senderName} <noreply@shoprizqon.com>`,
       to: recipientEmail,
-      reply_to: replyTo,
+      replyTo,
       subject,
       html: htmlBody,
     });

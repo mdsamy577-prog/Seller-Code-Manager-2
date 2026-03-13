@@ -12,11 +12,11 @@ const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 10 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
-    const allowed = ["image/jpeg", "image/png", "application/pdf"];
+    const allowed = ["image/jpeg", "image/png"];
     if (allowed.includes(file.mimetype)) {
       cb(null, true);
     } else {
-      cb(new Error("Only JPG, PNG, or PDF files are allowed"));
+      cb(new Error("Only JPG and PNG image files are allowed"));
     }
   },
 });
@@ -517,9 +517,7 @@ export async function registerRoutes(
       if (!phone) {
         return res.status(400).json({ message: "phone is required" });
       }
-      const ext = req.file.mimetype === "application/pdf" ? "pdf"
-        : req.file.mimetype === "image/png" ? "png"
-        : "jpg";
+      const ext = req.file.mimetype === "image/png" ? "png" : "jpg";
       const timestamp = Math.floor(Date.now() / 1000);
       const publicId = `TEMP_${phone}_${timestamp}.${ext}`;
       const secureUrl = await uploadNidFile(req.file.buffer, req.file.mimetype, publicId);

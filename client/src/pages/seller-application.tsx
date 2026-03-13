@@ -580,7 +580,7 @@ export default function SellerApplication() {
                   </div>
 
                   <div className="space-y-2">
-                    <p className="text-sm font-semibold text-foreground/80">NID / জাতীয় পরিচয়পত্র (ঐচ্ছিক)</p>
+                    <p className="text-sm font-semibold text-foreground/80">NID / জাতীয় পরিচয়পত্র</p>
                     <div
                       className={`relative rounded-xl border-2 border-dashed transition-all duration-200 cursor-pointer ${
                         nidFile
@@ -593,25 +593,30 @@ export default function SellerApplication() {
                       <input
                         ref={nidInputRef}
                         type="file"
-                        accept="image/jpeg,image/png,application/pdf"
+                        accept="image/png,image/jpeg"
                         className="hidden"
                         data-testid="input-nid-file"
                         onChange={(e) => {
                           const file = e.target.files?.[0];
-                          if (file) {
-                            setNidFile(file);
-                            form.setValue("nidFileUrl", "");
+                          if (!file) return;
+                          const allowed = ["image/jpeg", "image/png"];
+                          if (!allowed.includes(file.type)) {
+                            toast({
+                              title: "ফাইল গ্রহণযোগ্য নয়",
+                              description: "শুধুমাত্র NID এর ছবি আপলোড করা যাবে। PDF গ্রহণযোগ্য নয়।",
+                              variant: "destructive",
+                            });
+                            if (nidInputRef.current) nidInputRef.current.value = "";
+                            return;
                           }
+                          setNidFile(file);
+                          form.setValue("nidFileUrl", "");
                         }}
                       />
                       {nidFile ? (
                         <div className="flex items-center justify-between p-3.5">
                           <div className="flex items-center gap-3">
-                            {nidFile.type === "application/pdf" ? (
-                              <FileText className="h-8 w-8 text-violet-500 shrink-0" />
-                            ) : (
-                              <ImageIcon className="h-8 w-8 text-violet-500 shrink-0" />
-                            )}
+                            <ImageIcon className="h-8 w-8 text-violet-500 shrink-0" />
                             <div>
                               <p className="text-sm font-medium text-violet-700 dark:text-violet-300 truncate max-w-[180px]">{nidFile.name}</p>
                               <p className="text-xs text-muted-foreground">{(nidFile.size / 1024).toFixed(1)} KB</p>
@@ -634,10 +639,10 @@ export default function SellerApplication() {
                       ) : (
                         <div className="flex flex-col items-center justify-center py-6 px-4 text-center">
                           <Upload className="h-8 w-8 text-muted-foreground/50 mb-2" />
-                          <p className="text-sm text-muted-foreground">
-                            NID ছবি বা PDF আপলোড করুন
+                          <p className="text-sm text-muted-foreground leading-relaxed">
+                            শুধু ক্যামেরায় তোলা NID ছবির পরিষ্কার ছবি দিন।
                           </p>
-                          <p className="text-xs text-muted-foreground/70 mt-1">JPG, PNG বা PDF (সর্বোচ্চ 10MB)</p>
+                          <p className="text-xs text-muted-foreground/70 mt-1">PDF ফাইল গ্রহণযোগ্য নয়।</p>
                         </div>
                       )}
                     </div>

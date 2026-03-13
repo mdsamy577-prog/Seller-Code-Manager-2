@@ -16,7 +16,7 @@ export async function uploadNidFile(
       {
         public_id: publicId,
         folder: "nid_uploads",
-        resource_type: mimeType === "application/pdf" ? "raw" : "image",
+        resource_type: "image",
         type: "upload",
         access_mode: "public",
         overwrite: true,

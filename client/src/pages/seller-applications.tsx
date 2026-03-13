@@ -11,6 +11,8 @@ import {
   Trash2,
   FileText,
   Download,
+  X,
+  ExternalLink,
 } from "lucide-react";
 import { SiMeta } from "react-icons/si";
 import { Button } from "@/components/ui/button";
@@ -39,7 +41,92 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
+
+function isPdf(url: string) {
+  return url.toLowerCase().includes(".pdf") || url.toLowerCase().includes("/raw/");
+}
+
+function NidViewerModal({ url, onClose }: { url: string; onClose: () => void }) {
+  const pdf = isPdf(url);
+  const filename = url.split("/").pop() || "nid-file";
+
+  const handleDownload = () => {
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    a.target = "_blank";
+    a.click();
+  };
+
+  return (
+    <Dialog open onOpenChange={onClose}>
+      <DialogContent
+        className="max-w-4xl w-full p-0 overflow-hidden"
+        aria-describedby={undefined}
+      >
+        <DialogHeader className="px-5 py-4 border-b flex flex-row items-center justify-between space-y-0">
+          <DialogTitle className="flex items-center gap-2 text-base font-semibold">
+            <FileText className="h-4 w-4 text-violet-500" />
+            NID Document
+          </DialogTitle>
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-8 text-xs gap-1.5"
+              onClick={handleDownload}
+              data-testid="button-nid-modal-download"
+            >
+              <Download className="h-3.5 w-3.5" />
+              Download
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-8 text-xs gap-1.5"
+              onClick={() => window.open(url, "_blank")}
+              data-testid="button-nid-modal-open"
+            >
+              <ExternalLink className="h-3.5 w-3.5" />
+              Open
+            </Button>
+            <button
+              onClick={onClose}
+              className="rounded-full p-1.5 hover:bg-muted transition-colors"
+              data-testid="button-nid-modal-close"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        </DialogHeader>
+        <div className="w-full bg-muted/30" style={{ height: "75vh" }}>
+          {pdf ? (
+            <iframe
+              src={url}
+              className="w-full h-full border-0"
+              title="NID PDF"
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center p-4">
+              <img
+                src={url}
+                alt="NID"
+                className="max-w-full max-h-full object-contain rounded-md shadow"
+              />
+            </div>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
 
 const durationLabels: Record<string, string> = {
   "15_days": "15 Days",
@@ -95,6 +182,7 @@ function TableSkeleton() {
 export default function SellerApplications() {
   const { toast } = useToast();
   const [deleteId, setDeleteId] = useState<number | null>(null);
+  const [nidPreviewUrl, setNidPreviewUrl] = useState<string | null>(null);
 
   const { data: applications = [], isLoading } = useQuery<SellerApplication[]>({
     queryKey: ["/api/applications"],
@@ -250,32 +338,15 @@ export default function SellerApplications() {
                           <TableCell className="text-xs py-1.5" data-testid={`text-app-sender-number-${app.id}`}>{app.senderNumber}</TableCell>
                           <TableCell className="py-1.5">
                             {app.nidFileUrl ? (
-                              <div className="flex items-center gap-1">
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  className="h-6 text-xs px-1.5 text-violet-700 border-violet-300 hover:bg-violet-50 dark:text-violet-400 dark:border-violet-700 dark:hover:bg-violet-950"
-                                  onClick={() => window.open(app.nidFileUrl!, "_blank")}
-                                  data-testid={`button-view-nid-${app.id}`}
-                                >
-                                  <FileText className="h-3 w-3 mr-1" />View NID
-                                </Button>
-                                <Button
-                                  size="icon"
-                                  variant="ghost"
-                                  className="h-6 w-6"
-                                  onClick={() => {
-                                    const a = document.createElement("a");
-                                    a.href = app.nidFileUrl!;
-                                    a.download = app.nidFileUrl!.split("/").pop() || "nid";
-                                    a.target = "_blank";
-                                    a.click();
-                                  }}
-                                  data-testid={`button-download-nid-${app.id}`}
-                                >
-                                  <Download className="h-3 w-3 text-muted-foreground" />
-                                </Button>
-                              </div>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-6 text-xs px-1.5 text-violet-700 border-violet-300 hover:bg-violet-50 dark:text-violet-400 dark:border-violet-700 dark:hover:bg-violet-950"
+                                onClick={() => setNidPreviewUrl(app.nidFileUrl!)}
+                                data-testid={`button-view-nid-${app.id}`}
+                              >
+                                <FileText className="h-3 w-3 mr-1" />View
+                              </Button>
                             ) : (
                               <span className="text-xs text-muted-foreground/50">—</span>
                             )}
@@ -330,32 +401,15 @@ export default function SellerApplications() {
                         <span data-testid={`text-app-sender-number-${app.id}`}>Sender: {app.senderNumber}</span>
                       </div>
                       {app.nidFileUrl && (
-                        <div className="flex items-center gap-2">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="h-8 text-xs text-violet-700 border-violet-300 hover:bg-violet-50 dark:text-violet-400 dark:border-violet-700 dark:hover:bg-violet-950"
-                            onClick={() => window.open(app.nidFileUrl!, "_blank")}
-                            data-testid={`button-view-nid-mobile-${app.id}`}
-                          >
-                            <FileText className="h-3.5 w-3.5 mr-1.5" />View NID
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="h-8 text-xs"
-                            onClick={() => {
-                              const a = document.createElement("a");
-                              a.href = app.nidFileUrl!;
-                              a.download = app.nidFileUrl!.split("/").pop() || "nid";
-                              a.target = "_blank";
-                              a.click();
-                            }}
-                            data-testid={`button-download-nid-mobile-${app.id}`}
-                          >
-                            <Download className="h-3.5 w-3.5 mr-1" />Download
-                          </Button>
-                        </div>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-8 text-xs text-violet-700 border-violet-300 hover:bg-violet-50 dark:text-violet-400 dark:border-violet-700 dark:hover:bg-violet-950"
+                          onClick={() => setNidPreviewUrl(app.nidFileUrl!)}
+                          data-testid={`button-view-nid-mobile-${app.id}`}
+                        >
+                          <FileText className="h-3.5 w-3.5 mr-1.5" />View NID
+                        </Button>
                       )}
                       <div className="flex items-center gap-2 pt-0.5">
                         <Button size="sm" variant={app.status === "approved" ? "default" : "outline"} className={`flex-1 h-9 text-xs ${app.status !== "approved" ? "text-emerald-700 border-emerald-300 hover:bg-emerald-50 dark:text-emerald-400 dark:border-emerald-700 dark:hover:bg-emerald-950" : "bg-emerald-600 hover:bg-emerald-700"}`} onClick={() => approveMutation.mutate(app.id)} disabled={approveMutation.isPending || rejectMutation.isPending || app.status !== "pending"} data-testid={`button-approve-${app.id}`}>
@@ -395,6 +449,10 @@ export default function SellerApplications() {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        {nidPreviewUrl && (
+          <NidViewerModal url={nidPreviewUrl} onClose={() => setNidPreviewUrl(null)} />
+        )}
       </div>
     </div>
   );

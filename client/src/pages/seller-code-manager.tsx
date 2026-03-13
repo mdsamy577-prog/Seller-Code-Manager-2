@@ -1053,7 +1053,7 @@ export default function SellerCodeManager() {
                               </Badge>
                               <Popover open={!!emailEditOpen[seller.id]} onOpenChange={(o) => { setEmailEditOpen((prev) => ({ ...prev, [seller.id]: o })); if (o) setEmailInputs((prev) => ({ ...prev, [seller.id]: seller.email || "" })); }}>
                                 <PopoverTrigger asChild>
-                                  <button type="button" className={`inline-flex items-center justify-center transition-colors ${seller.email ? "text-blue-500 hover:text-blue-700" : "text-muted-foreground hover:text-primary"}`} data-testid={`button-email-popup-${seller.id}`}>
+                                  <button type="button" onClick={(e) => e.stopPropagation()} className={`inline-flex items-center justify-center transition-colors ${seller.email ? "text-blue-500 hover:text-blue-700" : "text-muted-foreground hover:text-primary"}`} data-testid={`button-email-popup-${seller.id}`}>
                                     <Mail className="h-3.5 w-3.5" />
                                   </button>
                                 </PopoverTrigger>
@@ -1121,7 +1121,7 @@ export default function SellerCodeManager() {
                         </Badge>
                         <Popover open={!!emailEditOpen[seller.id]} onOpenChange={(o) => { setEmailEditOpen((prev) => ({ ...prev, [seller.id]: o })); if (o) setEmailInputs((prev) => ({ ...prev, [seller.id]: seller.email || "" })); }}>
                           <PopoverTrigger asChild>
-                            <button type="button" className={`inline-flex items-center justify-center transition-colors ${seller.email ? "text-blue-500 hover:text-blue-700" : "text-muted-foreground hover:text-primary"}`} data-testid={`button-email-popup-${seller.id}`}>
+                            <button type="button" onClick={(e) => e.stopPropagation()} className={`inline-flex items-center justify-center transition-colors ${seller.email ? "text-blue-500 hover:text-blue-700" : "text-muted-foreground hover:text-primary"}`} data-testid={`button-email-popup-${seller.id}`}>
                               <Mail className="h-4 w-4" />
                             </button>
                           </PopoverTrigger>

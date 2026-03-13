@@ -135,41 +135,47 @@ function StatsCards({ sellers }: { sellers: Seller[] }) {
   const expired = sellers.filter((s) => getSellerStatus(s.expiryDate) === "expired").length;
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+    <div className="grid grid-cols-4 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium text-muted-foreground">Total Sellers</CardTitle>
-          <Users className="h-4 w-4 text-muted-foreground" />
+        <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 p-3 pb-1 sm:p-6 sm:pb-2">
+          <CardTitle className="text-[10px] sm:text-sm font-medium text-muted-foreground leading-tight">
+            <span className="sm:hidden">Total</span>
+            <span className="hidden sm:inline">Total Sellers</span>
+          </CardTitle>
+          <Users className="hidden sm:block h-4 w-4 text-muted-foreground" />
         </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold" data-testid="text-total-sellers">{sellers.length}</div>
+        <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0 text-center sm:text-left">
+          <div className="text-xl sm:text-2xl font-bold" data-testid="text-total-sellers">{sellers.length}</div>
         </CardContent>
       </Card>
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium text-muted-foreground">Active</CardTitle>
-          <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+        <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 p-3 pb-1 sm:p-6 sm:pb-2">
+          <CardTitle className="text-[10px] sm:text-sm font-medium text-muted-foreground leading-tight">Active</CardTitle>
+          <CheckCircle2 className="hidden sm:block h-4 w-4 text-emerald-500" />
         </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400" data-testid="text-active-count">{active}</div>
+        <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0 text-center sm:text-left">
+          <div className="text-xl sm:text-2xl font-bold text-emerald-600 dark:text-emerald-400" data-testid="text-active-count">{active}</div>
         </CardContent>
       </Card>
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium text-muted-foreground">Expiring Soon</CardTitle>
-          <AlertTriangle className="h-4 w-4 text-amber-500" />
+        <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 p-3 pb-1 sm:p-6 sm:pb-2">
+          <CardTitle className="text-[10px] sm:text-sm font-medium text-muted-foreground leading-tight">
+            <span className="sm:hidden">Expiring</span>
+            <span className="hidden sm:inline">Expiring Soon</span>
+          </CardTitle>
+          <AlertTriangle className="hidden sm:block h-4 w-4 text-amber-500" />
         </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold text-amber-600 dark:text-amber-400" data-testid="text-expiring-count">{expiring}</div>
+        <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0 text-center sm:text-left">
+          <div className="text-xl sm:text-2xl font-bold text-amber-600 dark:text-amber-400" data-testid="text-expiring-count">{expiring}</div>
         </CardContent>
       </Card>
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium text-muted-foreground">Expired</CardTitle>
-          <XCircle className="h-4 w-4 text-red-500" />
+        <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 p-3 pb-1 sm:p-6 sm:pb-2">
+          <CardTitle className="text-[10px] sm:text-sm font-medium text-muted-foreground leading-tight">Expired</CardTitle>
+          <XCircle className="hidden sm:block h-4 w-4 text-red-500" />
         </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold text-red-600 dark:text-red-400" data-testid="text-expired-count">{expired}</div>
+        <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0 text-center sm:text-left">
+          <div className="text-xl sm:text-2xl font-bold text-red-600 dark:text-red-400" data-testid="text-expired-count">{expired}</div>
         </CardContent>
       </Card>
     </div>

@@ -118,27 +118,54 @@ export default function SellerApplication() {
 
   if (submitted) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950 flex items-center justify-center p-6">
-        <Card className="w-full max-w-md text-center shadow-xl border-0 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm">
-          <CardContent className="pt-8 pb-8 space-y-5">
-            <div className="mx-auto rounded-full bg-emerald-500/15 p-4 w-fit">
-              <CheckCircle2 className="h-10 w-10 text-emerald-600 dark:text-emerald-400" />
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/40 to-indigo-50 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950 flex items-center justify-center p-6">
+        <div className="w-full max-w-sm animate-in fade-in slide-in-from-bottom-4 duration-500">
+          <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl shadow-indigo-100/60 dark:shadow-black/40 border border-slate-100 dark:border-gray-800 overflow-hidden">
+            <div className="h-1.5 w-full bg-gradient-to-r from-emerald-400 via-teal-500 to-green-400" />
+            <div className="px-8 pt-8 pb-9 flex flex-col items-center text-center space-y-5">
+
+              <div className="relative">
+                <div className="rounded-full bg-emerald-50 dark:bg-emerald-950/60 p-5 ring-8 ring-emerald-50 dark:ring-emerald-950/30">
+                  <CheckCircle2 className="h-12 w-12 text-emerald-500 dark:text-emerald-400" strokeWidth={1.75} />
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight" data-testid="text-success-title">
+                  ধন্যবাদ!
+                </h2>
+              </div>
+
+              <div className="space-y-3 w-full" data-testid="text-success-message">
+                <p className="text-[15px] text-gray-700 dark:text-gray-300 leading-relaxed">
+                  আপনার আবেদন সফলভাবে গ্রহণ করা হয়েছে।
+                </p>
+                <p className="text-[14px] text-gray-500 dark:text-gray-400 leading-relaxed">
+                  পেমেন্ট যাচাইয়ের পর আপনার সেলার কোড সক্রিয় করা হবে।
+                </p>
+
+                <div className="border-t border-dashed border-slate-200 dark:border-gray-700 pt-3 mt-1 space-y-2">
+                  <p className="text-[13px] text-gray-500 dark:text-gray-400 leading-relaxed">
+                    সেলার কোড আপনার দেওয়া ইমেইলে পাঠানো হবে।
+                  </p>
+                  <p className="inline-flex items-center gap-1.5 text-[13px] font-medium text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/50 px-3 py-1.5 rounded-full">
+                    <Mail className="h-3.5 w-3.5 shrink-0" />
+                    দয়া করে ইনবক্স অথবা স্প্যাম ফোল্ডার চেক করুন।
+                  </p>
+                </div>
+              </div>
+
+              <button
+                onClick={() => window.location.href = "/apply"}
+                data-testid="button-back-home"
+                className="mt-1 w-full py-2.5 px-6 rounded-xl text-white text-sm font-semibold bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:from-blue-700 hover:via-indigo-700 hover:to-purple-700 shadow-md shadow-indigo-200/50 dark:shadow-indigo-900/30 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
+              >
+                Back to Home
+              </button>
+
             </div>
-            <h2 className="text-xl font-semibold" data-testid="text-success-title">ধন্যবাদ!</h2>
-            <div className="space-y-3 text-muted-foreground" data-testid="text-success-message">
-              <p>আপনার আবেদন গ্রহণ করা হয়েছে।</p>
-              <p>পেমেন্ট যাচাইয়ের পর আপনার সেলার কোড এক্টিভ করা হবে।</p>
-              <p>ইমেইল দিয়ে থাকলে সেলার কোডটি আপনার ইমেইলে পাঠানো হবে।</p>
-            </div>
-            <Button
-              variant="outline"
-              onClick={() => window.location.href = "/apply"}
-              data-testid="button-back-home"
-            >
-              Back to Home
-            </Button>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
     );
   }

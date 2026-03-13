@@ -1,0 +1,219 @@
+Perform a full system audit of the Seller Code Manager project.
+
+Check all features and confirm everything works correctly. 
+Do not modify or break any existing working logic.
+
+Review the entire system carefully and report any issues.
+
+--------------------------------
+
+1. Seller Application System
+
+Check:
+
+• Public application form works correctly
+• Form submission stores data correctly
+• Admin can see applications in the dashboard
+• Application status updates correctly (Pending / Approved / Rejected)
+• Approve button creates seller correctly
+• Reject button works correctly
+• Delete application works
+
+--------------------------------
+
+2. Email System
+
+Verify the email system using Resend API.
+
+Check:
+
+• Email is sent when a seller application is approved
+• Email contains:
+  - Seller Code
+  - Start Date
+  - Expiry Date
+
+• Email sender name is correct
+• Email is delivered successfully
+• Test Email feature works
+
+--------------------------------
+
+3. Email Editing Popup
+
+Check the Update Email popup:
+
+• Clicking email icon opens popup
+• Popup stays open
+• Admin can edit email
+• Save button updates email
+• Resend Code button sends email again
+
+Make sure the popup does NOT close immediately.
+
+--------------------------------
+
+4. Seller Code System
+
+Verify:
+
+• Seller code is generated correctly
+• Start date is correct
+• Expiry date is calculated correctly
+• Seller status updates automatically
+
+Statuses:
+
+Active
+Expiring Soon
+Expired
+
+--------------------------------
+
+5. Reminder Email System
+
+Check scheduled reminder emails:
+
+• Email sent 2 days before expiry
+• Email sent when code expires
+• Email sent when new subscription is created
+
+Verify cron job runs correctly.
+
+--------------------------------
+
+6. Admin Dashboard
+
+Check dashboard stats:
+
+Total Sellers
+Active
+Expiring Soon
+Expired
+
+Verify numbers update correctly.
+
+--------------------------------
+
+7. Mobile Responsive Layout
+
+Verify mobile layout works properly.
+
+Check:
+
+• Seller stats show in a single horizontal row
+• Application stats show in a single horizontal row
+• Seller cards display correctly
+• Buttons remain clickable
+
+Desktop layout must remain unchanged.
+
+--------------------------------
+
+8. Seller Applications Page
+
+Verify:
+
+• Pending
+• Approved
+• Rejected
+
+filters work correctly.
+
+Approve / Reject buttons must function properly.
+
+--------------------------------
+
+9. Seller List Page
+
+Verify:
+
+• Seller code display
+• Email icon opens email dialog
+• Facebook profile link works
+• Delete button works
+
+--------------------------------
+
+10. Seller Registration Link
+
+Check:
+
+• Link is correct
+• Copy button works
+• Sellers can submit application
+
+--------------------------------
+
+11. Email Settings
+
+Verify:
+
+• API status displays correctly
+• Sender name can be updated
+• Save settings works
+
+--------------------------------
+
+12. Group Rules
+
+Check:
+
+• Admin can edit rules
+• Save rules works
+• Rules display correctly on apply page
+
+--------------------------------
+
+13. Security Check
+
+Verify:
+
+• No API errors
+• No console errors
+• No broken routes
+
+--------------------------------
+
+14. PWA / App Installation
+
+Verify:
+
+Admin dashboard supports PWA installation.
+
+Check:
+
+• App installs on mobile
+• Opens in fullscreen
+• No browser URL bar
+
+PWA must only work for:
+
+/admin
+/applications
+
+Not for:
+
+/apply
+
+--------------------------------
+
+15. Performance Check
+
+Verify:
+
+• Pages load correctly
+• No UI glitches
+• No layout breaking on mobile
+
+--------------------------------
+
+Final Step
+
+After completing all checks:
+
+Provide a full report including:
+
+• What works correctly
+• Any issues found
+• Suggestions for improvement

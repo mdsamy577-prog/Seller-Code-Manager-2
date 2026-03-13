@@ -957,8 +957,8 @@ export default function SellerCodeManager() {
           <CardHeader className="pb-4">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
               <CardTitle className="text-lg">Sellers</CardTitle>
-              <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-                <div className="relative w-full sm:w-72">
+              <div className="flex flex-row gap-2 w-full sm:w-auto">
+                <div className="relative flex-1 sm:w-72 sm:flex-none">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
                     placeholder="Search by name, phone, or code..."
@@ -978,7 +978,7 @@ export default function SellerCodeManager() {
                   )}
                 </div>
                 <Select value={durationFilter} onValueChange={setDurationFilter}>
-                  <SelectTrigger className="w-full sm:w-36" data-testid="select-duration-filter">
+                  <SelectTrigger className="w-32 sm:w-36" data-testid="select-duration-filter">
                     <SelectValue placeholder="Duration" />
                   </SelectTrigger>
                   <SelectContent>

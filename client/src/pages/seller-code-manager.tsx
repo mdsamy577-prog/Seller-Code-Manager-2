@@ -77,11 +77,6 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -832,8 +827,8 @@ export default function SellerCodeManager() {
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const [editingCodeId, setEditingCodeId] = useState<number | null>(null);
   const [editingCodeValue, setEditingCodeValue] = useState("");
-  const [emailEditOpen, setEmailEditOpen] = useState<Record<number, boolean>>({});
-  const [emailInputs, setEmailInputs] = useState<Record<number, string>>({});
+  const [emailDialogSeller, setEmailDialogSeller] = useState<Seller | undefined>();
+  const [emailDialogInput, setEmailDialogInput] = useState("");
   const { toast } = useToast();
 
   const logoutMutation = useMutation({
@@ -909,9 +904,9 @@ export default function SellerCodeManager() {
       const res = await apiRequest("PATCH", `/api/sellers/${id}/email`, { email });
       return res.json();
     },
-    onSuccess: (_data, { id }) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/sellers"] });
-      setEmailEditOpen((prev) => ({ ...prev, [id]: false }));
+      setEmailDialogSeller(undefined);
       toast({ title: "Email updated successfully" });
     },
     onError: (error: Error) => {
@@ -1051,25 +1046,9 @@ export default function SellerCodeManager() {
                               <Badge variant="secondary" className="no-default-active-elevate font-mono">
                                 <Hash className="h-3 w-3 mr-1" />{seller.sellerCode}
                               </Badge>
-                              <Popover open={!!emailEditOpen[seller.id]} onOpenChange={(o) => { setEmailEditOpen((prev) => ({ ...prev, [seller.id]: o })); if (o) setEmailInputs((prev) => ({ ...prev, [seller.id]: seller.email || "" })); }}>
-                                <PopoverTrigger asChild>
-                                  <button type="button" onClick={(e) => e.stopPropagation()} className={`inline-flex items-center justify-center transition-colors ${seller.email ? "text-blue-500 hover:text-blue-700" : "text-muted-foreground hover:text-primary"}`} data-testid={`button-email-popup-${seller.id}`}>
-                                    <Mail className="h-3.5 w-3.5" />
-                                  </button>
-                                </PopoverTrigger>
-                                <PopoverContent side="top" align="center" sideOffset={6} className="w-60 p-3 space-y-2">
-                                  <p className="text-xs font-semibold text-foreground">Update Email</p>
-                                  <Input type="email" placeholder="seller@email.com" value={emailInputs[seller.id] ?? seller.email ?? ""} onChange={(e) => setEmailInputs((prev) => ({ ...prev, [seller.id]: e.target.value }))} className="h-8 text-xs" data-testid={`input-email-edit-${seller.id}`} />
-                                  <div className="flex gap-1.5">
-                                    <Button size="sm" className="flex-1 h-7 text-xs" onClick={() => updateEmailMutation.mutate({ id: seller.id, email: emailInputs[seller.id] ?? "" })} disabled={updateEmailMutation.isPending} data-testid={`button-email-save-${seller.id}`}>
-                                      <Save className="h-3 w-3 mr-1" />Save
-                                    </Button>
-                                    <Button size="sm" variant="outline" className="flex-1 h-7 text-xs" onClick={() => resendEmailMutation.mutate(seller.id)} disabled={resendEmailMutation.isPending || !seller.email} data-testid={`button-resend-email-${seller.id}`}>
-                                      <Send className="h-3 w-3 mr-1" />Resend Code
-                                    </Button>
-                                  </div>
-                                </PopoverContent>
-                              </Popover>
+                              <button type="button" onClick={() => { setEmailDialogSeller(seller); setEmailDialogInput(seller.email ?? ""); }} className={`inline-flex items-center justify-center transition-colors ${seller.email ? "text-blue-500 hover:text-blue-700" : "text-muted-foreground hover:text-primary"}`} data-testid={`button-email-popup-${seller.id}`}>
+                                <Mail className="h-3.5 w-3.5" />
+                              </button>
                             </div>
                           </TableCell>
                           <TableCell data-testid={`text-start-${seller.id}`}>
@@ -1119,25 +1098,9 @@ export default function SellerCodeManager() {
                         <Badge variant="secondary" className="no-default-active-elevate font-mono text-xs" data-testid={`text-code-${seller.id}`}>
                           <Hash className="h-3 w-3 mr-1" />{seller.sellerCode}
                         </Badge>
-                        <Popover open={!!emailEditOpen[seller.id]} onOpenChange={(o) => { setEmailEditOpen((prev) => ({ ...prev, [seller.id]: o })); if (o) setEmailInputs((prev) => ({ ...prev, [seller.id]: seller.email || "" })); }}>
-                          <PopoverTrigger asChild>
-                            <button type="button" onClick={(e) => e.stopPropagation()} className={`inline-flex items-center justify-center transition-colors ${seller.email ? "text-blue-500 hover:text-blue-700" : "text-muted-foreground hover:text-primary"}`} data-testid={`button-email-popup-${seller.id}`}>
-                              <Mail className="h-4 w-4" />
-                            </button>
-                          </PopoverTrigger>
-                          <PopoverContent side="top" align="start" sideOffset={6} className="w-64 p-3 space-y-2">
-                            <p className="text-xs font-semibold text-foreground">Update Email</p>
-                            <Input type="email" placeholder="seller@email.com" value={emailInputs[seller.id] ?? seller.email ?? ""} onChange={(e) => setEmailInputs((prev) => ({ ...prev, [seller.id]: e.target.value }))} className="h-8 text-xs" data-testid={`input-email-edit-${seller.id}`} />
-                            <div className="flex gap-1.5">
-                              <Button size="sm" className="flex-1 h-8 text-xs" onClick={() => updateEmailMutation.mutate({ id: seller.id, email: emailInputs[seller.id] ?? "" })} disabled={updateEmailMutation.isPending} data-testid={`button-email-save-${seller.id}`}>
-                                <Save className="h-3 w-3 mr-1" />Save
-                              </Button>
-                              <Button size="sm" variant="outline" className="flex-1 h-8 text-xs" onClick={() => resendEmailMutation.mutate(seller.id)} disabled={resendEmailMutation.isPending || !seller.email} data-testid={`button-resend-email-${seller.id}`}>
-                                <Send className="h-3 w-3 mr-1" />Resend
-                              </Button>
-                            </div>
-                          </PopoverContent>
-                        </Popover>
+                        <button type="button" onClick={() => { setEmailDialogSeller(seller); setEmailDialogInput(seller.email ?? ""); }} className={`inline-flex items-center justify-center transition-colors ${seller.email ? "text-blue-500 hover:text-blue-700" : "text-muted-foreground hover:text-primary"}`} data-testid={`button-email-popup-${seller.id}`}>
+                          <Mail className="h-4 w-4" />
+                        </button>
                         <a href={seller.facebookLink} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-[#1877F2] hover:text-[#0e5bbf]" data-testid={`link-facebook-${seller.id}`}>
                           <SiMeta className="h-3.5 w-3.5" />Profile
                         </a>
@@ -1164,6 +1127,43 @@ export default function SellerCodeManager() {
         <EmailSettings />
 
         <GroupRules />
+
+        <Dialog open={emailDialogSeller !== undefined} onOpenChange={(o) => { if (!o) setEmailDialogSeller(undefined); }}>
+          <DialogContent className="w-[calc(100vw-2rem)] max-w-sm sm:w-full rounded-xl sm:rounded-lg" aria-describedby={undefined}>
+            <DialogHeader>
+              <DialogTitle>Update Email</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 pt-1">
+              <Input
+                type="email"
+                placeholder="seller@email.com"
+                value={emailDialogInput}
+                onChange={(e) => setEmailDialogInput(e.target.value)}
+                className="h-9"
+                data-testid={`input-email-edit-${emailDialogSeller?.id}`}
+              />
+              <div className="flex gap-2">
+                <Button
+                  className="flex-1"
+                  onClick={() => emailDialogSeller && updateEmailMutation.mutate({ id: emailDialogSeller.id, email: emailDialogInput })}
+                  disabled={updateEmailMutation.isPending}
+                  data-testid={`button-email-save-${emailDialogSeller?.id}`}
+                >
+                  <Save className="h-4 w-4 mr-2" />Save
+                </Button>
+                <Button
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => emailDialogSeller && resendEmailMutation.mutate(emailDialogSeller.id)}
+                  disabled={resendEmailMutation.isPending || !emailDialogSeller?.email}
+                  data-testid={`button-resend-email-${emailDialogSeller?.id}`}
+                >
+                  <Send className="h-4 w-4 mr-2" />Resend Code
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
 
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogContent className="w-[calc(100vw-2rem)] max-w-lg sm:w-full rounded-xl sm:rounded-lg" aria-describedby={undefined}>

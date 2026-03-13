@@ -93,7 +93,6 @@ function TableSkeleton() {
 export default function SellerApplications() {
   const { toast } = useToast();
   const [deleteId, setDeleteId] = useState<number | null>(null);
-  const [statsTab, setStatsTab] = useState<"pending" | "approved" | "rejected">("pending");
 
   const { data: applications = [], isLoading } = useQuery<SellerApplication[]>({
     queryKey: ["/api/applications"],
@@ -154,52 +153,7 @@ export default function SellerApplications() {
           <p className="text-muted-foreground mt-1 text-sm">Review and manage seller applications</p>
         </div>
 
-        {/* Mobile: single segmented card — hidden on sm+ */}
-        {(() => {
-          const appTabs = [
-            { key: "pending" as const, label: "Pending", value: pendingCount, valueClass: "text-amber-600 dark:text-amber-400", testId: "text-pending-count" },
-            { key: "approved" as const, label: "Approved", value: approvedCount, valueClass: "text-emerald-600 dark:text-emerald-400", testId: "text-approved-count" },
-            { key: "rejected" as const, label: "Rejected", value: rejectedCount, valueClass: "text-red-600 dark:text-red-400", testId: "text-rejected-count" },
-          ];
-          const sel = appTabs.find((t) => t.key === statsTab)!;
-          return (
-            <Card className="sm:hidden">
-              <CardContent className="px-4 pt-4 pb-4">
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Application Stats</p>
-                <div className="grid grid-cols-3 gap-1 bg-muted rounded-lg p-1 mb-4">
-                  {appTabs.map(({ key, label }) => (
-                    <button
-                      key={key}
-                      type="button"
-                      onClick={() => setStatsTab(key)}
-                      className={`text-xs py-1.5 px-1 rounded-md font-medium transition-colors ${
-                        statsTab === key
-                          ? "bg-background text-foreground shadow-sm"
-                          : "text-muted-foreground hover:text-foreground"
-                      }`}
-                      data-testid={`button-appstat-tab-${key}`}
-                    >
-                      {label}
-                    </button>
-                  ))}
-                </div>
-                <div className={`text-3xl font-bold ${sel.valueClass}`} data-testid={sel.testId}>{sel.value}</div>
-                <p className="text-sm text-muted-foreground mt-0.5">{sel.label}</p>
-                <div className="flex flex-wrap gap-x-3 gap-y-1 mt-3">
-                  {appTabs.map(({ key, label }) => (
-                    <span key={key} className="text-xs text-muted-foreground flex items-center gap-1">
-                      <span className="inline-block w-1.5 h-1.5 rounded-full bg-muted-foreground/40 flex-shrink-0" />
-                      {label}
-                    </span>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          );
-        })()}
-
-        {/* Desktop: three separate cards — hidden on mobile */}
-        <div className="hidden sm:grid sm:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">Pending</CardTitle>

@@ -133,92 +133,46 @@ function StatsCards({ sellers }: { sellers: Seller[] }) {
   const active = sellers.filter((s) => getSellerStatus(s.expiryDate) === "active").length;
   const expiring = sellers.filter((s) => getSellerStatus(s.expiryDate) === "expiring").length;
   const expired = sellers.filter((s) => getSellerStatus(s.expiryDate) === "expired").length;
-  const [activeTab, setActiveTab] = useState<"total" | "active" | "expiring" | "expired">("total");
-
-  const tabs = [
-    { key: "total" as const, label: "Total", value: sellers.length, valueClass: "text-foreground", testId: "text-total-sellers" },
-    { key: "active" as const, label: "Active", value: active, valueClass: "text-emerald-600 dark:text-emerald-400", testId: "text-active-count" },
-    { key: "expiring" as const, label: "Expiring", value: expiring, valueClass: "text-amber-600 dark:text-amber-400", testId: "text-expiring-count" },
-    { key: "expired" as const, label: "Expired", value: expired, valueClass: "text-red-600 dark:text-red-400", testId: "text-expired-count" },
-  ];
-  const selected = tabs.find((t) => t.key === activeTab)!;
 
   return (
-    <>
-      {/* Mobile: single segmented card — hidden on sm+ */}
-      <Card className="sm:hidden">
-        <CardContent className="px-4 pt-4 pb-4">
-          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Seller Stats</p>
-          <div className="grid grid-cols-4 gap-1 bg-muted rounded-lg p-1 mb-4">
-            {tabs.map(({ key, label }) => (
-              <button
-                key={key}
-                type="button"
-                onClick={() => setActiveTab(key)}
-                className={`text-xs py-1.5 px-1 rounded-md font-medium transition-colors ${
-                  activeTab === key
-                    ? "bg-background text-foreground shadow-sm"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-                data-testid={`button-stat-tab-${key}`}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-          <div className={`text-3xl font-bold ${selected.valueClass}`} data-testid={selected.testId}>{selected.value}</div>
-          <p className="text-sm text-muted-foreground mt-0.5">{selected.label}</p>
-          <div className="flex flex-wrap gap-x-3 gap-y-1 mt-3">
-            {tabs.map(({ key, label }) => (
-              <span key={key} className="text-xs text-muted-foreground flex items-center gap-1">
-                <span className="inline-block w-1.5 h-1.5 rounded-full bg-muted-foreground/40 flex-shrink-0" />
-                {label}
-              </span>
-            ))}
-          </div>
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium text-muted-foreground">Total Sellers</CardTitle>
+          <Users className="h-4 w-4 text-muted-foreground" />
+        </CardHeader>
+        <CardContent>
+          <div className="text-2xl font-bold" data-testid="text-total-sellers">{sellers.length}</div>
         </CardContent>
       </Card>
-
-      {/* Desktop: four separate cards — hidden on mobile */}
-      <div className="hidden sm:grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Sellers</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold" data-testid="text-total-sellers">{sellers.length}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Active</CardTitle>
-            <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400" data-testid="text-active-count">{active}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Expiring Soon</CardTitle>
-            <AlertTriangle className="h-4 w-4 text-amber-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-amber-600 dark:text-amber-400" data-testid="text-expiring-count">{expiring}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Expired</CardTitle>
-            <XCircle className="h-4 w-4 text-red-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-red-600 dark:text-red-400" data-testid="text-expired-count">{expired}</div>
-          </CardContent>
-        </Card>
-      </div>
-    </>
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium text-muted-foreground">Active</CardTitle>
+          <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+        </CardHeader>
+        <CardContent>
+          <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400" data-testid="text-active-count">{active}</div>
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium text-muted-foreground">Expiring Soon</CardTitle>
+          <AlertTriangle className="h-4 w-4 text-amber-500" />
+        </CardHeader>
+        <CardContent>
+          <div className="text-2xl font-bold text-amber-600 dark:text-amber-400" data-testid="text-expiring-count">{expiring}</div>
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium text-muted-foreground">Expired</CardTitle>
+          <XCircle className="h-4 w-4 text-red-500" />
+        </CardHeader>
+        <CardContent>
+          <div className="text-2xl font-bold text-red-600 dark:text-red-400" data-testid="text-expired-count">{expired}</div>
+        </CardContent>
+      </Card>
+    </div>
   );
 }
 

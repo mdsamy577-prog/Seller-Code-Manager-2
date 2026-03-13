@@ -10,6 +10,7 @@ import SellerApplications from "@/pages/seller-applications";
 import Login from "@/pages/login";
 import AdminSetup from "@/pages/admin-setup";
 import { Skeleton } from "@/components/ui/skeleton";
+import { usePWA } from "@/hooks/use-pwa";
 
 interface AuthStatus {
   setupRequired: boolean;
@@ -19,6 +20,7 @@ interface AuthStatus {
 
 function ProtectedRouter() {
   const [location] = useLocation();
+  usePWA();
 
   const { data: authStatus, isLoading } = useQuery<AuthStatus>({
     queryKey: ["/api/auth/status"],
@@ -53,6 +55,7 @@ function ProtectedRouter() {
   return (
     <Switch>
       <Route path="/" component={SellerCodeManager} />
+      <Route path="/admin" component={SellerCodeManager} />
       <Route path="/applications" component={SellerApplications} />
       <Route component={NotFound} />
     </Switch>

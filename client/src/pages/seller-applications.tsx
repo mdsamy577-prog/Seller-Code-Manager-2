@@ -9,6 +9,8 @@ import {
   Clock,
   ClipboardList,
   Trash2,
+  FileText,
+  Download,
 } from "lucide-react";
 import { SiMeta } from "react-icons/si";
 import { Button } from "@/components/ui/button";
@@ -214,6 +216,7 @@ export default function SellerApplications() {
                         <TableHead className="whitespace-nowrap text-xs py-2 w-16">Dur.</TableHead>
                         <TableHead className="whitespace-nowrap text-xs py-2 w-16">Pay.</TableHead>
                         <TableHead className="whitespace-nowrap text-xs py-2">Sender</TableHead>
+                        <TableHead className="whitespace-nowrap text-xs py-2">NID</TableHead>
                         <TableHead className="whitespace-nowrap text-xs py-2">Status</TableHead>
                         <TableHead className="whitespace-nowrap text-xs py-2 text-right">Actions</TableHead>
                       </TableRow>
@@ -245,6 +248,38 @@ export default function SellerApplications() {
                             <Badge variant="secondary" className="no-default-active-elevate text-xs">{paymentMethodLabels[app.paymentMethod] || app.paymentMethod}</Badge>
                           </TableCell>
                           <TableCell className="text-xs py-1.5" data-testid={`text-app-sender-number-${app.id}`}>{app.senderNumber}</TableCell>
+                          <TableCell className="py-1.5">
+                            {app.nidFileUrl ? (
+                              <div className="flex items-center gap-1">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-6 text-xs px-1.5 text-violet-700 border-violet-300 hover:bg-violet-50 dark:text-violet-400 dark:border-violet-700 dark:hover:bg-violet-950"
+                                  onClick={() => window.open(app.nidFileUrl!, "_blank")}
+                                  data-testid={`button-view-nid-${app.id}`}
+                                >
+                                  <FileText className="h-3 w-3 mr-1" />View NID
+                                </Button>
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  className="h-6 w-6"
+                                  onClick={() => {
+                                    const a = document.createElement("a");
+                                    a.href = app.nidFileUrl!;
+                                    a.download = app.nidFileUrl!.split("/").pop() || "nid";
+                                    a.target = "_blank";
+                                    a.click();
+                                  }}
+                                  data-testid={`button-download-nid-${app.id}`}
+                                >
+                                  <Download className="h-3 w-3 text-muted-foreground" />
+                                </Button>
+                              </div>
+                            ) : (
+                              <span className="text-xs text-muted-foreground/50">—</span>
+                            )}
+                          </TableCell>
                           <TableCell className="py-1.5"><StatusBadge status={app.status} /></TableCell>
                           <TableCell className="py-1.5">
                             <div className="flex items-center justify-end gap-1">
@@ -294,6 +329,34 @@ export default function SellerApplications() {
                         </a>
                         <span data-testid={`text-app-sender-number-${app.id}`}>Sender: {app.senderNumber}</span>
                       </div>
+                      {app.nidFileUrl && (
+                        <div className="flex items-center gap-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-8 text-xs text-violet-700 border-violet-300 hover:bg-violet-50 dark:text-violet-400 dark:border-violet-700 dark:hover:bg-violet-950"
+                            onClick={() => window.open(app.nidFileUrl!, "_blank")}
+                            data-testid={`button-view-nid-mobile-${app.id}`}
+                          >
+                            <FileText className="h-3.5 w-3.5 mr-1.5" />View NID
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-8 text-xs"
+                            onClick={() => {
+                              const a = document.createElement("a");
+                              a.href = app.nidFileUrl!;
+                              a.download = app.nidFileUrl!.split("/").pop() || "nid";
+                              a.target = "_blank";
+                              a.click();
+                            }}
+                            data-testid={`button-download-nid-mobile-${app.id}`}
+                          >
+                            <Download className="h-3.5 w-3.5 mr-1" />Download
+                          </Button>
+                        </div>
+                      )}
                       <div className="flex items-center gap-2 pt-0.5">
                         <Button size="sm" variant={app.status === "approved" ? "default" : "outline"} className={`flex-1 h-9 text-xs ${app.status !== "approved" ? "text-emerald-700 border-emerald-300 hover:bg-emerald-50 dark:text-emerald-400 dark:border-emerald-700 dark:hover:bg-emerald-950" : "bg-emerald-600 hover:bg-emerald-700"}`} onClick={() => approveMutation.mutate(app.id)} disabled={approveMutation.isPending || rejectMutation.isPending || app.status !== "pending"} data-testid={`button-approve-${app.id}`}>
                           <CheckCircle2 className="h-3.5 w-3.5 mr-1.5" />Approve

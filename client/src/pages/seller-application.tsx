@@ -1,8 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { User, Phone, CheckCircle2, Wallet, Hash, Copy, Mail, BookOpen, ShieldCheck, Send, ClipboardList, CreditCard, Link, TriangleAlert } from "lucide-react";
+import { User, Phone, CheckCircle2, Wallet, Hash, Copy, Mail, BookOpen, ShieldCheck, Send, ClipboardList, CreditCard, Link, TriangleAlert, Upload, FileText, X, ImageIcon } from "lucide-react";
 import { SiMeta } from "react-icons/si";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -47,6 +47,7 @@ const applicationFormSchema = z.object({
       "আপনি যে ইমেইলটি লিখেছেন তা সঠিক নয়। দয়া করে একটি সঠিক Gmail লিখুন (example@gmail.com)।"
     ),
   ]).optional(),
+  nidFileUrl: z.string().optional(),
 });
 
 type ApplicationFormValues = z.infer<typeof applicationFormSchema>;
@@ -74,8 +75,10 @@ const dashboardPackages = ["1", "6", "9", "12"];
 export default function SellerApplication() {
   const { toast } = useToast();
   const [submitted, setSubmitted] = useState(false);
-
   const [emailErrorOpen, setEmailErrorOpen] = useState(false);
+  const [nidFile, setNidFile] = useState<File | null>(null);
+  const [nidUploading, setNidUploading] = useState(false);
+  const nidInputRef = useRef<HTMLInputElement>(null);
 
   const form = useForm<ApplicationFormValues>({
     resolver: zodResolver(applicationFormSchema),
@@ -89,6 +92,7 @@ export default function SellerApplication() {
       paymentMethod: "bkash",
       senderNumber: "",
       email: "",
+      nidFileUrl: "",
     },
   });
 
@@ -120,8 +124,37 @@ export default function SellerApplication() {
     },
   });
 
-  const onSubmit = (data: ApplicationFormValues) => {
-    const payload = { ...data, email: data.email?.trim() || undefined };
+  const onSubmit = async (data: ApplicationFormValues) => {
+    let nidFileUrl = data.nidFileUrl || "";
+
+    if (nidFile && !nidFileUrl) {
+      try {
+        setNidUploading(true);
+        const sellerCode = `TEMP_${data.phone}`;
+        const formData = new FormData();
+        formData.append("nid", nidFile);
+        formData.append("sellerCode", sellerCode);
+        formData.append("phone", data.phone);
+        const res = await fetch("/api/applications/upload-nid", {
+          method: "POST",
+          body: formData,
+        });
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.message || "NID upload failed");
+        }
+        const result = await res.json();
+        nidFileUrl = result.url;
+        form.setValue("nidFileUrl", nidFileUrl);
+      } catch (err: any) {
+        toast({ title: "NID Upload Failed", description: err.message, variant: "destructive" });
+        return;
+      } finally {
+        setNidUploading(false);
+      }
+    }
+
+    const payload = { ...data, email: data.email?.trim() || undefined, nidFileUrl: nidFileUrl || undefined };
     submitMutation.mutate(payload);
   };
 
@@ -542,15 +575,85 @@ export default function SellerApplication() {
                     )}
                   />
 
+                  <div className="flex items-center gap-3 pt-1">
+                    <div className="flex-1 h-px bg-gradient-to-r from-transparent via-violet-200 dark:via-violet-800 to-transparent" />
+                    <span className="text-[11px] font-semibold text-violet-600 dark:text-violet-400 uppercase tracking-widest px-1">NID / পরিচয়পত্র</span>
+                    <div className="flex-1 h-px bg-gradient-to-r from-transparent via-violet-200 dark:via-violet-800 to-transparent" />
+                  </div>
+
+                  <div className="space-y-2">
+                    <p className="text-sm font-semibold text-foreground/80">NID / জাতীয় পরিচয়পত্র (ঐচ্ছিক)</p>
+                    <div
+                      className={`relative rounded-xl border-2 border-dashed transition-all duration-200 cursor-pointer ${
+                        nidFile
+                          ? "border-violet-400 bg-violet-50 dark:bg-violet-950/20"
+                          : "border-border/60 hover:border-violet-300 dark:hover:border-violet-700 hover:bg-violet-50/50 dark:hover:bg-violet-950/10"
+                      }`}
+                      onClick={() => nidInputRef.current?.click()}
+                      data-testid="input-nid-upload-area"
+                    >
+                      <input
+                        ref={nidInputRef}
+                        type="file"
+                        accept="image/jpeg,image/png,application/pdf"
+                        className="hidden"
+                        data-testid="input-nid-file"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            setNidFile(file);
+                            form.setValue("nidFileUrl", "");
+                          }
+                        }}
+                      />
+                      {nidFile ? (
+                        <div className="flex items-center justify-between p-3.5">
+                          <div className="flex items-center gap-3">
+                            {nidFile.type === "application/pdf" ? (
+                              <FileText className="h-8 w-8 text-violet-500 shrink-0" />
+                            ) : (
+                              <ImageIcon className="h-8 w-8 text-violet-500 shrink-0" />
+                            )}
+                            <div>
+                              <p className="text-sm font-medium text-violet-700 dark:text-violet-300 truncate max-w-[180px]">{nidFile.name}</p>
+                              <p className="text-xs text-muted-foreground">{(nidFile.size / 1024).toFixed(1)} KB</p>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            className="p-1 rounded-full hover:bg-violet-100 dark:hover:bg-violet-900/40 transition-colors"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setNidFile(null);
+                              form.setValue("nidFileUrl", "");
+                              if (nidInputRef.current) nidInputRef.current.value = "";
+                            }}
+                            data-testid="button-remove-nid"
+                          >
+                            <X className="h-4 w-4 text-violet-500" />
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex flex-col items-center justify-center py-6 px-4 text-center">
+                          <Upload className="h-8 w-8 text-muted-foreground/50 mb-2" />
+                          <p className="text-sm text-muted-foreground">
+                            NID ছবি বা PDF আপলোড করুন
+                          </p>
+                          <p className="text-xs text-muted-foreground/70 mt-1">JPG, PNG বা PDF (সর্বোচ্চ 10MB)</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
                   <div className="pt-2">
                     <Button
                       type="submit"
                       className="w-full bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:from-blue-700 hover:via-indigo-700 hover:to-purple-700 text-white font-bold py-6 text-base rounded-xl shadow-lg shadow-indigo-500/30 hover:shadow-xl hover:shadow-indigo-500/40 hover:scale-[1.01] active:scale-[0.99] transition-all duration-200"
-                      disabled={submitMutation.isPending}
+                      disabled={submitMutation.isPending || nidUploading}
                       data-testid="button-submit-application"
                     >
                       <Send className="h-4 w-4 mr-2" />
-                      {submitMutation.isPending ? "জমা হচ্ছে..." : "আবেদন জমা দিন"}
+                      {nidUploading ? "NID আপলোড হচ্ছে..." : submitMutation.isPending ? "জমা হচ্ছে..." : "আবেদন জমা দিন"}
                     </Button>
                   </div>
                 </form>

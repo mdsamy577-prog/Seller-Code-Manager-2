@@ -72,6 +72,7 @@ export const sellerApplications = pgTable("seller_applications", {
   email: text("email"),
   status: text("status").notNull().default("pending"),
   createdAt: text("created_at").notNull().default(sql`now()`),
+  nidFileUrl: text("nid_file_url"),
 });
 
 export const insertSellerApplicationSchema = createInsertSchema(sellerApplications).pick({
@@ -83,6 +84,7 @@ export const insertSellerApplicationSchema = createInsertSchema(sellerApplicatio
   paymentMethod: true,
   senderNumber: true,
   email: true,
+  nidFileUrl: true,
 });
 
 export type InsertSellerApplication = z.infer<typeof insertSellerApplicationSchema>;

@@ -5,6 +5,21 @@ import { insertSellerSchema, insertSellerApplicationSchema } from "@shared/schem
 import passport from "passport";
 import { hashPassword, verifyPassword } from "./auth";
 import { sendSellerCodeEmail } from "./email";
+import multer from "multer";
+import { uploadNidFile } from "./cloudinary";
+
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    const allowed = ["image/jpeg", "image/png", "application/pdf"];
+    if (allowed.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error("Only JPG, PNG, or PDF files are allowed"));
+    }
+  },
+});
 
 const DURATION_MONTHS: Record<string, number> = {
   "1_month": 1,
@@ -490,6 +505,26 @@ export async function registerRoutes(
       res.status(201).json(application);
     } catch (error) {
       res.status(500).json({ message: "Failed to submit application" });
+    }
+  });
+
+  app.post("/api/applications/upload-nid", upload.single("nid"), async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ message: "No file uploaded" });
+      }
+      const { sellerCode, phone } = req.body;
+      if (!sellerCode || !phone) {
+        return res.status(400).json({ message: "sellerCode and phone are required" });
+      }
+      const ext = req.file.mimetype === "application/pdf" ? "pdf"
+        : req.file.mimetype === "image/png" ? "png"
+        : "jpg";
+      const publicId = `${sellerCode}_${phone}.${ext}`;
+      const secureUrl = await uploadNidFile(req.file.buffer, req.file.mimetype, publicId);
+      res.json({ url: secureUrl });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message || "Failed to upload NID file" });
     }
   });
 

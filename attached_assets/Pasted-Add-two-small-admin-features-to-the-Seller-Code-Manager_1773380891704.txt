@@ -1,0 +1,77 @@
+Add two small admin features to the Seller Code Manager system without modifying any existing logic, database structure, email system, cron jobs, reminder system, or UI layout.
+
+The system is already working correctly. Do NOT change or break any existing functionality.
+
+New Features Required:
+
+1. Edit Email Feature (Admin Panel – Sellers Table)
+
+In the Sellers table, where the email icon is currently displayed next to the Seller Code, add a small clickable option for editing the email.
+
+Behavior:
+
+- When the admin clicks the email icon, a small popup/modal should appear.
+- The popup should contain:
+  - Email input field
+  - Save button
+
+Example UI:
+
+Update Email
+[ seller@email.com ]
+[ Save ]
+
+Function:
+
+- Admin can correct the email address if the customer entered it wrong.
+- When Save is clicked:
+  - Update the email in the database
+  - Close the popup
+  - Keep the UI exactly as it is now.
+
+Important:
+Do not change the table layout, column positions, or styles.
+
+2. Resend Seller Code Email Feature
+
+After the email is corrected, the admin should be able to resend the seller code email.
+
+Add a small button inside the same popup or next to the email icon:
+
+Resend Code
+
+When clicked:
+
+- Trigger the existing email function that sends the seller code.
+- Use the existing email template already used when a seller is approved.
+- Do NOT create a new email template.
+- Send the email again using the stored seller data.
+
+The email must include:
+
+- Seller Name
+- Seller Code
+- Start Date
+- Expiry Date
+
+Important Rules (Do Not Modify):
+
+Do NOT change:
+
+- Reminder email system
+- Expiry notification system
+- Cron job scheduler
+- Application approval system
+- Database schema
+- Existing email templates
+- UI layout or design
+- Any existing API routes
+
+Only add the two features:
+
+1. Edit Email
+2. Resend Seller Code
+
+The goal is only to allow admins to fix incorrect customer emails and resend the seller code email if it previously failed.
+
+Ensure the system continues working exactly as it does now.

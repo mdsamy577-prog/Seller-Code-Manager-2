@@ -824,6 +824,8 @@ export default function SellerCodeManager() {
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const [editingCodeId, setEditingCodeId] = useState<number | null>(null);
   const [editingCodeValue, setEditingCodeValue] = useState("");
+  const [emailEditOpen, setEmailEditOpen] = useState<Record<number, boolean>>({});
+  const [emailInputs, setEmailInputs] = useState<Record<number, string>>({});
   const { toast } = useToast();
 
   const logoutMutation = useMutation({
@@ -891,6 +893,34 @@ export default function SellerCodeManager() {
     },
     onError: (error: Error) => {
       toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const updateEmailMutation = useMutation({
+    mutationFn: async ({ id, email }: { id: number; email: string }) => {
+      const res = await apiRequest("PATCH", `/api/sellers/${id}/email`, { email });
+      return res.json();
+    },
+    onSuccess: (_data, { id }) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/sellers"] });
+      setEmailEditOpen((prev) => ({ ...prev, [id]: false }));
+      toast({ title: "Email updated successfully" });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const resendEmailMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const res = await apiRequest("POST", `/api/sellers/${id}/resend-email`);
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Seller code email sent successfully" });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Failed to send email", description: error.message, variant: "destructive" });
     },
   });
 
@@ -1024,29 +1054,57 @@ export default function SellerCodeManager() {
                               <Hash className="h-3 w-3 mr-1" />
                               {seller.sellerCode}
                             </Badge>
-                            {seller.email && (
-                              <Popover>
-                                <PopoverTrigger asChild>
-                                  <button
-                                    type="button"
-                                    className="inline-flex items-center justify-center text-muted-foreground hover:text-primary transition-colors"
-                                    data-testid={`button-email-popup-${seller.id}`}
-                                  >
-                                    <Mail className="h-3.5 w-3.5" />
-                                  </button>
-                                </PopoverTrigger>
-                                <PopoverContent
-                                  side="top"
-                                  align="center"
-                                  sideOffset={6}
-                                  className="w-auto p-2 text-xs"
+                            <Popover
+                              open={!!emailEditOpen[seller.id]}
+                              onOpenChange={(o) => {
+                                setEmailEditOpen((prev) => ({ ...prev, [seller.id]: o }));
+                                if (o) setEmailInputs((prev) => ({ ...prev, [seller.id]: seller.email || "" }));
+                              }}
+                            >
+                              <PopoverTrigger asChild>
+                                <button
+                                  type="button"
+                                  className={`inline-flex items-center justify-center transition-colors ${seller.email ? "text-blue-500 hover:text-blue-700" : "text-muted-foreground hover:text-primary"}`}
+                                  data-testid={`button-email-popup-${seller.id}`}
                                 >
-                                  <span className="select-all text-foreground" data-testid={`text-email-popup-${seller.id}`}>
-                                    {seller.email}
-                                  </span>
-                                </PopoverContent>
-                              </Popover>
-                            )}
+                                  <Mail className="h-3.5 w-3.5" />
+                                </button>
+                              </PopoverTrigger>
+                              <PopoverContent side="top" align="center" sideOffset={6} className="w-60 p-3 space-y-2">
+                                <p className="text-xs font-semibold text-foreground">Update Email</p>
+                                <Input
+                                  type="email"
+                                  placeholder="seller@email.com"
+                                  value={emailInputs[seller.id] ?? seller.email ?? ""}
+                                  onChange={(e) => setEmailInputs((prev) => ({ ...prev, [seller.id]: e.target.value }))}
+                                  className="h-8 text-xs"
+                                  data-testid={`input-email-edit-${seller.id}`}
+                                />
+                                <div className="flex gap-1.5">
+                                  <Button
+                                    size="sm"
+                                    className="flex-1 h-7 text-xs"
+                                    onClick={() => updateEmailMutation.mutate({ id: seller.id, email: emailInputs[seller.id] ?? "" })}
+                                    disabled={updateEmailMutation.isPending}
+                                    data-testid={`button-email-save-${seller.id}`}
+                                  >
+                                    <Save className="h-3 w-3 mr-1" />
+                                    Save
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="flex-1 h-7 text-xs"
+                                    onClick={() => resendEmailMutation.mutate(seller.id)}
+                                    disabled={resendEmailMutation.isPending || !seller.email}
+                                    data-testid={`button-resend-email-${seller.id}`}
+                                  >
+                                    <Send className="h-3 w-3 mr-1" />
+                                    Resend Code
+                                  </Button>
+                                </div>
+                              </PopoverContent>
+                            </Popover>
                           </div>
                         </TableCell>
                         <TableCell data-testid={`text-start-${seller.id}`}>

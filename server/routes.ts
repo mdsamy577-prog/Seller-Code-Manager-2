@@ -290,6 +290,42 @@ export async function registerRoutes(
     }
   });
 
+  app.patch("/api/sellers/:id/email", requireAuth, async (req, res) => {
+    try {
+      const id = parseInt(String(req.params.id));
+      const { email } = req.body;
+      if (email && (typeof email !== "string" || !email.includes("@"))) {
+        return res.status(400).json({ message: "Valid email required" });
+      }
+      const existing = await storage.getSellerById(id);
+      if (!existing) return res.status(404).json({ message: "Seller not found" });
+      const updated = await storage.updateSeller(id, { ...existing, email: email || undefined });
+      res.json(updated);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to update email" });
+    }
+  });
+
+  app.post("/api/sellers/:id/resend-email", requireAuth, async (req, res) => {
+    try {
+      const id = parseInt(String(req.params.id));
+      const seller = await storage.getSellerById(id);
+      if (!seller) return res.status(404).json({ message: "Seller not found" });
+      if (!seller.email) return res.status(400).json({ message: "No email address on file" });
+      const sent = await sendSellerCodeEmail(
+        seller.email,
+        seller.name,
+        seller.sellerCode,
+        seller.startDate,
+        seller.expiryDate
+      );
+      if (!sent) return res.status(500).json({ message: "Failed to send email" });
+      res.json({ message: "Email sent successfully" });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to resend email" });
+    }
+  });
+
   app.get("/api/settings/messenger", requireAuth, async (_req, res) => {
     try {
       const pageName = await storage.getSetting("FACEBOOK_PAGE_NAME");

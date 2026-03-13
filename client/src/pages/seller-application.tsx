@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { User, Phone, CheckCircle2, Wallet, Hash, Copy, Mail, BookOpen, ShieldCheck, Send, ClipboardList, CreditCard, Link } from "lucide-react";
+import { User, Phone, CheckCircle2, Wallet, Hash, Copy, Mail, BookOpen, ShieldCheck, Send, ClipboardList, CreditCard, Link, TriangleAlert } from "lucide-react";
 import { SiMeta } from "react-icons/si";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -40,7 +40,13 @@ const applicationFormSchema = z.object({
   sellerType: z.enum(["personal_facebook_id", "facebook_business_page"]),
   paymentMethod: z.enum(["bkash", "nagad"]),
   senderNumber: z.string().min(1, "Sender number is required"),
-  email: z.string().email("সঠিক ইমেইল দিন").or(z.literal("")).optional(),
+  email: z.union([
+    z.literal(""),
+    z.string().regex(
+      /^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9\-]+(\.[a-zA-Z0-9\-]+)*\.(com|net|org|edu|info|co|io)$/i,
+      "আপনি যে ইমেইলটি লিখেছেন তা সঠিক নয়।\nদয়া করে একটি সঠিক ইমেইল লিখুন।"
+    ),
+  ]).optional(),
 });
 
 type ApplicationFormValues = z.infer<typeof applicationFormSchema>;
@@ -69,8 +75,11 @@ export default function SellerApplication() {
   const { toast } = useToast();
   const [submitted, setSubmitted] = useState(false);
 
+  const [emailErrorOpen, setEmailErrorOpen] = useState(false);
+
   const form = useForm<ApplicationFormValues>({
     resolver: zodResolver(applicationFormSchema),
+    mode: "onChange",
     defaultValues: {
       name: "",
       phone: "",
@@ -315,6 +324,29 @@ export default function SellerApplication() {
             </DialogContent>
           </Dialog>
 
+          <Dialog open={emailErrorOpen} onOpenChange={setEmailErrorOpen}>
+            <DialogContent className="sm:max-w-sm" aria-describedby={undefined}>
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2 text-red-600 dark:text-red-400">
+                  <TriangleAlert className="h-5 w-5 shrink-0" />
+                  ইমেইল সঠিক নয়
+                </DialogTitle>
+              </DialogHeader>
+              <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">
+                {"আপনি যে ইমেইলটি লিখেছেন তা সঠিক নয়।\nদয়া করে একটি সঠিক ইমেইল লিখুন।"}
+              </p>
+              <div className="pt-1">
+                <Button
+                  className="w-full"
+                  onClick={() => setEmailErrorOpen(false)}
+                  data-testid="button-close-email-error"
+                >
+                  ঠিক আছে
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+
           <Card className="shadow-xl border-0 bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm overflow-hidden">
             <div className="h-1.5 bg-gradient-to-r from-emerald-400 via-teal-500 to-cyan-500" />
             <CardHeader className="text-center pb-2 pt-8 px-6">
@@ -328,7 +360,7 @@ export default function SellerApplication() {
             </CardHeader>
             <CardContent className="px-6 pb-8">
               <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5 mt-2">
+                <form onSubmit={form.handleSubmit(onSubmit, (errors) => { if (errors.email) setEmailErrorOpen(true); })} className="space-y-5 mt-2">
 
                   <div className="flex items-center gap-3">
                     <div className="flex-1 h-px bg-gradient-to-r from-transparent via-emerald-200 dark:via-emerald-800 to-transparent" />
@@ -493,7 +525,16 @@ export default function SellerApplication() {
                         <FormControl>
                           <div className="relative">
                             <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/70" />
-                            <Input placeholder="আপনার ইমেইল অথবা জিমেইল লিখুন" className="pl-10 h-11 rounded-xl border-border/60 bg-background focus-visible:ring-2 focus-visible:ring-blue-500/25 focus-visible:border-blue-400 transition-all duration-200" {...field} data-testid="input-apply-email" />
+                            <Input
+                              placeholder="আপনার ইমেইল অথবা জিমেইল লিখুন"
+                              className={`pl-10 h-11 rounded-xl bg-background focus-visible:ring-2 transition-all duration-200 ${
+                                form.formState.errors.email
+                                  ? "border-red-400 focus-visible:ring-red-500/25 focus-visible:border-red-500"
+                                  : "border-border/60 focus-visible:ring-blue-500/25 focus-visible:border-blue-400"
+                              }`}
+                              {...field}
+                              data-testid="input-apply-email"
+                            />
                           </div>
                         </FormControl>
                         <FormMessage />

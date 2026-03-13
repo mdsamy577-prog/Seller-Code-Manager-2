@@ -185,6 +185,14 @@ export default function SellerApplications() {
                 </div>
                 <div className={`text-3xl font-bold ${sel.valueClass}`} data-testid={sel.testId}>{sel.value}</div>
                 <p className="text-sm text-muted-foreground mt-0.5">{sel.label}</p>
+                <div className="flex flex-wrap gap-x-3 gap-y-1 mt-3">
+                  {appTabs.map(({ key, label }) => (
+                    <span key={key} className="text-xs text-muted-foreground flex items-center gap-1">
+                      <span className="inline-block w-1.5 h-1.5 rounded-full bg-muted-foreground/40 flex-shrink-0" />
+                      {label}
+                    </span>
+                  ))}
+                </div>
               </CardContent>
             </Card>
           );

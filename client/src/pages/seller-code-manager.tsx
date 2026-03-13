@@ -168,6 +168,14 @@ function StatsCards({ sellers }: { sellers: Seller[] }) {
           </div>
           <div className={`text-3xl font-bold ${selected.valueClass}`} data-testid={selected.testId}>{selected.value}</div>
           <p className="text-sm text-muted-foreground mt-0.5">{selected.label}</p>
+          <div className="flex flex-wrap gap-x-3 gap-y-1 mt-3">
+            {tabs.map(({ key, label }) => (
+              <span key={key} className="text-xs text-muted-foreground flex items-center gap-1">
+                <span className="inline-block w-1.5 h-1.5 rounded-full bg-muted-foreground/40 flex-shrink-0" />
+                {label}
+              </span>
+            ))}
+          </div>
         </CardContent>
       </Card>
 

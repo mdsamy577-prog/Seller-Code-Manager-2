@@ -147,10 +147,10 @@ export default function SellerApplications() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="w-full max-w-[1400px] mx-auto p-4 space-y-4">
+      <div className="w-full max-w-[1400px] mx-auto p-3 sm:p-4 space-y-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight" data-testid="text-applications-title">Seller Applications</h1>
-          <p className="text-muted-foreground mt-1">Review and manage seller applications</p>
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight" data-testid="text-applications-title">Seller Applications</h1>
+          <p className="text-muted-foreground mt-1 text-sm">Review and manage seller applications</p>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -201,105 +201,114 @@ export default function SellerApplications() {
                 </p>
               </div>
             ) : (
-              <div className="rounded-md border mx-4">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="whitespace-nowrap text-xs py-2">Name</TableHead>
-                      <TableHead className="whitespace-nowrap text-xs py-2">Phone</TableHead>
-                      <TableHead className="whitespace-nowrap text-xs py-2 w-10">FB</TableHead>
-                      <TableHead className="whitespace-nowrap text-xs py-2">Type</TableHead>
-                      <TableHead className="whitespace-nowrap text-xs py-2 w-16">Dur.</TableHead>
-                      <TableHead className="whitespace-nowrap text-xs py-2 w-16">Pay.</TableHead>
-                      <TableHead className="whitespace-nowrap text-xs py-2">Sender</TableHead>
-                      <TableHead className="whitespace-nowrap text-xs py-2">Status</TableHead>
-                      <TableHead className="whitespace-nowrap text-xs py-2 text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {applications.map((app) => (
-                      <TableRow key={app.id} data-testid={`row-application-${app.id}`}>
-                        <TableCell className="font-medium text-xs py-1.5" data-testid={`text-app-name-${app.id}`}>{app.name}</TableCell>
-                        <TableCell className="text-xs py-1.5" data-testid={`text-app-phone-${app.id}`}>{app.phone}</TableCell>
-                        <TableCell className="py-1.5 w-10 text-center">
-                          <a
-                            href={app.facebookLink}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center justify-center text-[#1877F2] hover:text-[#0e5bbf] transition-colors"
-                            data-testid={`link-app-facebook-${app.id}`}
-                          >
-                            <SiMeta className="h-4 w-4" />
-                          </a>
-                        </TableCell>
-                        <TableCell className="py-1.5" data-testid={`text-app-seller-type-${app.id}`}>
-                          <Tooltip>
-                            <TooltipTrigger>
-                              <Badge variant="secondary" className="no-default-active-elevate text-xs cursor-default">
-                                {sellerTypeShortLabels[app.sellerType] || app.sellerType}
-                              </Badge>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <p>{sellerTypeLabels[app.sellerType] || app.sellerType}</p>
-                            </TooltipContent>
-                          </Tooltip>
-                        </TableCell>
-                        <TableCell className="py-1.5 w-16" data-testid={`text-app-duration-${app.id}`}>
-                          <Badge variant="secondary" className="no-default-active-elevate text-xs">
-                            {durationLabels[app.duration] || app.duration}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="py-1.5 w-16" data-testid={`text-app-payment-method-${app.id}`}>
-                          <Badge variant="secondary" className="no-default-active-elevate text-xs">
-                            {paymentMethodLabels[app.paymentMethod] || app.paymentMethod}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-xs py-1.5" data-testid={`text-app-sender-number-${app.id}`}>
-                          {app.senderNumber}
-                        </TableCell>
-                        <TableCell className="py-1.5">
-                          <StatusBadge status={app.status} />
-                        </TableCell>
-                        <TableCell className="py-1.5">
-                          <div className="flex items-center justify-end gap-1">
-                            <Button
-                              size="sm"
-                              variant={app.status === "approved" ? "default" : "outline"}
-                              className={`h-6 text-xs px-1.5 ${app.status !== "approved" ? "text-emerald-700 border-emerald-300 hover:bg-emerald-50 dark:text-emerald-400 dark:border-emerald-700 dark:hover:bg-emerald-950" : "bg-emerald-600 hover:bg-emerald-700"}`}
-                              onClick={() => approveMutation.mutate(app.id)}
-                              disabled={approveMutation.isPending || rejectMutation.isPending || app.status !== "pending"}
-                              data-testid={`button-approve-${app.id}`}
-                            >
-                              <CheckCircle2 className="h-3 w-3 mr-1" />
-                              Approve
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant={app.status === "rejected" ? "default" : "outline"}
-                              className={`h-6 text-xs px-1.5 ${app.status !== "rejected" ? "text-red-700 border-red-300 hover:bg-red-50 dark:text-red-400 dark:border-red-700 dark:hover:bg-red-950" : "bg-red-600 hover:bg-red-700"}`}
-                              onClick={() => rejectMutation.mutate(app.id)}
-                              disabled={approveMutation.isPending || rejectMutation.isPending || app.status !== "pending"}
-                              data-testid={`button-reject-${app.id}`}
-                            >
-                              <XCircle className="h-3 w-3 mr-1" />
-                              Reject
-                            </Button>
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              className="h-6 w-6"
-                              onClick={() => setDeleteId(app.id)}
-                              data-testid={`button-delete-app-${app.id}`}
-                            >
-                              <Trash2 className="h-3 w-3 text-destructive" />
-                            </Button>
-                          </div>
-                        </TableCell>
+              <>
+                {/* Desktop table */}
+                <div className="hidden md:block rounded-md border mx-4">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="whitespace-nowrap text-xs py-2">Name</TableHead>
+                        <TableHead className="whitespace-nowrap text-xs py-2">Phone</TableHead>
+                        <TableHead className="whitespace-nowrap text-xs py-2 w-10">FB</TableHead>
+                        <TableHead className="whitespace-nowrap text-xs py-2">Type</TableHead>
+                        <TableHead className="whitespace-nowrap text-xs py-2 w-16">Dur.</TableHead>
+                        <TableHead className="whitespace-nowrap text-xs py-2 w-16">Pay.</TableHead>
+                        <TableHead className="whitespace-nowrap text-xs py-2">Sender</TableHead>
+                        <TableHead className="whitespace-nowrap text-xs py-2">Status</TableHead>
+                        <TableHead className="whitespace-nowrap text-xs py-2 text-right">Actions</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
+                    </TableHeader>
+                    <TableBody>
+                      {applications.map((app) => (
+                        <TableRow key={app.id} data-testid={`row-application-${app.id}`}>
+                          <TableCell className="font-medium text-xs py-1.5" data-testid={`text-app-name-${app.id}`}>{app.name}</TableCell>
+                          <TableCell className="text-xs py-1.5" data-testid={`text-app-phone-${app.id}`}>{app.phone}</TableCell>
+                          <TableCell className="py-1.5 w-10 text-center">
+                            <a href={app.facebookLink} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center text-[#1877F2] hover:text-[#0e5bbf] transition-colors" data-testid={`link-app-facebook-${app.id}`}>
+                              <SiMeta className="h-4 w-4" />
+                            </a>
+                          </TableCell>
+                          <TableCell className="py-1.5" data-testid={`text-app-seller-type-${app.id}`}>
+                            <Tooltip>
+                              <TooltipTrigger>
+                                <Badge variant="secondary" className="no-default-active-elevate text-xs cursor-default">
+                                  {sellerTypeShortLabels[app.sellerType] || app.sellerType}
+                                </Badge>
+                              </TooltipTrigger>
+                              <TooltipContent><p>{sellerTypeLabels[app.sellerType] || app.sellerType}</p></TooltipContent>
+                            </Tooltip>
+                          </TableCell>
+                          <TableCell className="py-1.5 w-16" data-testid={`text-app-duration-${app.id}`}>
+                            <Badge variant="secondary" className="no-default-active-elevate text-xs">{durationLabels[app.duration] || app.duration}</Badge>
+                          </TableCell>
+                          <TableCell className="py-1.5 w-16" data-testid={`text-app-payment-method-${app.id}`}>
+                            <Badge variant="secondary" className="no-default-active-elevate text-xs">{paymentMethodLabels[app.paymentMethod] || app.paymentMethod}</Badge>
+                          </TableCell>
+                          <TableCell className="text-xs py-1.5" data-testid={`text-app-sender-number-${app.id}`}>{app.senderNumber}</TableCell>
+                          <TableCell className="py-1.5"><StatusBadge status={app.status} /></TableCell>
+                          <TableCell className="py-1.5">
+                            <div className="flex items-center justify-end gap-1">
+                              <Button size="sm" variant={app.status === "approved" ? "default" : "outline"} className={`h-6 text-xs px-1.5 ${app.status !== "approved" ? "text-emerald-700 border-emerald-300 hover:bg-emerald-50 dark:text-emerald-400 dark:border-emerald-700 dark:hover:bg-emerald-950" : "bg-emerald-600 hover:bg-emerald-700"}`} onClick={() => approveMutation.mutate(app.id)} disabled={approveMutation.isPending || rejectMutation.isPending || app.status !== "pending"} data-testid={`button-approve-${app.id}`}>
+                                <CheckCircle2 className="h-3 w-3 mr-1" />Approve
+                              </Button>
+                              <Button size="sm" variant={app.status === "rejected" ? "default" : "outline"} className={`h-6 text-xs px-1.5 ${app.status !== "rejected" ? "text-red-700 border-red-300 hover:bg-red-50 dark:text-red-400 dark:border-red-700 dark:hover:bg-red-950" : "bg-red-600 hover:bg-red-700"}`} onClick={() => rejectMutation.mutate(app.id)} disabled={approveMutation.isPending || rejectMutation.isPending || app.status !== "pending"} data-testid={`button-reject-${app.id}`}>
+                                <XCircle className="h-3 w-3 mr-1" />Reject
+                              </Button>
+                              <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => setDeleteId(app.id)} data-testid={`button-delete-app-${app.id}`}>
+                                <Trash2 className="h-3 w-3 text-destructive" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+
+                {/* Mobile card list */}
+                <div className="md:hidden space-y-3 px-4 pb-2">
+                  {applications.map((app) => (
+                    <div key={app.id} className="border rounded-xl p-4 space-y-3 bg-card shadow-sm" data-testid={`row-application-${app.id}`}>
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <p className="font-semibold text-sm leading-tight" data-testid={`text-app-name-${app.id}`}>{app.name}</p>
+                          <p className="text-xs text-muted-foreground mt-0.5" data-testid={`text-app-phone-${app.id}`}>{app.phone}</p>
+                        </div>
+                        <StatusBadge status={app.status} />
+                      </div>
+                      <div className="flex flex-wrap gap-1.5">
+                        <Badge variant="secondary" className="text-xs no-default-active-elevate" data-testid={`text-app-seller-type-${app.id}`}>
+                          {sellerTypeShortLabels[app.sellerType] || app.sellerType}
+                        </Badge>
+                        <Badge variant="secondary" className="text-xs no-default-active-elevate" data-testid={`text-app-duration-${app.id}`}>
+                          {durationLabels[app.duration] || app.duration}
+                        </Badge>
+                        <Badge variant="secondary" className="text-xs no-default-active-elevate" data-testid={`text-app-payment-method-${app.id}`}>
+                          {paymentMethodLabels[app.paymentMethod] || app.paymentMethod}
+                        </Badge>
+                      </div>
+                      <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                        <a href={app.facebookLink} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-[#1877F2] hover:text-[#0e5bbf]" data-testid={`link-app-facebook-${app.id}`}>
+                          <SiMeta className="h-3.5 w-3.5" />
+                          <span>Profile</span>
+                        </a>
+                        <span data-testid={`text-app-sender-number-${app.id}`}>Sender: {app.senderNumber}</span>
+                      </div>
+                      <div className="flex items-center gap-2 pt-0.5">
+                        <Button size="sm" variant={app.status === "approved" ? "default" : "outline"} className={`flex-1 h-9 text-xs ${app.status !== "approved" ? "text-emerald-700 border-emerald-300 hover:bg-emerald-50 dark:text-emerald-400 dark:border-emerald-700 dark:hover:bg-emerald-950" : "bg-emerald-600 hover:bg-emerald-700"}`} onClick={() => approveMutation.mutate(app.id)} disabled={approveMutation.isPending || rejectMutation.isPending || app.status !== "pending"} data-testid={`button-approve-${app.id}`}>
+                          <CheckCircle2 className="h-3.5 w-3.5 mr-1.5" />Approve
+                        </Button>
+                        <Button size="sm" variant={app.status === "rejected" ? "default" : "outline"} className={`flex-1 h-9 text-xs ${app.status !== "rejected" ? "text-red-700 border-red-300 hover:bg-red-50 dark:text-red-400 dark:border-red-700 dark:hover:bg-red-950" : "bg-red-600 hover:bg-red-700"}`} onClick={() => rejectMutation.mutate(app.id)} disabled={approveMutation.isPending || rejectMutation.isPending || app.status !== "pending"} data-testid={`button-reject-${app.id}`}>
+                          <XCircle className="h-3.5 w-3.5 mr-1.5" />Reject
+                        </Button>
+                        <Button size="icon" variant="ghost" className="h-9 w-9 shrink-0" onClick={() => setDeleteId(app.id)} data-testid={`button-delete-app-${app.id}`}>
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </>
             )}
           </CardContent>
         </Card>

@@ -275,8 +275,9 @@ function PendingApplications() {
           </Badge>
         </div>
       </CardHeader>
-      <CardContent>
-        <div className="rounded-md border overflow-x-auto">
+      <CardContent className="p-0 sm:p-6 sm:pt-0">
+        {/* Desktop table */}
+        <div className="hidden sm:block rounded-md border overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
@@ -301,59 +302,29 @@ function PendingApplications() {
                     </span>
                   </TableCell>
                   <TableCell>
-                    <a
-                      href={app.facebookLink}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 text-primary"
-                      data-testid={`link-pending-facebook-${app.id}`}
-                    >
+                    <a href={app.facebookLink} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-primary" data-testid={`link-pending-facebook-${app.id}`}>
                       <SiMeta className="h-3.5 w-3.5" />
                       <span className="text-sm">Profile</span>
                       <ExternalLink className="h-3 w-3" />
                     </a>
                   </TableCell>
                   <TableCell data-testid={`text-pending-seller-type-${app.id}`}>
-                    <Badge variant="secondary" className="no-default-active-elevate">
-                      {sellerTypeLabels[app.sellerType] || app.sellerType}
-                    </Badge>
+                    <Badge variant="secondary" className="no-default-active-elevate">{sellerTypeLabels[app.sellerType] || app.sellerType}</Badge>
                   </TableCell>
                   <TableCell data-testid={`text-pending-duration-${app.id}`}>
-                    <Badge variant="secondary" className="no-default-active-elevate">
-                      {durationLabels[app.duration] || app.duration}
-                    </Badge>
+                    <Badge variant="secondary" className="no-default-active-elevate">{durationLabels[app.duration] || app.duration}</Badge>
                   </TableCell>
                   <TableCell data-testid={`text-pending-payment-${app.id}`}>
-                    <Badge variant="secondary" className="no-default-active-elevate">
-                      {paymentMethodLabels[app.paymentMethod] || app.paymentMethod}
-                    </Badge>
+                    <Badge variant="secondary" className="no-default-active-elevate">{paymentMethodLabels[app.paymentMethod] || app.paymentMethod}</Badge>
                   </TableCell>
-                  <TableCell data-testid={`text-pending-sender-${app.id}`}>
-                    {app.senderNumber}
-                  </TableCell>
+                  <TableCell data-testid={`text-pending-sender-${app.id}`}>{app.senderNumber}</TableCell>
                   <TableCell>
                     <div className="flex items-center justify-end gap-2">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="text-emerald-700 border-emerald-300 hover:bg-emerald-50 dark:text-emerald-400 dark:border-emerald-700 dark:hover:bg-emerald-950"
-                        onClick={() => approveMutation.mutate(app.id)}
-                        disabled={approveMutation.isPending || rejectMutation.isPending}
-                        data-testid={`button-pending-approve-${app.id}`}
-                      >
-                        <CheckCircle2 className="h-3.5 w-3.5 mr-1" />
-                        Approve
+                      <Button size="sm" variant="outline" className="text-emerald-700 border-emerald-300 hover:bg-emerald-50 dark:text-emerald-400 dark:border-emerald-700 dark:hover:bg-emerald-950" onClick={() => approveMutation.mutate(app.id)} disabled={approveMutation.isPending || rejectMutation.isPending} data-testid={`button-pending-approve-${app.id}`}>
+                        <CheckCircle2 className="h-3.5 w-3.5 mr-1" />Approve
                       </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="text-red-700 border-red-300 hover:bg-red-50 dark:text-red-400 dark:border-red-700 dark:hover:bg-red-950"
-                        onClick={() => rejectMutation.mutate(app.id)}
-                        disabled={approveMutation.isPending || rejectMutation.isPending}
-                        data-testid={`button-pending-reject-${app.id}`}
-                      >
-                        <XCircle className="h-3.5 w-3.5 mr-1" />
-                        Reject
+                      <Button size="sm" variant="outline" className="text-red-700 border-red-300 hover:bg-red-50 dark:text-red-400 dark:border-red-700 dark:hover:bg-red-950" onClick={() => rejectMutation.mutate(app.id)} disabled={approveMutation.isPending || rejectMutation.isPending} data-testid={`button-pending-reject-${app.id}`}>
+                        <XCircle className="h-3.5 w-3.5 mr-1" />Reject
                       </Button>
                     </div>
                   </TableCell>
@@ -361,6 +332,40 @@ function PendingApplications() {
               ))}
             </TableBody>
           </Table>
+        </div>
+
+        {/* Mobile card list */}
+        <div className="sm:hidden space-y-3 px-4 pb-4 pt-2">
+          {pendingApps.map((app) => (
+            <div key={app.id} className="border rounded-xl p-4 space-y-3 bg-card shadow-sm" data-testid={`row-pending-app-${app.id}`}>
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <p className="font-semibold text-sm" data-testid={`text-pending-name-${app.id}`}>{app.name}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1" data-testid={`text-pending-phone-${app.id}`}>
+                    <Phone className="h-3 w-3" />{app.phone}
+                  </p>
+                </div>
+                <a href={app.facebookLink} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-sm text-[#1877F2] hover:text-[#0e5bbf]" data-testid={`link-pending-facebook-${app.id}`}>
+                  <SiMeta className="h-4 w-4" />
+                  <span className="text-xs">Profile</span>
+                </a>
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                <Badge variant="secondary" className="text-xs no-default-active-elevate" data-testid={`text-pending-seller-type-${app.id}`}>{sellerTypeLabels[app.sellerType] || app.sellerType}</Badge>
+                <Badge variant="secondary" className="text-xs no-default-active-elevate" data-testid={`text-pending-duration-${app.id}`}>{durationLabels[app.duration] || app.duration}</Badge>
+                <Badge variant="secondary" className="text-xs no-default-active-elevate" data-testid={`text-pending-payment-${app.id}`}>{paymentMethodLabels[app.paymentMethod] || app.paymentMethod}</Badge>
+              </div>
+              <p className="text-xs text-muted-foreground" data-testid={`text-pending-sender-${app.id}`}>Sender: {app.senderNumber}</p>
+              <div className="flex gap-2 pt-0.5">
+                <Button size="sm" variant="outline" className="flex-1 h-9 text-xs text-emerald-700 border-emerald-300 hover:bg-emerald-50 dark:text-emerald-400 dark:border-emerald-700 dark:hover:bg-emerald-950" onClick={() => approveMutation.mutate(app.id)} disabled={approveMutation.isPending || rejectMutation.isPending} data-testid={`button-pending-approve-${app.id}`}>
+                  <CheckCircle2 className="h-3.5 w-3.5 mr-1.5" />Approve
+                </Button>
+                <Button size="sm" variant="outline" className="flex-1 h-9 text-xs text-red-700 border-red-300 hover:bg-red-50 dark:text-red-400 dark:border-red-700 dark:hover:bg-red-950" onClick={() => rejectMutation.mutate(app.id)} disabled={approveMutation.isPending || rejectMutation.isPending} data-testid={`button-pending-reject-${app.id}`}>
+                  <XCircle className="h-3.5 w-3.5 mr-1.5" />Reject
+                </Button>
+              </div>
+            </div>
+          ))}
         </div>
       </CardContent>
     </Card>
@@ -461,13 +466,14 @@ function RegistrationLink() {
           <Input
             readOnly
             value={registrationUrl}
-            className="font-mono text-sm"
+            className="font-mono text-xs sm:text-sm min-w-0"
             data-testid="input-registration-url"
           />
           <Button
             variant="outline"
             size="icon"
             onClick={handleCopy}
+            className="shrink-0"
             data-testid="button-copy-registration-link"
           >
             {copied ? <Check className="h-4 w-4 text-emerald-600" /> : <Copy className="h-4 w-4" />}
@@ -573,17 +579,19 @@ function EmailSettings() {
         {emailSettings?.hasApiKey && (
           <div className="border-t pt-4 mt-4 space-y-3">
             <label className="text-sm font-medium">Send Test Email</label>
-            <div className="flex gap-2">
+            <div className="flex flex-col sm:flex-row gap-2">
               <Input
                 type="email"
                 placeholder="test@example.com"
                 value={testEmail}
                 onChange={(e) => setTestEmail(e.target.value)}
+                className="flex-1"
               />
               <Button
                 variant="outline"
                 onClick={() => testMutation.mutate()}
                 disabled={testMutation.isPending || !testEmail}
+                className="sm:shrink-0"
               >
                 <Send className="h-4 w-4 mr-1" />
                 {testMutation.isPending ? "Sending..." : "Test"}
@@ -718,7 +726,7 @@ function SellerForm({
             </FormItem>
           )}
         />
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <FormField
             control={form.control}
             name="duration"
@@ -937,29 +945,31 @@ export default function SellerCodeManager() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="max-w-7xl mx-auto p-6 space-y-6">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight" data-testid="text-page-title">Seller Code Manager</h1>
-            <p className="text-muted-foreground mt-1">Manage Facebook group seller codes and subscriptions</p>
+      <div className="max-w-7xl mx-auto p-3 sm:p-6 space-y-4 sm:space-y-6">
+        <div className="flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight" data-testid="text-page-title">Seller Code Manager</h1>
+            <p className="text-muted-foreground mt-0.5 text-sm hidden sm:block">Manage Facebook group seller codes and subscriptions</p>
           </div>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" onClick={() => navigate("/applications")} data-testid="button-seller-applications">
-              <ClipboardList className="w-4 h-4 mr-2" />
-              Seller Applications
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+            <Button variant="outline" size="sm" onClick={() => navigate("/applications")} data-testid="button-seller-applications" className="h-9">
+              <ClipboardList className="w-4 h-4 sm:mr-2" />
+              <span className="hidden sm:inline">Seller Applications</span>
             </Button>
-            <Button onClick={handleAdd} data-testid="button-add-seller">
-              <Plus className="w-4 h-4 mr-2" />
-              Add Seller
+            <Button size="sm" onClick={handleAdd} data-testid="button-add-seller" className="h-9">
+              <Plus className="w-4 h-4 sm:mr-2" />
+              <span className="hidden sm:inline">Add Seller</span>
             </Button>
             <Button
               variant="outline"
+              size="sm"
               onClick={() => logoutMutation.mutate()}
               disabled={logoutMutation.isPending}
               data-testid="button-logout"
+              className="h-9"
             >
-              <LogOut className="w-4 h-4 mr-2" />
-              {logoutMutation.isPending ? "Logging out..." : "Logout"}
+              <LogOut className="w-4 h-4 sm:mr-2" />
+              <span className="hidden sm:inline">{logoutMutation.isPending ? "Logging out..." : "Logout"}</span>
             </Button>
           </div>
         </div>
@@ -1004,141 +1014,147 @@ export default function SellerCodeManager() {
                 <p className="text-muted-foreground" data-testid="text-no-results">No sellers match your search</p>
               </div>
             ) : (
-              <div className="rounded-md border overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Name</TableHead>
-                      <TableHead>Phone</TableHead>
-                      <TableHead>Facebook</TableHead>
-                      <TableHead>Seller Code</TableHead>
-                      <TableHead>Start Date</TableHead>
-                      <TableHead>Expiry Date</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredSellers.map((seller) => (
-                      <TableRow
-                        key={seller.id}
-                        className={getRowClass(seller.expiryDate)}
-                        data-testid={`row-seller-${seller.id}`}
-                      >
-                        <TableCell className="font-medium" data-testid={`text-name-${seller.id}`}>{seller.name}</TableCell>
-                        <TableCell data-testid={`text-phone-${seller.id}`}>
-                          <span className="flex items-center gap-1.5">
-                            <Phone className="h-3.5 w-3.5 text-muted-foreground" />
-                            {seller.phone}
-                          </span>
-                        </TableCell>
-                        <TableCell>
-                          <a
-                            href={seller.facebookLink}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1.5 text-primary"
-                            data-testid={`link-facebook-${seller.id}`}
-                          >
-                            <SiMeta className="h-3.5 w-3.5" />
-                            <span className="text-sm">Profile</span>
-                            <ExternalLink className="h-3 w-3" />
-                          </a>
-                        </TableCell>
-                        <TableCell data-testid={`text-code-${seller.id}`}>
-                          <div className="flex items-center gap-1.5">
-                            <Badge
-                              variant="secondary"
-                              className="no-default-active-elevate font-mono"
-                            >
-                              <Hash className="h-3 w-3 mr-1" />
-                              {seller.sellerCode}
-                            </Badge>
-                            <Popover
-                              open={!!emailEditOpen[seller.id]}
-                              onOpenChange={(o) => {
-                                setEmailEditOpen((prev) => ({ ...prev, [seller.id]: o }));
-                                if (o) setEmailInputs((prev) => ({ ...prev, [seller.id]: seller.email || "" }));
-                              }}
-                            >
-                              <PopoverTrigger asChild>
-                                <button
-                                  type="button"
-                                  className={`inline-flex items-center justify-center transition-colors ${seller.email ? "text-blue-500 hover:text-blue-700" : "text-muted-foreground hover:text-primary"}`}
-                                  data-testid={`button-email-popup-${seller.id}`}
-                                >
-                                  <Mail className="h-3.5 w-3.5" />
-                                </button>
-                              </PopoverTrigger>
-                              <PopoverContent side="top" align="center" sideOffset={6} className="w-60 p-3 space-y-2">
-                                <p className="text-xs font-semibold text-foreground">Update Email</p>
-                                <Input
-                                  type="email"
-                                  placeholder="seller@email.com"
-                                  value={emailInputs[seller.id] ?? seller.email ?? ""}
-                                  onChange={(e) => setEmailInputs((prev) => ({ ...prev, [seller.id]: e.target.value }))}
-                                  className="h-8 text-xs"
-                                  data-testid={`input-email-edit-${seller.id}`}
-                                />
-                                <div className="flex gap-1.5">
-                                  <Button
-                                    size="sm"
-                                    className="flex-1 h-7 text-xs"
-                                    onClick={() => updateEmailMutation.mutate({ id: seller.id, email: emailInputs[seller.id] ?? "" })}
-                                    disabled={updateEmailMutation.isPending}
-                                    data-testid={`button-email-save-${seller.id}`}
-                                  >
-                                    <Save className="h-3 w-3 mr-1" />
-                                    Save
-                                  </Button>
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    className="flex-1 h-7 text-xs"
-                                    onClick={() => resendEmailMutation.mutate(seller.id)}
-                                    disabled={resendEmailMutation.isPending || !seller.email}
-                                    data-testid={`button-resend-email-${seller.id}`}
-                                  >
-                                    <Send className="h-3 w-3 mr-1" />
-                                    Resend Code
-                                  </Button>
-                                </div>
-                              </PopoverContent>
-                            </Popover>
-                          </div>
-                        </TableCell>
-                        <TableCell data-testid={`text-start-${seller.id}`}>
-                          <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                            <Calendar className="h-3.5 w-3.5" />
-                            {format(parseISO(seller.startDate), "MMM dd, yyyy")}
-                          </span>
-                        </TableCell>
-                        <TableCell data-testid={`text-expiry-${seller.id}`}>
-                          <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                            <Clock className="h-3.5 w-3.5" />
-                            {format(parseISO(seller.expiryDate), "MMM dd, yyyy")}
-                          </span>
-                        </TableCell>
-                        <TableCell>
-                          <StatusBadge expiryDate={seller.expiryDate} />
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center justify-end">
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              onClick={() => setDeleteId(seller.id)}
-                              data-testid={`button-delete-${seller.id}`}
-                            >
-                              <Trash2 className="h-4 w-4 text-destructive" />
-                            </Button>
-                          </div>
-                        </TableCell>
+              <>
+                {/* Desktop table */}
+                <div className="hidden sm:block rounded-md border overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Name</TableHead>
+                        <TableHead>Phone</TableHead>
+                        <TableHead>Facebook</TableHead>
+                        <TableHead>Seller Code</TableHead>
+                        <TableHead>Start Date</TableHead>
+                        <TableHead>Expiry Date</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredSellers.map((seller) => (
+                        <TableRow key={seller.id} className={getRowClass(seller.expiryDate)} data-testid={`row-seller-${seller.id}`}>
+                          <TableCell className="font-medium" data-testid={`text-name-${seller.id}`}>{seller.name}</TableCell>
+                          <TableCell data-testid={`text-phone-${seller.id}`}>
+                            <span className="flex items-center gap-1.5">
+                              <Phone className="h-3.5 w-3.5 text-muted-foreground" />{seller.phone}
+                            </span>
+                          </TableCell>
+                          <TableCell>
+                            <a href={seller.facebookLink} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-primary" data-testid={`link-facebook-${seller.id}`}>
+                              <SiMeta className="h-3.5 w-3.5" />
+                              <span className="text-sm">Profile</span>
+                              <ExternalLink className="h-3 w-3" />
+                            </a>
+                          </TableCell>
+                          <TableCell data-testid={`text-code-${seller.id}`}>
+                            <div className="flex items-center gap-1.5">
+                              <Badge variant="secondary" className="no-default-active-elevate font-mono">
+                                <Hash className="h-3 w-3 mr-1" />{seller.sellerCode}
+                              </Badge>
+                              <Popover open={!!emailEditOpen[seller.id]} onOpenChange={(o) => { setEmailEditOpen((prev) => ({ ...prev, [seller.id]: o })); if (o) setEmailInputs((prev) => ({ ...prev, [seller.id]: seller.email || "" })); }}>
+                                <PopoverTrigger asChild>
+                                  <button type="button" className={`inline-flex items-center justify-center transition-colors ${seller.email ? "text-blue-500 hover:text-blue-700" : "text-muted-foreground hover:text-primary"}`} data-testid={`button-email-popup-${seller.id}`}>
+                                    <Mail className="h-3.5 w-3.5" />
+                                  </button>
+                                </PopoverTrigger>
+                                <PopoverContent side="top" align="center" sideOffset={6} className="w-60 p-3 space-y-2">
+                                  <p className="text-xs font-semibold text-foreground">Update Email</p>
+                                  <Input type="email" placeholder="seller@email.com" value={emailInputs[seller.id] ?? seller.email ?? ""} onChange={(e) => setEmailInputs((prev) => ({ ...prev, [seller.id]: e.target.value }))} className="h-8 text-xs" data-testid={`input-email-edit-${seller.id}`} />
+                                  <div className="flex gap-1.5">
+                                    <Button size="sm" className="flex-1 h-7 text-xs" onClick={() => updateEmailMutation.mutate({ id: seller.id, email: emailInputs[seller.id] ?? "" })} disabled={updateEmailMutation.isPending} data-testid={`button-email-save-${seller.id}`}>
+                                      <Save className="h-3 w-3 mr-1" />Save
+                                    </Button>
+                                    <Button size="sm" variant="outline" className="flex-1 h-7 text-xs" onClick={() => resendEmailMutation.mutate(seller.id)} disabled={resendEmailMutation.isPending || !seller.email} data-testid={`button-resend-email-${seller.id}`}>
+                                      <Send className="h-3 w-3 mr-1" />Resend Code
+                                    </Button>
+                                  </div>
+                                </PopoverContent>
+                              </Popover>
+                            </div>
+                          </TableCell>
+                          <TableCell data-testid={`text-start-${seller.id}`}>
+                            <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                              <Calendar className="h-3.5 w-3.5" />{format(parseISO(seller.startDate), "MMM dd, yyyy")}
+                            </span>
+                          </TableCell>
+                          <TableCell data-testid={`text-expiry-${seller.id}`}>
+                            <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                              <Clock className="h-3.5 w-3.5" />{format(parseISO(seller.expiryDate), "MMM dd, yyyy")}
+                            </span>
+                          </TableCell>
+                          <TableCell><StatusBadge expiryDate={seller.expiryDate} /></TableCell>
+                          <TableCell>
+                            <div className="flex items-center justify-end">
+                              <Button size="icon" variant="ghost" onClick={() => setDeleteId(seller.id)} data-testid={`button-delete-${seller.id}`}>
+                                <Trash2 className="h-4 w-4 text-destructive" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+
+                {/* Mobile card list */}
+                <div className="sm:hidden space-y-3">
+                  {filteredSellers.map((seller) => (
+                    <div key={seller.id} className={`border rounded-xl p-4 space-y-3 shadow-sm ${getRowClass(seller.expiryDate) || "bg-card"}`} data-testid={`row-seller-${seller.id}`}>
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="font-semibold text-sm truncate" data-testid={`text-name-${seller.id}`}>{seller.name}</p>
+                          <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1" data-testid={`text-phone-${seller.id}`}>
+                            <Phone className="h-3 w-3 shrink-0" />{seller.phone}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <StatusBadge expiryDate={seller.expiryDate} />
+                          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setDeleteId(seller.id)} data-testid={`button-delete-${seller.id}`}>
+                            <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                          </Button>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <Badge variant="secondary" className="no-default-active-elevate font-mono text-xs" data-testid={`text-code-${seller.id}`}>
+                          <Hash className="h-3 w-3 mr-1" />{seller.sellerCode}
+                        </Badge>
+                        <Popover open={!!emailEditOpen[seller.id]} onOpenChange={(o) => { setEmailEditOpen((prev) => ({ ...prev, [seller.id]: o })); if (o) setEmailInputs((prev) => ({ ...prev, [seller.id]: seller.email || "" })); }}>
+                          <PopoverTrigger asChild>
+                            <button type="button" className={`inline-flex items-center justify-center transition-colors ${seller.email ? "text-blue-500 hover:text-blue-700" : "text-muted-foreground hover:text-primary"}`} data-testid={`button-email-popup-${seller.id}`}>
+                              <Mail className="h-4 w-4" />
+                            </button>
+                          </PopoverTrigger>
+                          <PopoverContent side="top" align="start" sideOffset={6} className="w-64 p-3 space-y-2">
+                            <p className="text-xs font-semibold text-foreground">Update Email</p>
+                            <Input type="email" placeholder="seller@email.com" value={emailInputs[seller.id] ?? seller.email ?? ""} onChange={(e) => setEmailInputs((prev) => ({ ...prev, [seller.id]: e.target.value }))} className="h-8 text-xs" data-testid={`input-email-edit-${seller.id}`} />
+                            <div className="flex gap-1.5">
+                              <Button size="sm" className="flex-1 h-8 text-xs" onClick={() => updateEmailMutation.mutate({ id: seller.id, email: emailInputs[seller.id] ?? "" })} disabled={updateEmailMutation.isPending} data-testid={`button-email-save-${seller.id}`}>
+                                <Save className="h-3 w-3 mr-1" />Save
+                              </Button>
+                              <Button size="sm" variant="outline" className="flex-1 h-8 text-xs" onClick={() => resendEmailMutation.mutate(seller.id)} disabled={resendEmailMutation.isPending || !seller.email} data-testid={`button-resend-email-${seller.id}`}>
+                                <Send className="h-3 w-3 mr-1" />Resend
+                              </Button>
+                            </div>
+                          </PopoverContent>
+                        </Popover>
+                        <a href={seller.facebookLink} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-[#1877F2] hover:text-[#0e5bbf]" data-testid={`link-facebook-${seller.id}`}>
+                          <SiMeta className="h-3.5 w-3.5" />Profile
+                        </a>
+                      </div>
+
+                      <div className="flex items-center gap-4 text-xs text-muted-foreground flex-wrap">
+                        <span className="flex items-center gap-1" data-testid={`text-start-${seller.id}`}>
+                          <Calendar className="h-3 w-3 shrink-0" />{format(parseISO(seller.startDate), "MMM dd, yyyy")}
+                        </span>
+                        <span className="flex items-center gap-1" data-testid={`text-expiry-${seller.id}`}>
+                          <Clock className="h-3 w-3 shrink-0" />Exp: {format(parseISO(seller.expiryDate), "MMM dd, yyyy")}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </>
             )}
           </CardContent>
         </Card>
@@ -1150,7 +1166,7 @@ export default function SellerCodeManager() {
         <GroupRules />
 
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogContent className="sm:max-w-lg" aria-describedby={undefined}>
+          <DialogContent className="w-[calc(100vw-2rem)] max-w-lg sm:w-full rounded-xl sm:rounded-lg" aria-describedby={undefined}>
             <DialogHeader>
               <DialogTitle>{editingSeller ? "Edit Seller" : "Add New Seller"}</DialogTitle>
             </DialogHeader>

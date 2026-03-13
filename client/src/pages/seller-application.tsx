@@ -130,10 +130,8 @@ export default function SellerApplication() {
     if (nidFile && !nidFileUrl) {
       try {
         setNidUploading(true);
-        const sellerCode = `TEMP_${data.phone}`;
         const formData = new FormData();
         formData.append("nid", nidFile);
-        formData.append("sellerCode", sellerCode);
         formData.append("phone", data.phone);
         const res = await fetch("/api/applications/upload-nid", {
           method: "POST",

@@ -11,14 +11,12 @@ export async function uploadNidFile(
   mimeType: string,
   publicId: string
 ): Promise<string> {
-  const resourceType = mimeType === "application/pdf" ? "raw" : "image";
-
   return new Promise((resolve, reject) => {
     const uploadStream = cloudinary.uploader.upload_stream(
       {
         public_id: publicId,
         folder: "nid_uploads",
-        resource_type: resourceType,
+        resource_type: "auto",
         overwrite: true,
       },
       (error, result) => {

@@ -513,14 +513,15 @@ export async function registerRoutes(
       if (!req.file) {
         return res.status(400).json({ message: "No file uploaded" });
       }
-      const { sellerCode, phone } = req.body;
-      if (!sellerCode || !phone) {
-        return res.status(400).json({ message: "sellerCode and phone are required" });
+      const { phone } = req.body;
+      if (!phone) {
+        return res.status(400).json({ message: "phone is required" });
       }
       const ext = req.file.mimetype === "application/pdf" ? "pdf"
         : req.file.mimetype === "image/png" ? "png"
         : "jpg";
-      const publicId = `${sellerCode}_${phone}.${ext}`;
+      const timestamp = Math.floor(Date.now() / 1000);
+      const publicId = `TEMP_${phone}_${timestamp}.${ext}`;
       const secureUrl = await uploadNidFile(req.file.buffer, req.file.mimetype, publicId);
       res.json({ url: secureUrl });
     } catch (error: any) {

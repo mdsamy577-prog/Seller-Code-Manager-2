@@ -398,32 +398,19 @@ function GroupRules() {
   if (!loaded) return null;
 
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center gap-2">
-          <BookOpen className="h-5 w-5 text-muted-foreground" />
-          <div>
-            <CardTitle className="text-lg">Group Rules</CardTitle>
-            <CardDescription>
-              Write group rules that users can view on the apply page
-            </CardDescription>
-          </div>
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        <Textarea
-          value={rules}
-          onChange={(e) => setRules(e.target.value)}
-          placeholder="Write your group rules here..."
-          rows={8}
-          className="resize-y"
-        />
-        <Button onClick={handleSave} disabled={saving} size="sm">
-          <Save className="h-4 w-4 mr-2" />
-          {saving ? "Saving..." : "Save Rules"}
-        </Button>
-      </CardContent>
-    </Card>
+    <div className="space-y-3">
+      <Textarea
+        value={rules}
+        onChange={(e) => setRules(e.target.value)}
+        placeholder="Write your group rules here..."
+        rows={8}
+        className="resize-y"
+      />
+      <Button onClick={handleSave} disabled={saving} size="sm">
+        <Save className="h-4 w-4 mr-2" />
+        {saving ? "Saving..." : "Save Rules"}
+      </Button>
+    </div>
   );
 }
 
@@ -444,38 +431,26 @@ function RegistrationLink() {
   };
 
   return (
-    <Card data-testid="card-registration-link">
-      <CardHeader>
-        <div className="flex items-center gap-2">
-          <Link className="h-5 w-5 text-muted-foreground" />
-          <div>
-            <CardTitle className="text-lg" data-testid="text-registration-title">Seller Registration Link</CardTitle>
-            <CardDescription>
-              Share this link for sellers to apply for a seller code
-            </CardDescription>
-          </div>
-        </div>
-      </CardHeader>
-      <CardContent>
-        <div className="flex items-center gap-2">
-          <Input
-            readOnly
-            value={registrationUrl}
-            className="font-mono text-xs sm:text-sm min-w-0"
-            data-testid="input-registration-url"
-          />
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={handleCopy}
-            className="shrink-0"
-            data-testid="button-copy-registration-link"
-          >
-            {copied ? <Check className="h-4 w-4 text-emerald-600" /> : <Copy className="h-4 w-4" />}
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
+    <div className="space-y-3" data-testid="card-registration-link">
+      <p className="text-sm text-muted-foreground">Share this link for sellers to apply for a seller code</p>
+      <div className="flex items-center gap-2">
+        <Input
+          readOnly
+          value={registrationUrl}
+          className="font-mono text-xs sm:text-sm min-w-0"
+          data-testid="input-registration-url"
+        />
+        <Button
+          variant="outline"
+          size="icon"
+          onClick={handleCopy}
+          className="shrink-0"
+          data-testid="button-copy-registration-link"
+        >
+          {copied ? <Check className="h-4 w-4 text-emerald-600" /> : <Copy className="h-4 w-4" />}
+        </Button>
+      </div>
+    </div>
   );
 }
 
@@ -532,70 +507,57 @@ function EmailSettings() {
   if (isLoading) return null;
 
   return (
-    <Card>
-      <CardHeader>
+    <div className="space-y-4">
+      <div className="space-y-2">
+        <label className="text-sm font-medium">API Status</label>
         <div className="flex items-center gap-2">
-          <Settings className="h-5 w-5 text-muted-foreground" />
-          <div>
-            <CardTitle className="text-lg">Email Settings</CardTitle>
-            <CardDescription>
-              Configure email to automatically send seller codes after approval
-            </CardDescription>
-          </div>
+          {emailSettings?.hasApiKey ? (
+            <Badge variant="outline" className="text-emerald-600 border-emerald-300">Resend API Key Configured</Badge>
+          ) : (
+            <Badge variant="outline" className="text-destructive border-destructive/30">Resend API Key Missing</Badge>
+          )}
         </div>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="space-y-2">
-          <label className="text-sm font-medium">API Status</label>
-          <div className="flex items-center gap-2">
-            {emailSettings?.hasApiKey ? (
-              <Badge variant="outline" className="text-emerald-600 border-emerald-300">Resend API Key Configured</Badge>
-            ) : (
-              <Badge variant="outline" className="text-destructive border-destructive/30">Resend API Key Missing</Badge>
-            )}
-          </div>
-        </div>
-        <div className="space-y-2">
-          <label className="text-sm font-medium">Sender Name (Optional)</label>
-          <Input
-            placeholder="CPS&S Seller Code"
-            value={senderName}
-            onChange={(e) => setSenderName(e.target.value)}
-          />
-        </div>
-        <Button
-          className="w-full"
-          onClick={() => saveMutation.mutate()}
-          disabled={saveMutation.isPending}
-        >
-          {saveMutation.isPending ? "Saving..." : "Save Email Settings"}
-        </Button>
+      </div>
+      <div className="space-y-2">
+        <label className="text-sm font-medium">Sender Name (Optional)</label>
+        <Input
+          placeholder="CPS&S Seller Code"
+          value={senderName}
+          onChange={(e) => setSenderName(e.target.value)}
+        />
+      </div>
+      <Button
+        className="w-full"
+        onClick={() => saveMutation.mutate()}
+        disabled={saveMutation.isPending}
+      >
+        {saveMutation.isPending ? "Saving..." : "Save Email Settings"}
+      </Button>
 
-        {emailSettings?.hasApiKey && (
-          <div className="border-t pt-4 mt-4 space-y-3">
-            <label className="text-sm font-medium">Send Test Email</label>
-            <div className="flex flex-col sm:flex-row gap-2">
-              <Input
-                type="email"
-                placeholder="test@example.com"
-                value={testEmail}
-                onChange={(e) => setTestEmail(e.target.value)}
-                className="flex-1"
-              />
-              <Button
-                variant="outline"
-                onClick={() => testMutation.mutate()}
-                disabled={testMutation.isPending || !testEmail}
-                className="sm:shrink-0"
-              >
-                <Send className="h-4 w-4 mr-1" />
-                {testMutation.isPending ? "Sending..." : "Test"}
-              </Button>
-            </div>
+      {emailSettings?.hasApiKey && (
+        <div className="border-t pt-4 space-y-3">
+          <label className="text-sm font-medium">Send Test Email</label>
+          <div className="flex flex-col sm:flex-row gap-2">
+            <Input
+              type="email"
+              placeholder="test@example.com"
+              value={testEmail}
+              onChange={(e) => setTestEmail(e.target.value)}
+              className="flex-1"
+            />
+            <Button
+              variant="outline"
+              onClick={() => testMutation.mutate()}
+              disabled={testMutation.isPending || !testEmail}
+              className="sm:shrink-0"
+            >
+              <Send className="h-4 w-4 mr-1" />
+              {testMutation.isPending ? "Sending..." : "Test"}
+            </Button>
           </div>
-        )}
-      </CardContent>
-    </Card>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -829,6 +791,7 @@ export default function SellerCodeManager() {
   const [editingCodeValue, setEditingCodeValue] = useState("");
   const [emailDialogSeller, setEmailDialogSeller] = useState<Seller | undefined>();
   const [emailDialogInput, setEmailDialogInput] = useState("");
+  const [settingsPanel, setSettingsPanel] = useState<"registration" | "email" | "group-rules" | null>(null);
   const { toast } = useToast();
 
   const logoutMutation = useMutation({
@@ -1122,11 +1085,28 @@ export default function SellerCodeManager() {
           </CardContent>
         </Card>
 
-        <RegistrationLink />
-
-        <EmailSettings />
-
-        <GroupRules />
+        <Card>
+          <CardContent className="p-2">
+            <div className="grid grid-cols-3 divide-x">
+              {([
+                { key: "registration", icon: Link, label: "Registration Link" },
+                { key: "email", icon: Settings, label: "Email Settings" },
+                { key: "group-rules", icon: BookOpen, label: "Group Rules" },
+              ] as const).map(({ key, icon: Icon, label }) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => setSettingsPanel(key)}
+                  className="flex flex-col items-center gap-1.5 py-3 px-2 hover:bg-muted rounded-none transition-colors first:rounded-l-lg last:rounded-r-lg"
+                  data-testid={`button-settings-${key}`}
+                >
+                  <Icon className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-xs font-medium leading-tight text-center">{label}</span>
+                </button>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
 
         <Dialog open={emailDialogSeller !== undefined} onOpenChange={(o) => { if (!o) setEmailDialogSeller(undefined); }}>
           <DialogContent className="w-[calc(100vw-2rem)] max-w-sm sm:w-full rounded-xl sm:rounded-lg" aria-describedby={undefined}>
@@ -1162,6 +1142,33 @@ export default function SellerCodeManager() {
                 </Button>
               </div>
             </div>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={settingsPanel === "registration"} onOpenChange={(o) => { if (!o) setSettingsPanel(null); }}>
+          <DialogContent className="w-[calc(100vw-2rem)] max-w-sm sm:w-full rounded-xl sm:rounded-lg" aria-describedby={undefined}>
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2"><Link className="h-4 w-4" />Seller Registration Link</DialogTitle>
+            </DialogHeader>
+            <RegistrationLink />
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={settingsPanel === "email"} onOpenChange={(o) => { if (!o) setSettingsPanel(null); }}>
+          <DialogContent className="w-[calc(100vw-2rem)] max-w-sm sm:w-full rounded-xl sm:rounded-lg" aria-describedby={undefined}>
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2"><Settings className="h-4 w-4" />Email Settings</DialogTitle>
+            </DialogHeader>
+            <EmailSettings />
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={settingsPanel === "group-rules"} onOpenChange={(o) => { if (!o) setSettingsPanel(null); }}>
+          <DialogContent className="w-[calc(100vw-2rem)] max-w-lg sm:w-full rounded-xl sm:rounded-lg" aria-describedby={undefined}>
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2"><BookOpen className="h-4 w-4" />Group Rules</DialogTitle>
+            </DialogHeader>
+            <GroupRules />
           </DialogContent>
         </Dialog>
 

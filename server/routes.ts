@@ -299,7 +299,7 @@ export async function registerRoutes(
       }
       const existing = await storage.getSellerById(id);
       if (!existing) return res.status(404).json({ message: "Seller not found" });
-      const updated = await storage.updateSeller(id, { ...existing, email: email || undefined });
+      const updated = await storage.updateSeller(id, { email: email || undefined });
       res.json(updated);
     } catch (error) {
       res.status(500).json({ message: "Failed to update email" });

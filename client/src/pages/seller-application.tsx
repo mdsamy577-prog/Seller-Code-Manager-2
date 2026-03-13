@@ -43,8 +43,8 @@ const applicationFormSchema = z.object({
   email: z.union([
     z.literal(""),
     z.string().regex(
-      /^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9\-]+(\.[a-zA-Z0-9\-]+)*\.(com|net|org|edu|info|co|io)$/i,
-      "আপনি যে ইমেইলটি লিখেছেন তা সঠিক নয়।\nদয়া করে একটি সঠিক ইমেইল লিখুন।"
+      /^[a-zA-Z0-9._%+\-]+@gmail\.com$/i,
+      "আপনি যে ইমেইলটি লিখেছেন তা সঠিক নয়। দয়া করে একটি সঠিক Gmail লিখুন (example@gmail.com)।"
     ),
   ]).optional(),
 });
@@ -79,7 +79,7 @@ export default function SellerApplication() {
 
   const form = useForm<ApplicationFormValues>({
     resolver: zodResolver(applicationFormSchema),
-    mode: "onChange",
+    mode: "onSubmit",
     defaultValues: {
       name: "",
       phone: "",
@@ -332,8 +332,8 @@ export default function SellerApplication() {
                   ইমেইল সঠিক নয়
                 </DialogTitle>
               </DialogHeader>
-              <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">
-                {"আপনি যে ইমেইলটি লিখেছেন তা সঠিক নয়।\nদয়া করে একটি সঠিক ইমেইল লিখুন।"}
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                আপনি যে ইমেইলটি লিখেছেন তা সঠিক নয়। দয়া করে একটি সঠিক Gmail লিখুন (example@gmail.com)।
               </p>
               <div className="pt-1">
                 <Button

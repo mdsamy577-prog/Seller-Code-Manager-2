@@ -790,6 +790,7 @@ function EmptyState({ onAdd }: { onAdd: () => void }) {
 export default function SellerCodeManager() {
   const [, navigate] = useLocation();
   const [searchQuery, setSearchQuery] = useState("");
+  const [durationFilter, setDurationFilter] = useState("all");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingSeller, setEditingSeller] = useState<Seller | undefined>();
   const [deleteId, setDeleteId] = useState<number | null>(null);
@@ -822,14 +823,24 @@ export default function SellerCodeManager() {
     (a, b) => new Date(a.expiryDate).getTime() - new Date(b.expiryDate).getTime()
   );
 
-  const filteredSellers = searchQuery
-    ? sortedSellers.filter(
-        (s) =>
-          s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          s.phone.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          s.sellerCode.toLowerCase().includes(searchQuery.toLowerCase())
-      )
-    : sortedSellers;
+  const normalizeDuration = (d: string): string => {
+    const map: Record<string, string> = {
+      "1_month": "1", "2_months": "2", "3_months": "3", "4_months": "4",
+      "5_months": "5", "6_months": "6", "7_months": "7", "8_months": "8",
+      "9_months": "9", "10_months": "10", "11_months": "11", "12_months": "12",
+    };
+    return map[d] ?? d;
+  };
+
+  const filteredSellers = sortedSellers.filter((s) => {
+    const matchesSearch = !searchQuery || (
+      s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      s.phone.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      s.sellerCode.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+    const matchesDuration = durationFilter === "all" || normalizeDuration(s.duration) === durationFilter;
+    return matchesSearch && matchesDuration;
+  });
 
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
@@ -946,24 +957,46 @@ export default function SellerCodeManager() {
           <CardHeader className="pb-4">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
               <CardTitle className="text-lg">Sellers</CardTitle>
-              <div className="relative w-full sm:w-72">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search by name, phone, or code..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-9"
-                  data-testid="input-search"
-                />
-                {searchQuery && (
-                  <button
-                    onClick={() => setSearchQuery("")}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
-                    data-testid="button-clear-search"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                )}
+              <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+                <div className="relative w-full sm:w-72">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search by name, phone, or code..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-9"
+                    data-testid="input-search"
+                  />
+                  {searchQuery && (
+                    <button
+                      onClick={() => setSearchQuery("")}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+                      data-testid="button-clear-search"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
+                <Select value={durationFilter} onValueChange={setDurationFilter}>
+                  <SelectTrigger className="w-full sm:w-36" data-testid="select-duration-filter">
+                    <SelectValue placeholder="Duration" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All</SelectItem>
+                    <SelectItem value="1">1 Month</SelectItem>
+                    <SelectItem value="2">2 Months</SelectItem>
+                    <SelectItem value="3">3 Months</SelectItem>
+                    <SelectItem value="4">4 Months</SelectItem>
+                    <SelectItem value="5">5 Months</SelectItem>
+                    <SelectItem value="6">6 Months</SelectItem>
+                    <SelectItem value="7">7 Months</SelectItem>
+                    <SelectItem value="8">8 Months</SelectItem>
+                    <SelectItem value="9">9 Months</SelectItem>
+                    <SelectItem value="10">10 Months</SelectItem>
+                    <SelectItem value="11">11 Months</SelectItem>
+                    <SelectItem value="12">12 Months</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
           </CardHeader>

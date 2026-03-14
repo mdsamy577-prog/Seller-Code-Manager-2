@@ -12,7 +12,6 @@ import {
   FileText,
   Download,
   X,
-  ExternalLink,
 } from "lucide-react";
 import { SiMeta } from "react-icons/si";
 import { Button } from "@/components/ui/button";
@@ -41,40 +40,45 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 
-function isPdf(url: string) {
-  return url.toLowerCase().includes(".pdf") || url.toLowerCase().includes("/raw/");
-}
-
 function NidViewerModal({ url, onClose }: { url: string; onClose: () => void }) {
-  const filename = url.split("/").pop() || "nid-file";
-
-  const handleDownload = () => {
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = filename;
-    a.target = "_blank";
-    a.click();
+  const handleDownload = async () => {
+    try {
+      const response = await fetch(url);
+      const blob = await response.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = blobUrl;
+      a.download = "nid-document";
+      a.click();
+      URL.revokeObjectURL(blobUrl);
+    } catch {
+      window.open(url, "_blank");
+    }
   };
 
   return (
-    <Dialog open onOpenChange={onClose}>
-      <DialogContent
-        className="w-[95vw] max-w-2xl p-0 overflow-hidden"
-        aria-describedby={undefined}
+    <div
+      className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
+      onClick={onClose}
+      data-testid="overlay-nid-modal"
+    >
+      {/* Dark overlay */}
+      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
+
+      {/* Modal window */}
+      <div
+        className="relative z-10 w-full max-w-2xl bg-white dark:bg-gray-900 rounded-xl shadow-2xl overflow-hidden flex flex-col"
+        style={{ maxHeight: "90vh" }}
+        onClick={(e) => e.stopPropagation()}
       >
-        <DialogHeader className="px-4 py-3 border-b flex flex-row items-center justify-between space-y-0">
-          <DialogTitle className="flex items-center gap-2 text-sm font-semibold">
+        {/* Header */}
+        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700 shrink-0">
+          <div className="flex items-center gap-2 text-sm font-semibold">
             <FileText className="h-4 w-4 text-violet-500 shrink-0" />
-            NID Document
-          </DialogTitle>
+            <span>NID Document</span>
+          </div>
           <div className="flex items-center gap-1.5">
             <Button
               size="sm"
@@ -88,23 +92,26 @@ function NidViewerModal({ url, onClose }: { url: string; onClose: () => void }) 
             </Button>
             <button
               onClick={onClose}
-              className="rounded-full p-1.5 hover:bg-muted transition-colors ml-1"
+              className="rounded-full p-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors ml-1"
               data-testid="button-nid-modal-close"
             >
               <X className="h-4 w-4" />
             </button>
           </div>
-        </DialogHeader>
-        <div className="w-full overflow-auto bg-muted/20 flex items-center justify-center p-4 max-h-[80vh]">
+        </div>
+
+        {/* Image area */}
+        <div className="overflow-auto flex-1 flex items-center justify-center p-4 bg-gray-50 dark:bg-gray-800/50">
           <img
             src={url}
-            alt="NID"
+            alt="NID Document"
             style={{ maxWidth: "100%", height: "auto" }}
             className="rounded-md shadow-md"
+            data-testid="img-nid-preview"
           />
         </div>
-      </DialogContent>
-    </Dialog>
+      </div>
+    </div>
   );
 }
 

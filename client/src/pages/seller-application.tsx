@@ -72,132 +72,6 @@ const monthLabels: Record<string, string> = {
 
 const dashboardPackages = ["1", "6", "9", "12"];
 
-type PandaState = "idle" | "happy" | "excited" | "celebrate";
-
-const PANDA_MESSAGES: Record<PandaState, string> = {
-  idle:      "Basic package selected 🙂",
-  happy:     "Good choice! Most sellers choose this 👍",
-  excited:   "Great value package 🔥",
-  celebrate: "Premium package unlocked! 🎉",
-};
-
-function PandaAssistant({ state }: { state: PandaState }) {
-  const pupilCY   = state === "idle" ? 46 : 48;
-  const shineCY   = state === "idle" ? 44 : 45.5;
-  const armLUp    = state === "excited" || state === "celebrate";
-  const armRUp    = state === "celebrate";
-  const showBlush = state !== "idle";
-
-  return (
-    <div
-      className={`panda-${state}`}
-      data-testid="panda-assistant"
-      style={{ width: "100%", height: "100%", willChange: "transform" }}
-    >
-      <svg
-        viewBox="0 0 100 120"
-        xmlns="http://www.w3.org/2000/svg"
-        style={{ width: "100%", height: "100%", overflow: "visible" }}
-        aria-label="Panda assistant"
-      >
-        {/* ── Arms (behind body) ── */}
-        {armLUp ? (
-          <path d="M 28 90 Q 6 70 13 54" stroke="#222" strokeWidth="10" strokeLinecap="round" fill="none" />
-        ) : (
-          <path d="M 28 90 Q 10 106 15 118" stroke="#222" strokeWidth="10" strokeLinecap="round" fill="none" />
-        )}
-        {armRUp ? (
-          <path d="M 72 90 Q 94 70 87 54" stroke="#222" strokeWidth="10" strokeLinecap="round" fill="none" />
-        ) : (
-          <path d="M 72 90 Q 90 106 85 118" stroke="#222" strokeWidth="10" strokeLinecap="round" fill="none" />
-        )}
-
-        {/* ── Body ── */}
-        <ellipse
-          cx="50" cy="104" rx="27" ry="19"
-          fill="white" stroke="#e8e8e8" strokeWidth="0.6"
-          className="panda-body-breathe"
-        />
-        {/* Belly patch */}
-        <ellipse cx="50" cy="107" rx="17" ry="13" fill="#f2f2f2" className="panda-body-breathe" />
-
-        {/* ── Head ── */}
-        <circle cx="50" cy="53" r="35" fill="white" stroke="#eee" strokeWidth="0.5" />
-
-        {/* Ear outers */}
-        <circle cx="22" cy="23" r="14" fill="#202020" />
-        <circle cx="78" cy="23" r="14" fill="#202020" />
-        {/* Ear inners */}
-        <circle cx="22" cy="23" r="7.5" fill="#303030" />
-        <circle cx="78" cy="23" r="7.5" fill="#303030" />
-
-        {/* Eye patches */}
-        <ellipse cx="35" cy="48" rx="13" ry="11" fill="#1a1a1a" transform="rotate(-14 35 48)" />
-        <ellipse cx="65" cy="48" rx="13" ry="11" fill="#1a1a1a" transform="rotate(14 65 48)" />
-
-        {/* Eye whites */}
-        <circle cx="36" cy="48" r="7" fill="white" />
-        <circle cx="64" cy="48" r="7" fill="white" />
-
-        {/* Pupils */}
-        <circle cx="37"  cy={pupilCY} r="4"   fill="#0d0d0d" />
-        <circle cx="63"  cy={pupilCY} r="4"   fill="#0d0d0d" />
-
-        {/* Eye shine */}
-        <circle cx="39"  cy={shineCY} r="1.6" fill="white" />
-        <circle cx="65"  cy={shineCY} r="1.6" fill="white" />
-
-        {/* Eyelids (blink) */}
-        <ellipse cx="36" cy="48" rx="7" ry="7" fill="#1a1a1a" className="panda-eyelid-l" />
-        <ellipse cx="64" cy="48" rx="7" ry="7" fill="#1a1a1a" className="panda-eyelid-r" />
-
-        {/* Blush */}
-        {showBlush && (
-          <>
-            <ellipse cx="20" cy="58" rx="7.5" ry="4"   fill="#f0809a" opacity="0.42" />
-            <ellipse cx="80" cy="58" rx="7.5" ry="4"   fill="#f0809a" opacity="0.42" />
-          </>
-        )}
-
-        {/* Nose */}
-        <ellipse cx="50" cy="60" rx="5.5" ry="3.8" fill="#d9788e" />
-        {/* Nose highlight */}
-        <ellipse cx="48.5" cy="58.8" rx="1.8" ry="1.2" fill="#e8a0b0" opacity="0.7" />
-
-        {/* Mouth */}
-        {state === "idle" && (
-          <path d="M 43 67 Q 50 72 57 67" fill="none" stroke="#2a2a2a" strokeWidth="2" strokeLinecap="round" />
-        )}
-        {state === "happy" && (
-          <path d="M 39 66 Q 50 78 61 66" fill="none" stroke="#2a2a2a" strokeWidth="2.2" strokeLinecap="round" />
-        )}
-        {state === "excited" && (
-          <>
-            <path d="M 38 65 Q 50 80 62 65" fill="none" stroke="#2a2a2a" strokeWidth="2.2" strokeLinecap="round" />
-            <ellipse cx="50" cy="72" rx="9" ry="6" fill="#f5a0b5" opacity="0.3" />
-          </>
-        )}
-        {state === "celebrate" && (
-          <>
-            <ellipse cx="50" cy="72" rx="11" ry="8" fill="#ffe2ec" />
-            <path d="M 38 64 Q 50 82 62 64" fill="none" stroke="#2a2a2a" strokeWidth="2.2" strokeLinecap="round" />
-          </>
-        )}
-
-        {/* Celebration dots (no emoji) */}
-        {state === "celebrate" && (
-          <>
-            <circle cx="8"  cy="32" r="3.5" fill="#6ee7b7" opacity="0.9" />
-            <circle cx="92" cy="28" r="3"   fill="#93c5fd" opacity="0.9" />
-            <circle cx="5"  cy="18" r="2"   fill="#fcd34d" opacity="0.8" />
-            <circle cx="95" cy="42" r="2.5" fill="#f9a8d4" opacity="0.8" />
-          </>
-        )}
-      </svg>
-    </div>
-  );
-}
-
 export default function SellerApplication() {
   const { toast } = useToast();
   const [submitted, setSubmitted] = useState(false);
@@ -225,12 +99,6 @@ export default function SellerApplication() {
   const sellerType = form.watch("sellerType");
   const selectedDuration = form.watch("duration");
   const currentPricing = sellerType === "facebook_business_page" ? businessPricing : personalPricing;
-
-  const pandaState: PandaState =
-    selectedDuration === "12" ? "celebrate" :
-    Number(selectedDuration) >= 9 ? "excited" :
-    Number(selectedDuration) >= 6 ? "happy" :
-    "idle";
 
   const [rulesOpen, setRulesOpen] = useState(false);
   const [groupRules, setGroupRules] = useState("");
@@ -513,36 +381,10 @@ export default function SellerApplication() {
           <Card className="shadow-xl border-0 bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm overflow-hidden">
             <div className="h-1.5 bg-gradient-to-r from-emerald-400 via-teal-500 to-cyan-500" />
             <CardHeader className="text-center pb-2 pt-6 px-6">
-              {/* Three-column layout: [panda][clipboard-centered][spacer] */}
-              <div className="flex items-end justify-between w-full mb-2">
-
-                {/* LEFT — Panda column (speech bubble stacked above panda) */}
-                <div className="flex flex-col items-center gap-1.5 w-12 sm:w-14 flex-shrink-0">
-                  <div
-                    key={pandaState}
-                    className="panda-bubble-anim relative bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-700 rounded-xl px-2 py-1.5 shadow-sm w-[120px] sm:w-[136px] -ml-[54px] sm:-ml-[61px]"
-                  >
-                    <p className="text-[10px] sm:text-[11px] leading-snug text-slate-700 dark:text-slate-200 font-medium text-center">
-                      {PANDA_MESSAGES[pandaState]}
-                    </p>
-                    {/* Tail pointing down toward the panda */}
-                    <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-3 h-1.5 overflow-hidden">
-                      <div className="w-3 h-3 bg-white dark:bg-gray-800 border-b border-r border-slate-200 dark:border-gray-700 rotate-45 -translate-y-1.5 mx-auto" />
-                    </div>
-                  </div>
-                  <div className="w-12 h-14 sm:w-14 sm:h-16">
-                    <PandaAssistant state={pandaState} />
-                  </div>
-                </div>
-
-                {/* CENTER — Clipboard icon (stays perfectly centered) */}
-                <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-br from-emerald-400 to-teal-600 flex items-center justify-center shadow-lg shadow-emerald-500/30 flex-shrink-0">
+              <div className="flex justify-center mb-2">
+                <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-br from-emerald-400 to-teal-600 flex items-center justify-center shadow-lg shadow-emerald-500/30">
                   <ClipboardList className="h-7 w-7 sm:h-8 sm:w-8 text-white" />
                 </div>
-
-                {/* RIGHT — Invisible spacer matching panda column width */}
-                <div className="w-12 sm:w-14 flex-shrink-0" aria-hidden="true" />
-
               </div>
               <CardTitle className="text-2xl font-bold tracking-tight" data-testid="text-apply-title">সেলার আবেদন</CardTitle>
               <CardDescription className="text-sm mt-1.5 leading-relaxed">

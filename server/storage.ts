@@ -27,6 +27,7 @@ export interface IStorage {
   getSellerApplicationById(id: number): Promise<SellerApplication | undefined>;
   updateSellerApplicationStatus(id: number, status: string): Promise<SellerApplication | undefined>;
   updateSellerApplicationEmail(id: number, email: string): Promise<SellerApplication | undefined>;
+  clearApplicationNidFileUrl(id: number): Promise<void>;
   getSellerByCode(code: string): Promise<Seller | undefined>;
   deleteSellerApplication(id: number): Promise<boolean>;
   updateUserPassword(id: string, hashedPassword: string): Promise<void>;
@@ -144,6 +145,10 @@ export class DatabaseStorage implements IStorage {
   async updateSellerApplicationEmail(id: number, email: string): Promise<SellerApplication | undefined> {
     const result = await db.update(sellerApplications).set({ email }).where(eq(sellerApplications.id, id)).returning();
     return result[0];
+  }
+
+  async clearApplicationNidFileUrl(id: number): Promise<void> {
+    await db.update(sellerApplications).set({ nidFileUrl: null }).where(eq(sellerApplications.id, id));
   }
 
   async deleteSellerApplication(id: number): Promise<boolean> {

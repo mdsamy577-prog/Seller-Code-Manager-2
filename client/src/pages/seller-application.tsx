@@ -133,6 +133,7 @@ export default function SellerApplication() {
         const formData = new FormData();
         formData.append("nid", nidFile);
         formData.append("phone", data.phone);
+        formData.append("name", data.name);
         const res = await fetch("/api/applications/upload-nid", {
           method: "POST",
           body: formData,

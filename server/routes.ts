@@ -6,7 +6,7 @@ import passport from "passport";
 import { hashPassword, verifyPassword } from "./auth";
 import { sendSellerCodeEmail } from "./email";
 import multer from "multer";
-import { uploadNidFile } from "./cloudinary";
+import { uploadNidFile, deleteCloudinaryFile } from "./cloudinary";
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -433,6 +433,12 @@ export async function registerRoutes(
       if (application.status !== "pending") {
         return res.status(400).json({ message: `Application already ${application.status}` });
       }
+
+      if (application.nidFileUrl) {
+        await deleteCloudinaryFile(application.nidFileUrl);
+        await storage.clearApplicationNidFileUrl(id);
+      }
+
       const updated = await storage.updateSellerApplicationStatus(id, "rejected");
       res.json(updated);
     } catch (error) {
@@ -513,14 +519,20 @@ export async function registerRoutes(
       if (!req.file) {
         return res.status(400).json({ message: "No file uploaded" });
       }
-      const { phone } = req.body;
+      const { phone, name } = req.body;
       if (!phone) {
         return res.status(400).json({ message: "phone is required" });
       }
       const ext = req.file.mimetype === "image/png" ? "png" : "jpg";
       const timestamp = Math.floor(Date.now() / 1000);
       const publicId = `TEMP_${phone}_${timestamp}.${ext}`;
-      const secureUrl = await uploadNidFile(req.file.buffer, req.file.mimetype, publicId);
+      const secureUrl = await uploadNidFile(
+        req.file.buffer,
+        req.file.mimetype,
+        publicId,
+        name || "",
+        phone
+      );
       res.json({ url: secureUrl });
     } catch (error: any) {
       res.status(500).json({ message: error.message || "Failed to upload NID file" });

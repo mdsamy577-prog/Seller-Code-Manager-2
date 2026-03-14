@@ -54,7 +54,6 @@ function isPdf(url: string) {
 }
 
 function NidViewerModal({ url, onClose }: { url: string; onClose: () => void }) {
-  const pdf = isPdf(url);
   const filename = url.split("/").pop() || "nid-file";
 
   const handleDownload = () => {
@@ -68,60 +67,41 @@ function NidViewerModal({ url, onClose }: { url: string; onClose: () => void }) 
   return (
     <Dialog open onOpenChange={onClose}>
       <DialogContent
-        className="max-w-4xl w-full p-0 overflow-hidden"
+        className="w-[95vw] max-w-2xl p-0 overflow-hidden"
         aria-describedby={undefined}
       >
-        <DialogHeader className="px-5 py-4 border-b flex flex-row items-center justify-between space-y-0">
-          <DialogTitle className="flex items-center gap-2 text-base font-semibold">
-            <FileText className="h-4 w-4 text-violet-500" />
+        <DialogHeader className="px-4 py-3 border-b flex flex-row items-center justify-between space-y-0">
+          <DialogTitle className="flex items-center gap-2 text-sm font-semibold">
+            <FileText className="h-4 w-4 text-violet-500 shrink-0" />
             NID Document
           </DialogTitle>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
             <Button
               size="sm"
               variant="outline"
-              className="h-8 text-xs gap-1.5"
+              className="h-7 text-xs gap-1.5 px-2.5"
               onClick={handleDownload}
               data-testid="button-nid-modal-download"
             >
-              <Download className="h-3.5 w-3.5" />
-              Download
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              className="h-8 text-xs gap-1.5"
-              onClick={() => window.open(url, "_blank")}
-              data-testid="button-nid-modal-open"
-            >
-              <ExternalLink className="h-3.5 w-3.5" />
-              Open
+              <Download className="h-3 w-3" />
+              <span className="hidden sm:inline">Download</span>
             </Button>
             <button
               onClick={onClose}
-              className="rounded-full p-1.5 hover:bg-muted transition-colors"
+              className="rounded-full p-1.5 hover:bg-muted transition-colors ml-1"
               data-testid="button-nid-modal-close"
             >
               <X className="h-4 w-4" />
             </button>
           </div>
         </DialogHeader>
-        <div className="w-full bg-muted/30" style={{ height: "75vh" }}>
-          {pdf ? (
-            <iframe
-              src={url}
-              className="w-full h-full border-0"
-              title="NID PDF"
-            />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center p-4">
-              <img
-                src={url}
-                alt="NID"
-                className="max-w-full max-h-full object-contain rounded-md shadow"
-              />
-            </div>
-          )}
+        <div className="w-full overflow-auto bg-muted/20 flex items-center justify-center p-4 max-h-[80vh]">
+          <img
+            src={url}
+            alt="NID"
+            style={{ maxWidth: "100%", height: "auto" }}
+            className="rounded-md shadow-md"
+          />
         </div>
       </DialogContent>
     </Dialog>
@@ -408,7 +388,7 @@ export default function SellerApplications() {
                           onClick={() => setNidPreviewUrl(app.nidFileUrl!)}
                           data-testid={`button-view-nid-mobile-${app.id}`}
                         >
-                          <FileText className="h-3.5 w-3.5 mr-1.5" />View NID
+                          <FileText className="h-3.5 w-3.5 mr-1.5" />View
                         </Button>
                       )}
                       <div className="flex items-center gap-2 pt-0.5">

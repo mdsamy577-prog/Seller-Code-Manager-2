@@ -286,3 +286,35 @@
     inset: -1px;
   }
 }
+
+/* ── Panda assistant animations ── */
+@keyframes pandaFloat {
+  0%, 100% { transform: translateY(0px); }
+  50%       { transform: translateY(-5px); }
+}
+@keyframes pandaBounce {
+  0%, 100% { transform: translateY(0px) scale(1); }
+  40%      { transform: translateY(-8px) scale(1.05); }
+  70%      { transform: translateY(-2px) scale(0.97); }
+}
+@keyframes pandaExcited {
+  0%, 100% { transform: translateY(0px) rotate(-5deg); }
+  50%      { transform: translateY(-6px) rotate(5deg); }
+}
+@keyframes pandaCelebrate {
+  0%   { transform: translateY(0px) rotate(-6deg) scale(1); }
+  25%  { transform: translateY(-9px) rotate(0deg) scale(1.06); }
+  50%  { transform: translateY(0px) rotate(6deg) scale(1); }
+  75%  { transform: translateY(-6px) rotate(0deg) scale(1.03); }
+  100% { transform: translateY(0px) rotate(-6deg) scale(1); }
+}
+@keyframes pandaSparkleAnim {
+  0%, 100% { opacity: 0.15; transform: scale(0.75) rotate(-10deg); }
+  50%      { opacity: 1;    transform: scale(1.25) rotate(15deg); }
+}
+.panda-idle      { animation: pandaFloat    3s   ease-in-out infinite; }
+.panda-happy     { animation: pandaBounce   0.85s ease-in-out infinite; }
+.panda-excited   { animation: pandaExcited  0.55s ease-in-out infinite; }
+.panda-celebrate { animation: pandaCelebrate 0.48s ease-in-out infinite; }
+.panda-sparkle         { display: inline-block; animation: pandaSparkleAnim 0.65s ease-in-out infinite; }
+.panda-sparkle-delay   { display: inline-block; animation: pandaSparkleAnim 0.65s ease-in-out 0.32s infinite; }

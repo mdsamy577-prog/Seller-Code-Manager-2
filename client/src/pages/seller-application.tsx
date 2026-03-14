@@ -72,6 +72,111 @@ const monthLabels: Record<string, string> = {
 
 const dashboardPackages = ["1", "6", "9", "12"];
 
+type PandaState = "idle" | "happy" | "excited" | "celebrate";
+
+function PandaAssistant({ state }: { state: PandaState }) {
+  const pupilY = state === "idle" ? 35.5 : 37;
+  const shineY = state === "idle" ? 34 : 35.5;
+  const armLeftUp = state === "excited" || state === "celebrate";
+  const armRightUp = state === "celebrate";
+
+  return (
+    <div
+      className={`panda-${state} transition-all duration-500`}
+      data-testid="panda-assistant"
+      style={{ width: "100%", height: "100%", willChange: "transform" }}
+    >
+      <svg
+        viewBox="0 0 80 90"
+        xmlns="http://www.w3.org/2000/svg"
+        style={{ width: "100%", height: "100%", overflow: "visible" }}
+        aria-label="Panda assistant"
+      >
+        {/* Ears */}
+        <circle cx="16" cy="17" r="12" fill="#252525" />
+        <circle cx="16" cy="17" r="6.5" fill="#3a3a3a" />
+        <circle cx="64" cy="17" r="12" fill="#252525" />
+        <circle cx="64" cy="17" r="6.5" fill="#3a3a3a" />
+
+        {/* Sparkles for celebrate */}
+        {state === "celebrate" && (
+          <>
+            <text x="1" y="22" fontSize="9" className="panda-sparkle">✨</text>
+            <text x="61" y="18" fontSize="9" className="panda-sparkle-delay">⭐</text>
+          </>
+        )}
+
+        {/* Head */}
+        <circle cx="40" cy="43" r="31" fill="white" stroke="#efefef" strokeWidth="0.5" />
+
+        {/* Eye patches */}
+        <ellipse cx="27" cy="37" rx="10" ry="8.5" fill="#1a1a1a" transform="rotate(-12 27 37)" />
+        <ellipse cx="53" cy="37" rx="10" ry="8.5" fill="#1a1a1a" transform="rotate(12 53 37)" />
+
+        {/* Eye whites */}
+        <circle cx="28" cy="37" r="5" fill="white" />
+        <circle cx="52" cy="37" r="5" fill="white" />
+
+        {/* Pupils */}
+        <circle cx="28" cy={pupilY} r="3" fill="#0a0a0a" />
+        <circle cx="52" cy={pupilY} r="3" fill="#0a0a0a" />
+
+        {/* Eye shine */}
+        <circle cx="29.5" cy={shineY} r="1.2" fill="white" />
+        <circle cx="53.5" cy={shineY} r="1.2" fill="white" />
+
+        {/* Blush */}
+        {(state === "happy" || state === "excited" || state === "celebrate") && (
+          <>
+            <ellipse cx="18" cy="45" rx="5.5" ry="3" fill="#ffb0c8" opacity="0.55" />
+            <ellipse cx="62" cy="45" rx="5.5" ry="3" fill="#ffb0c8" opacity="0.55" />
+          </>
+        )}
+
+        {/* Nose */}
+        <ellipse cx="40" cy="48" rx="5" ry="3.5" fill="#f9a0b8" />
+
+        {/* Mouth */}
+        {state === "idle" && (
+          <path d="M 34 54 Q 40 58.5 46 54" fill="none" stroke="#2a2a2a" strokeWidth="1.8" strokeLinecap="round" />
+        )}
+        {state === "happy" && (
+          <path d="M 31 53 Q 40 64 49 53" fill="none" stroke="#2a2a2a" strokeWidth="2" strokeLinecap="round" />
+        )}
+        {state === "excited" && (
+          <>
+            <path d="M 30 53 Q 40 66 50 53" fill="none" stroke="#2a2a2a" strokeWidth="2" strokeLinecap="round" />
+            <ellipse cx="40" cy="59" rx="7" ry="4.5" fill="#ff9eb5" opacity="0.35" />
+          </>
+        )}
+        {state === "celebrate" && (
+          <>
+            <ellipse cx="40" cy="58" rx="8.5" ry="6.5" fill="#ffe0e8" />
+            <path d="M 31 52 Q 40 66 49 52" fill="none" stroke="#2a2a2a" strokeWidth="2" strokeLinecap="round" />
+          </>
+        )}
+
+        {/* Body */}
+        <ellipse cx="40" cy="83" rx="20" ry="11" fill="#f4f4f4" stroke="#eaeaea" strokeWidth="0.5" />
+
+        {/* Left arm — raised when excited/celebrate */}
+        {armLeftUp ? (
+          <path d="M 22 72 Q 6 58 10 47" stroke="#252525" strokeWidth="8" strokeLinecap="round" fill="none" />
+        ) : (
+          <path d="M 22 72 Q 10 82 14 89" stroke="#252525" strokeWidth="8" strokeLinecap="round" fill="none" />
+        )}
+
+        {/* Right arm — raised when celebrate */}
+        {armRightUp ? (
+          <path d="M 58 72 Q 74 58 70 47" stroke="#252525" strokeWidth="8" strokeLinecap="round" fill="none" />
+        ) : (
+          <path d="M 58 72 Q 70 82 66 89" stroke="#252525" strokeWidth="8" strokeLinecap="round" fill="none" />
+        )}
+      </svg>
+    </div>
+  );
+}
+
 export default function SellerApplication() {
   const { toast } = useToast();
   const [submitted, setSubmitted] = useState(false);
@@ -99,6 +204,12 @@ export default function SellerApplication() {
   const sellerType = form.watch("sellerType");
   const selectedDuration = form.watch("duration");
   const currentPricing = sellerType === "facebook_business_page" ? businessPricing : personalPricing;
+
+  const pandaState: PandaState =
+    selectedDuration === "12" ? "celebrate" :
+    Number(selectedDuration) >= 9 ? "excited" :
+    Number(selectedDuration) >= 6 ? "happy" :
+    "idle";
 
   const [rulesOpen, setRulesOpen] = useState(false);
   const [groupRules, setGroupRules] = useState("");
@@ -380,9 +491,14 @@ export default function SellerApplication() {
 
           <Card className="shadow-xl border-0 bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm overflow-hidden">
             <div className="h-1.5 bg-gradient-to-r from-emerald-400 via-teal-500 to-cyan-500" />
-            <CardHeader className="text-center pb-2 pt-8 px-6">
-              <div className="mx-auto w-16 h-16 rounded-2xl bg-gradient-to-br from-emerald-400 to-teal-600 flex items-center justify-center mb-4 shadow-lg shadow-emerald-500/30">
-                <ClipboardList className="h-8 w-8 text-white" />
+            <CardHeader className="text-center pb-2 pt-6 px-6">
+              <div className="flex items-end justify-center gap-3 mb-2">
+                <div className="w-12 h-14 sm:w-14 sm:h-16 flex-shrink-0">
+                  <PandaAssistant state={pandaState} />
+                </div>
+                <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-br from-emerald-400 to-teal-600 flex items-center justify-center shadow-lg shadow-emerald-500/30 flex-shrink-0">
+                  <ClipboardList className="h-7 w-7 sm:h-8 sm:w-8 text-white" />
+                </div>
               </div>
               <CardTitle className="text-2xl font-bold tracking-tight" data-testid="text-apply-title">সেলার আবেদন</CardTitle>
               <CardDescription className="text-sm mt-1.5 leading-relaxed">

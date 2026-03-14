@@ -12,7 +12,6 @@ import {
   FileText,
   Download,
   X,
-  ExternalLink,
 } from "lucide-react";
 import { SiMeta } from "react-icons/si";
 import { Button } from "@/components/ui/button";
@@ -48,10 +47,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
-
-function isPdf(url: string) {
-  return url.toLowerCase().includes(".pdf") || url.toLowerCase().includes("/raw/");
-}
 
 function NidViewerModal({ url, onClose }: { url: string; onClose: () => void }) {
   const filename = url.split("/").pop() || "nid-file";

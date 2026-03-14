@@ -399,6 +399,7 @@ export async function registerRoutes(
         startDate,
         expiryDate,
         email: application.email || undefined,
+        nidFileUrl: application.nidFileUrl || undefined,
       });
 
       const updated = await storage.updateSellerApplicationStatus(id, "approved");

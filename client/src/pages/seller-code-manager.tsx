@@ -29,7 +29,6 @@ import {
   Settings,
   BookOpen,
   Save,
-  FileImage,
 } from "lucide-react";
 import { SiMeta } from "react-icons/si";
 import { useLocation } from "wouter";
@@ -755,46 +754,6 @@ function SellerForm({
   );
 }
 
-function NidPreviewModal({ seller, onClose }: { seller: Seller; onClose: () => void }) {
-  return (
-    <Dialog open onOpenChange={onClose}>
-      <DialogContent
-        className="w-[95vw] max-w-2xl p-0 overflow-hidden"
-        aria-describedby={undefined}
-      >
-        <DialogHeader className="px-4 py-3 border-b flex flex-row items-center justify-between space-y-0">
-          <DialogTitle className="flex items-center gap-2 text-sm font-semibold">
-            <FileImage className="h-4 w-4 text-violet-500 shrink-0" />
-            NID Document — {seller.name}
-          </DialogTitle>
-          <button
-            onClick={onClose}
-            className="rounded-full p-1.5 hover:bg-muted transition-colors"
-            data-testid="button-nid-preview-close"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        </DialogHeader>
-        <div className="w-full overflow-auto bg-muted/20 flex items-center justify-center p-6 max-h-[80vh]">
-          {seller.nidFileUrl ? (
-            <img
-              src={seller.nidFileUrl}
-              alt={`NID document for ${seller.name}`}
-              style={{ maxWidth: "100%", height: "auto" }}
-              className="rounded-md shadow-md"
-              data-testid="img-nid-preview"
-            />
-          ) : (
-            <p className="text-muted-foreground text-sm" data-testid="text-no-document">
-              No document uploaded
-            </p>
-          )}
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
 function TableSkeleton() {
   return (
     <div className="space-y-3">
@@ -839,7 +798,6 @@ export default function SellerCodeManager() {
   const [editingCodeValue, setEditingCodeValue] = useState("");
   const [emailDialogSeller, setEmailDialogSeller] = useState<Seller | undefined>();
   const [emailDialogInput, setEmailDialogInput] = useState("");
-  const [nidPreviewSeller, setNidPreviewSeller] = useState<Seller | undefined>();
   const [settingsPanel, setSettingsPanel] = useState<"registration" | "email" | "group-rules" | null>(null);
   const { toast } = useToast();
 
@@ -1087,15 +1045,6 @@ export default function SellerCodeManager() {
                           </TableCell>
                           <TableCell data-testid={`text-code-${seller.id}`}>
                             <div className="flex items-center gap-1.5">
-                              <button
-                                type="button"
-                                onClick={() => setNidPreviewSeller(seller)}
-                                className={`inline-flex items-center justify-center transition-colors ${seller.nidFileUrl ? "text-violet-500 hover:text-violet-700" : "text-muted-foreground/40 hover:text-muted-foreground"}`}
-                                data-testid={`button-nid-preview-${seller.id}`}
-                                title="View NID document"
-                              >
-                                <FileImage className="h-3.5 w-3.5" />
-                              </button>
                               <Badge variant="secondary" className="no-default-active-elevate font-mono">
                                 <Hash className="h-3 w-3 mr-1" />{seller.sellerCode}
                               </Badge>
@@ -1148,15 +1097,6 @@ export default function SellerCodeManager() {
                       </div>
 
                       <div className="flex items-center gap-2 flex-wrap">
-                        <button
-                          type="button"
-                          onClick={() => setNidPreviewSeller(seller)}
-                          className={`inline-flex items-center justify-center transition-colors ${seller.nidFileUrl ? "text-violet-500 hover:text-violet-700" : "text-muted-foreground/40 hover:text-muted-foreground"}`}
-                          data-testid={`button-nid-preview-mobile-${seller.id}`}
-                          title="View NID document"
-                        >
-                          <FileImage className="h-4 w-4" />
-                        </button>
                         <Badge variant="secondary" className="no-default-active-elevate font-mono text-xs" data-testid={`text-code-${seller.id}`}>
                           <Hash className="h-3 w-3 mr-1" />{seller.sellerCode}
                         </Badge>
@@ -1301,9 +1241,6 @@ export default function SellerCodeManager() {
           </AlertDialogContent>
         </AlertDialog>
 
-        {nidPreviewSeller && (
-          <NidPreviewModal seller={nidPreviewSeller} onClose={() => setNidPreviewSeller(undefined)} />
-        )}
       </div>
     </div>
   );

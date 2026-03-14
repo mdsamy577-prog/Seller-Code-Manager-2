@@ -29,7 +29,6 @@ export const sellers = pgTable("sellers", {
   startDate: date("start_date").notNull(),
   expiryDate: date("expiry_date").notNull(),
   email: text("email"),
-  nidFileUrl: text("nid_file_url"),
 });
 
 export const emailReminderLog = pgTable("email_reminder_log", {
@@ -49,7 +48,6 @@ export const insertSellerSchema = createInsertSchema(sellers).pick({
   duration: true,
   startDate: true,
   email: true,
-  nidFileUrl: true,
 });
 
 export type InsertSeller = z.infer<typeof insertSellerSchema>;

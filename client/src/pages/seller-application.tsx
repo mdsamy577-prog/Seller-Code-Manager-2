@@ -74,103 +74,124 @@ const dashboardPackages = ["1", "6", "9", "12"];
 
 type PandaState = "idle" | "happy" | "excited" | "celebrate";
 
+const PANDA_MESSAGES: Record<PandaState, string> = {
+  idle:      "Basic package selected 🙂",
+  happy:     "Good choice! Most sellers choose this 👍",
+  excited:   "Great value package 🔥",
+  celebrate: "Premium package unlocked! 🎉",
+};
+
 function PandaAssistant({ state }: { state: PandaState }) {
-  const pupilY = state === "idle" ? 35.5 : 37;
-  const shineY = state === "idle" ? 34 : 35.5;
-  const armLeftUp = state === "excited" || state === "celebrate";
-  const armRightUp = state === "celebrate";
+  const pupilCY   = state === "idle" ? 46 : 48;
+  const shineCY   = state === "idle" ? 44 : 45.5;
+  const armLUp    = state === "excited" || state === "celebrate";
+  const armRUp    = state === "celebrate";
+  const showBlush = state !== "idle";
 
   return (
     <div
-      className={`panda-${state} transition-all duration-500`}
+      className={`panda-${state}`}
       data-testid="panda-assistant"
       style={{ width: "100%", height: "100%", willChange: "transform" }}
     >
       <svg
-        viewBox="0 0 80 90"
+        viewBox="0 0 100 120"
         xmlns="http://www.w3.org/2000/svg"
         style={{ width: "100%", height: "100%", overflow: "visible" }}
         aria-label="Panda assistant"
       >
-        {/* Ears */}
-        <circle cx="16" cy="17" r="12" fill="#252525" />
-        <circle cx="16" cy="17" r="6.5" fill="#3a3a3a" />
-        <circle cx="64" cy="17" r="12" fill="#252525" />
-        <circle cx="64" cy="17" r="6.5" fill="#3a3a3a" />
-
-        {/* Sparkles for celebrate */}
-        {state === "celebrate" && (
-          <>
-            <text x="1" y="22" fontSize="9" className="panda-sparkle">✨</text>
-            <text x="61" y="18" fontSize="9" className="panda-sparkle-delay">⭐</text>
-          </>
+        {/* ── Arms (behind body) ── */}
+        {armLUp ? (
+          <path d="M 28 90 Q 6 70 13 54" stroke="#222" strokeWidth="10" strokeLinecap="round" fill="none" />
+        ) : (
+          <path d="M 28 90 Q 10 106 15 118" stroke="#222" strokeWidth="10" strokeLinecap="round" fill="none" />
+        )}
+        {armRUp ? (
+          <path d="M 72 90 Q 94 70 87 54" stroke="#222" strokeWidth="10" strokeLinecap="round" fill="none" />
+        ) : (
+          <path d="M 72 90 Q 90 106 85 118" stroke="#222" strokeWidth="10" strokeLinecap="round" fill="none" />
         )}
 
-        {/* Head */}
-        <circle cx="40" cy="43" r="31" fill="white" stroke="#efefef" strokeWidth="0.5" />
+        {/* ── Body ── */}
+        <ellipse
+          cx="50" cy="104" rx="27" ry="19"
+          fill="white" stroke="#e8e8e8" strokeWidth="0.6"
+          className="panda-body-breathe"
+        />
+        {/* Belly patch */}
+        <ellipse cx="50" cy="107" rx="17" ry="13" fill="#f2f2f2" className="panda-body-breathe" />
+
+        {/* ── Head ── */}
+        <circle cx="50" cy="53" r="35" fill="white" stroke="#eee" strokeWidth="0.5" />
+
+        {/* Ear outers */}
+        <circle cx="22" cy="23" r="14" fill="#202020" />
+        <circle cx="78" cy="23" r="14" fill="#202020" />
+        {/* Ear inners */}
+        <circle cx="22" cy="23" r="7.5" fill="#303030" />
+        <circle cx="78" cy="23" r="7.5" fill="#303030" />
 
         {/* Eye patches */}
-        <ellipse cx="27" cy="37" rx="10" ry="8.5" fill="#1a1a1a" transform="rotate(-12 27 37)" />
-        <ellipse cx="53" cy="37" rx="10" ry="8.5" fill="#1a1a1a" transform="rotate(12 53 37)" />
+        <ellipse cx="35" cy="48" rx="13" ry="11" fill="#1a1a1a" transform="rotate(-14 35 48)" />
+        <ellipse cx="65" cy="48" rx="13" ry="11" fill="#1a1a1a" transform="rotate(14 65 48)" />
 
         {/* Eye whites */}
-        <circle cx="28" cy="37" r="5" fill="white" />
-        <circle cx="52" cy="37" r="5" fill="white" />
+        <circle cx="36" cy="48" r="7" fill="white" />
+        <circle cx="64" cy="48" r="7" fill="white" />
 
         {/* Pupils */}
-        <circle cx="28" cy={pupilY} r="3" fill="#0a0a0a" />
-        <circle cx="52" cy={pupilY} r="3" fill="#0a0a0a" />
+        <circle cx="37"  cy={pupilCY} r="4"   fill="#0d0d0d" />
+        <circle cx="63"  cy={pupilCY} r="4"   fill="#0d0d0d" />
 
         {/* Eye shine */}
-        <circle cx="29.5" cy={shineY} r="1.2" fill="white" />
-        <circle cx="53.5" cy={shineY} r="1.2" fill="white" />
+        <circle cx="39"  cy={shineCY} r="1.6" fill="white" />
+        <circle cx="65"  cy={shineCY} r="1.6" fill="white" />
+
+        {/* Eyelids (blink) */}
+        <ellipse cx="36" cy="48" rx="7" ry="7" fill="#1a1a1a" className="panda-eyelid-l" />
+        <ellipse cx="64" cy="48" rx="7" ry="7" fill="#1a1a1a" className="panda-eyelid-r" />
 
         {/* Blush */}
-        {(state === "happy" || state === "excited" || state === "celebrate") && (
+        {showBlush && (
           <>
-            <ellipse cx="18" cy="45" rx="5.5" ry="3" fill="#ffb0c8" opacity="0.55" />
-            <ellipse cx="62" cy="45" rx="5.5" ry="3" fill="#ffb0c8" opacity="0.55" />
+            <ellipse cx="20" cy="58" rx="7.5" ry="4"   fill="#f0809a" opacity="0.42" />
+            <ellipse cx="80" cy="58" rx="7.5" ry="4"   fill="#f0809a" opacity="0.42" />
           </>
         )}
 
         {/* Nose */}
-        <ellipse cx="40" cy="48" rx="5" ry="3.5" fill="#f9a0b8" />
+        <ellipse cx="50" cy="60" rx="5.5" ry="3.8" fill="#d9788e" />
+        {/* Nose highlight */}
+        <ellipse cx="48.5" cy="58.8" rx="1.8" ry="1.2" fill="#e8a0b0" opacity="0.7" />
 
         {/* Mouth */}
         {state === "idle" && (
-          <path d="M 34 54 Q 40 58.5 46 54" fill="none" stroke="#2a2a2a" strokeWidth="1.8" strokeLinecap="round" />
+          <path d="M 43 67 Q 50 72 57 67" fill="none" stroke="#2a2a2a" strokeWidth="2" strokeLinecap="round" />
         )}
         {state === "happy" && (
-          <path d="M 31 53 Q 40 64 49 53" fill="none" stroke="#2a2a2a" strokeWidth="2" strokeLinecap="round" />
+          <path d="M 39 66 Q 50 78 61 66" fill="none" stroke="#2a2a2a" strokeWidth="2.2" strokeLinecap="round" />
         )}
         {state === "excited" && (
           <>
-            <path d="M 30 53 Q 40 66 50 53" fill="none" stroke="#2a2a2a" strokeWidth="2" strokeLinecap="round" />
-            <ellipse cx="40" cy="59" rx="7" ry="4.5" fill="#ff9eb5" opacity="0.35" />
+            <path d="M 38 65 Q 50 80 62 65" fill="none" stroke="#2a2a2a" strokeWidth="2.2" strokeLinecap="round" />
+            <ellipse cx="50" cy="72" rx="9" ry="6" fill="#f5a0b5" opacity="0.3" />
           </>
         )}
         {state === "celebrate" && (
           <>
-            <ellipse cx="40" cy="58" rx="8.5" ry="6.5" fill="#ffe0e8" />
-            <path d="M 31 52 Q 40 66 49 52" fill="none" stroke="#2a2a2a" strokeWidth="2" strokeLinecap="round" />
+            <ellipse cx="50" cy="72" rx="11" ry="8" fill="#ffe2ec" />
+            <path d="M 38 64 Q 50 82 62 64" fill="none" stroke="#2a2a2a" strokeWidth="2.2" strokeLinecap="round" />
           </>
         )}
 
-        {/* Body */}
-        <ellipse cx="40" cy="83" rx="20" ry="11" fill="#f4f4f4" stroke="#eaeaea" strokeWidth="0.5" />
-
-        {/* Left arm — raised when excited/celebrate */}
-        {armLeftUp ? (
-          <path d="M 22 72 Q 6 58 10 47" stroke="#252525" strokeWidth="8" strokeLinecap="round" fill="none" />
-        ) : (
-          <path d="M 22 72 Q 10 82 14 89" stroke="#252525" strokeWidth="8" strokeLinecap="round" fill="none" />
-        )}
-
-        {/* Right arm — raised when celebrate */}
-        {armRightUp ? (
-          <path d="M 58 72 Q 74 58 70 47" stroke="#252525" strokeWidth="8" strokeLinecap="round" fill="none" />
-        ) : (
-          <path d="M 58 72 Q 70 82 66 89" stroke="#252525" strokeWidth="8" strokeLinecap="round" fill="none" />
+        {/* Celebration dots (no emoji) */}
+        {state === "celebrate" && (
+          <>
+            <circle cx="8"  cy="32" r="3.5" fill="#6ee7b7" opacity="0.9" />
+            <circle cx="92" cy="28" r="3"   fill="#93c5fd" opacity="0.9" />
+            <circle cx="5"  cy="18" r="2"   fill="#fcd34d" opacity="0.8" />
+            <circle cx="95" cy="42" r="2.5" fill="#f9a8d4" opacity="0.8" />
+          </>
         )}
       </svg>
     </div>
@@ -493,9 +514,27 @@ export default function SellerApplication() {
             <div className="h-1.5 bg-gradient-to-r from-emerald-400 via-teal-500 to-cyan-500" />
             <CardHeader className="text-center pb-2 pt-6 px-6">
               <div className="flex items-end justify-center gap-3 mb-2">
-                <div className="w-12 h-14 sm:w-14 sm:h-16 flex-shrink-0">
-                  <PandaAssistant state={pandaState} />
+                {/* Panda column: speech bubble above, panda below */}
+                <div className="flex flex-col items-center flex-shrink-0 gap-1.5">
+                  {/* Speech bubble */}
+                  <div
+                    key={pandaState}
+                    className="panda-bubble-anim relative bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-700 rounded-xl px-2.5 py-1.5 shadow-sm max-w-[130px] sm:max-w-[150px]"
+                  >
+                    <p className="text-[10px] sm:text-[11px] leading-snug text-slate-700 dark:text-slate-200 font-medium text-center">
+                      {PANDA_MESSAGES[pandaState]}
+                    </p>
+                    {/* Tail */}
+                    <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-3 h-1.5 overflow-hidden">
+                      <div className="w-3 h-3 bg-white dark:bg-gray-800 border-b border-r border-slate-200 dark:border-gray-700 rotate-45 translate-y-[-6px] mx-auto" />
+                    </div>
+                  </div>
+                  {/* Panda */}
+                  <div className="w-12 h-14 sm:w-14 sm:h-16">
+                    <PandaAssistant state={pandaState} />
+                  </div>
                 </div>
+                {/* Clipboard icon */}
                 <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-br from-emerald-400 to-teal-600 flex items-center justify-center shadow-lg shadow-emerald-500/30 flex-shrink-0">
                   <ClipboardList className="h-7 w-7 sm:h-8 sm:w-8 text-white" />
                 </div>

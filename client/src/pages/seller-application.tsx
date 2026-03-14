@@ -513,31 +513,36 @@ export default function SellerApplication() {
           <Card className="shadow-xl border-0 bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm overflow-hidden">
             <div className="h-1.5 bg-gradient-to-r from-emerald-400 via-teal-500 to-cyan-500" />
             <CardHeader className="text-center pb-2 pt-6 px-6">
-              <div className="flex items-end justify-center gap-3 mb-2">
-                {/* Panda column: speech bubble above, panda below */}
-                <div className="flex flex-col items-center flex-shrink-0 gap-1.5">
-                  {/* Speech bubble */}
+              {/* Three-column layout: [panda][clipboard-centered][spacer] */}
+              <div className="flex items-end justify-between w-full mb-2">
+
+                {/* LEFT — Panda column (speech bubble stacked above panda) */}
+                <div className="flex flex-col items-center gap-1.5 w-12 sm:w-14 flex-shrink-0">
                   <div
                     key={pandaState}
-                    className="panda-bubble-anim relative bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-700 rounded-xl px-2.5 py-1.5 shadow-sm max-w-[130px] sm:max-w-[150px]"
+                    className="panda-bubble-anim relative bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-700 rounded-xl px-2 py-1.5 shadow-sm w-[120px] sm:w-[136px] -ml-[54px] sm:-ml-[61px]"
                   >
                     <p className="text-[10px] sm:text-[11px] leading-snug text-slate-700 dark:text-slate-200 font-medium text-center">
                       {PANDA_MESSAGES[pandaState]}
                     </p>
-                    {/* Tail */}
+                    {/* Tail pointing down toward the panda */}
                     <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-3 h-1.5 overflow-hidden">
-                      <div className="w-3 h-3 bg-white dark:bg-gray-800 border-b border-r border-slate-200 dark:border-gray-700 rotate-45 translate-y-[-6px] mx-auto" />
+                      <div className="w-3 h-3 bg-white dark:bg-gray-800 border-b border-r border-slate-200 dark:border-gray-700 rotate-45 -translate-y-1.5 mx-auto" />
                     </div>
                   </div>
-                  {/* Panda */}
                   <div className="w-12 h-14 sm:w-14 sm:h-16">
                     <PandaAssistant state={pandaState} />
                   </div>
                 </div>
-                {/* Clipboard icon */}
+
+                {/* CENTER — Clipboard icon (stays perfectly centered) */}
                 <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-br from-emerald-400 to-teal-600 flex items-center justify-center shadow-lg shadow-emerald-500/30 flex-shrink-0">
                   <ClipboardList className="h-7 w-7 sm:h-8 sm:w-8 text-white" />
                 </div>
+
+                {/* RIGHT — Invisible spacer matching panda column width */}
+                <div className="w-12 sm:w-14 flex-shrink-0" aria-hidden="true" />
+
               </div>
               <CardTitle className="text-2xl font-bold tracking-tight" data-testid="text-apply-title">সেলার আবেদন</CardTitle>
               <CardDescription className="text-sm mt-1.5 leading-relaxed">

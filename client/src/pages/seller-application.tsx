@@ -170,26 +170,6 @@ export default function SellerApplication() {
                 </div>
               </div>
 
-              {/* Fish jump animation */}
-              <div
-                className="relative w-full"
-                style={{ height: "76px" }}
-                aria-hidden="true"
-              >
-                {/* Water surface line */}
-                <div
-                  className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-blue-300/40 to-transparent dark:via-blue-500/30"
-                />
-                {/* Splash ring */}
-                <div className="fish-splash-anim" />
-                {/* Fish emoji */}
-                <span
-                  className="fish-jump-anim text-2xl sm:text-3xl"
-                >
-                  🐟
-                </span>
-              </div>
-
               <div className="space-y-1">
                 <h2 className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight" data-testid="text-success-title">
                   ধন্যবাদ!

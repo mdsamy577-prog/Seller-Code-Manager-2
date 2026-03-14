@@ -196,6 +196,18 @@ const durationLabels: Record<string, string> = {
   "10_months": "10 Months",
   "11_months": "11 Months",
   "12_months": "12 Months",
+  "1": "1 Month",
+  "2": "2 Months",
+  "3": "3 Months",
+  "4": "4 Months",
+  "5": "5 Months",
+  "6": "6 Months",
+  "7": "7 Months",
+  "8": "8 Months",
+  "9": "9 Months",
+  "10": "10 Months",
+  "11": "11 Months",
+  "12": "12 Months",
 };
 
 const sellerTypeLabels: Record<string, string> = {

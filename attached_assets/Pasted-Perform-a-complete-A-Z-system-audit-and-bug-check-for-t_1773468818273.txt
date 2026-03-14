@@ -1,0 +1,116 @@
+Perform a complete A-Z system audit and bug check for the Seller Code Manager project.
+
+Check everything step-by-step and confirm if it is working correctly. If any bug or inconsistency exists, fix it.
+
+1. Application Flow
+   Verify the entire flow:
+
+User submits seller application →
+Application appears in Admin Panel →
+Admin can View NID →
+Admin Approves or Rejects →
+Seller Code is generated →
+Seller is added to Sellers table →
+Email with seller code is sent.
+
+Confirm this whole flow works without errors.
+
+2. Email System
+   Check the automatic email system.
+
+Verify:
+
+- Email is always sent when application is Approved
+- Seller Code is included in the email
+- Email delivery works reliably
+- No failures or silent errors
+- SMTP / email service is properly configured
+
+If any issue exists, fix it.
+
+3. File Upload System
+   Verify the NID upload system:
+
+- Only image files are accepted (JPG / PNG)
+- PDF files must NOT be allowed
+- Uploaded image appears correctly in the Admin panel when clicking View
+- The preview opens inside the same page modal, not a new tab
+- Images load properly on both desktop and mobile
+
+4. File Storage
+   Check Cloudinary storage:
+
+- Files upload successfully
+- No broken URLs
+- Images display correctly
+
+Also verify cleanup logic:
+
+If an application is Rejected
+→ The uploaded NID file should automatically be deleted from Cloudinary.
+
+Confirm the delete API is working.
+
+5. Database Integrity
+   Check database consistency:
+
+Applications table
+Sellers table
+nidFileUrl field
+Seller code generation
+
+Confirm:
+
+- No duplicate seller codes
+- Data moves correctly from Applications → Sellers
+- No missing fields
+- No orphan records
+
+6. Admin Panel UI
+   Verify the Admin dashboard:
+
+Applications page
+Sellers page
+Buttons and status badges
+
+Check that:
+
+- "View" button works correctly
+- Approve / Reject buttons work
+- Status updates correctly
+- Table layout is stable on desktop and mobile
+
+7. Security Checks
+   Verify security basics:
+
+- File upload validation
+- Prevent invalid file types
+- Prevent broken file URLs
+- Protect against basic upload abuse
+
+8. Performance
+   Check performance issues:
+
+- Page loading speed
+- Image loading speed
+- Database query efficiency
+
+Optimize if needed.
+
+9. Error Logs
+   Scan for:
+
+- Console errors
+- Server errors
+- API failures
+- Unhandled exceptions
+
+Fix any found issues.
+
+10. Final Report
+    After checking everything, provide a short report:
+
+- What is working correctly
+- What issues were found
+- What fixes were applied
+- Confirmation that the system is stable and production ready

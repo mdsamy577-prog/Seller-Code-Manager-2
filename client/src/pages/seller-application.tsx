@@ -639,12 +639,14 @@ export default function SellerApplication() {
                           </button>
                         </div>
                       ) : (
-                        <div className="flex flex-col items-center justify-center py-3.5 px-4 text-center">
-                          <Upload className="h-5 w-5 text-muted-foreground/50 mb-1.5" />
-                          <p className="text-xs text-muted-foreground leading-relaxed">
-                            শুধুমাত্র ফোনে তোলা পরিষ্কার NID ছবির আপলোড করুন।
-                          </p>
-                          <p className="text-[11px] text-muted-foreground/60 mt-0.5">PDF ফাইল গ্রহণযোগ্য নয়।</p>
+                        <div className="flex items-center justify-center gap-2.5 py-2.5 px-4">
+                          <Upload className="h-4 w-4 text-muted-foreground/50 shrink-0" />
+                          <div className="text-left">
+                            <p className="text-xs text-muted-foreground leading-snug">
+                              শুধুমাত্র ফোনে তোলা পরিষ্কার NID ছবির আপলোড করুন।
+                            </p>
+                            <p className="text-[11px] text-muted-foreground/60">PDF ফাইল গ্রহণযোগ্য নয়।</p>
+                          </div>
                         </div>
                       )}
                     </div>

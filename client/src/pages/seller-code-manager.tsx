@@ -830,6 +830,11 @@ export default function SellerCodeManager() {
     queryKey: ["/api/sellers"],
   });
 
+  const { data: applications = [] } = useQuery<SellerApplication[]>({
+    queryKey: ["/api/applications"],
+  });
+
+  const pendingCount = applications.filter((a) => a.status === "pending").length;
 
   const sortedSellers = [...sellers].sort(
     (a, b) => new Date(a.expiryDate).getTime() - new Date(b.expiryDate).getTime()
@@ -939,9 +944,14 @@ export default function SellerCodeManager() {
             <p className="text-muted-foreground mt-0.5 text-sm hidden sm:block">Manage Facebook group seller codes and subscriptions</p>
           </div>
           <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-            <Button variant="outline" size="sm" onClick={() => navigate("/applications")} data-testid="button-seller-applications" className="h-9">
+            <Button variant="outline" size="sm" onClick={() => navigate("/applications")} data-testid="button-seller-applications" className="h-9 relative">
               <ClipboardList className="w-4 h-4 sm:mr-2" />
               <span className="hidden sm:inline">Seller Applications</span>
+              {pendingCount > 0 && (
+                <span className="ml-1.5 hidden sm:inline-flex items-center justify-center rounded-full bg-amber-500 text-white text-xs font-semibold min-w-[18px] h-[18px] px-1" data-testid="badge-pending-count">
+                  {pendingCount}
+                </span>
+              )}
             </Button>
             <Button size="sm" onClick={handleAdd} data-testid="button-add-seller" className="h-9">
               <Plus className="w-4 h-4 sm:mr-2" />

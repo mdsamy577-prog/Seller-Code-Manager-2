@@ -1032,8 +1032,8 @@ export default function SellerCodeManager() {
               </div>
             ) : (
               <>
-                {/* Desktop table */}
-                <div className="hidden sm:block rounded-md border overflow-x-auto">
+                {/* Sellers table */}
+                <div className="block rounded-md border overflow-x-auto">
                   <Table>
                     <TableHeader>
                       <TableRow>
@@ -1097,48 +1097,6 @@ export default function SellerCodeManager() {
                   </Table>
                 </div>
 
-                {/* Mobile card list */}
-                <div className="sm:hidden space-y-3">
-                  {filteredSellers.map((seller) => (
-                    <div key={seller.id} className={`border rounded-xl p-4 space-y-3 shadow-sm ${getRowClass(seller.expiryDate) || "bg-card"}`} data-testid={`row-seller-${seller.id}`}>
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0">
-                          <p className="font-semibold text-sm truncate" data-testid={`text-name-${seller.id}`}>{seller.name}</p>
-                          <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1" data-testid={`text-phone-${seller.id}`}>
-                            <Phone className="h-3 w-3 shrink-0" />{seller.phone}
-                          </p>
-                        </div>
-                        <div className="flex items-center gap-1.5 shrink-0">
-                          <StatusBadge expiryDate={seller.expiryDate} />
-                          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setDeleteId(seller.id)} data-testid={`button-delete-${seller.id}`}>
-                            <Trash2 className="h-3.5 w-3.5 text-destructive" />
-                          </Button>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <Badge variant="secondary" className="no-default-active-elevate font-mono text-xs" data-testid={`text-code-${seller.id}`}>
-                          <Hash className="h-3 w-3 mr-1" />{seller.sellerCode}
-                        </Badge>
-                        <button type="button" onClick={() => { setEmailDialogSeller(seller); setEmailDialogInput(seller.email ?? ""); }} className={`inline-flex items-center justify-center transition-colors ${seller.email ? "text-blue-500 hover:text-blue-700" : "text-muted-foreground hover:text-primary"}`} data-testid={`button-email-popup-${seller.id}`}>
-                          <Mail className="h-4 w-4" />
-                        </button>
-                        <a href={seller.facebookLink} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-[#1877F2] hover:text-[#0e5bbf]" data-testid={`link-facebook-${seller.id}`}>
-                          <SiMeta className="h-3.5 w-3.5" />Profile
-                        </a>
-                      </div>
-
-                      <div className="flex items-center gap-4 text-xs text-muted-foreground flex-wrap">
-                        <span className="flex items-center gap-1" data-testid={`text-start-${seller.id}`}>
-                          <Calendar className="h-3 w-3 shrink-0" />{format(parseISO(seller.startDate), "MMM dd, yyyy")}
-                        </span>
-                        <span className="flex items-center gap-1" data-testid={`text-expiry-${seller.id}`}>
-                          <Clock className="h-3 w-3 shrink-0" />Exp: {format(parseISO(seller.expiryDate), "MMM dd, yyyy")}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
               </>
             )}
           </CardContent>

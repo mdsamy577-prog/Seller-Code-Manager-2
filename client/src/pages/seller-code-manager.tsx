@@ -944,14 +944,16 @@ export default function SellerCodeManager() {
             <p className="text-muted-foreground mt-0.5 text-sm hidden sm:block">Manage Facebook group seller codes and subscriptions</p>
           </div>
           <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-            <Button variant="outline" size="sm" onClick={() => navigate("/applications")} data-testid="button-seller-applications" className="h-9 relative">
-              <ClipboardList className="w-4 h-4 sm:mr-2" />
+            <Button variant="outline" size="sm" onClick={() => navigate("/applications")} data-testid="button-seller-applications" className="h-9">
+              <div className="relative sm:mr-2">
+                <ClipboardList className="w-4 h-4" />
+                {pendingCount > 0 && (
+                  <span className="absolute -top-2 -right-2 flex items-center justify-center rounded-full bg-amber-500 text-white font-semibold leading-none min-w-[16px] h-[16px] px-[3px] text-[10px]" data-testid="badge-pending-count">
+                    {pendingCount}
+                  </span>
+                )}
+              </div>
               <span className="hidden sm:inline">Seller Applications</span>
-              {pendingCount > 0 && (
-                <span className="ml-1.5 hidden sm:inline-flex items-center justify-center rounded-full bg-amber-500 text-white text-xs font-semibold min-w-[18px] h-[18px] px-1" data-testid="badge-pending-count">
-                  {pendingCount}
-                </span>
-              )}
             </Button>
             <Button size="sm" onClick={handleAdd} data-testid="button-add-seller" className="h-9">
               <Plus className="w-4 h-4 sm:mr-2" />

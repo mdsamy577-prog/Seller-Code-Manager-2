@@ -239,9 +239,22 @@ export default function SellerApplications() {
     },
   });
 
+  const sortedApplications = [...applications].sort(
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  );
+
   const pendingCount = applications.filter((a) => a.status === "pending").length;
   const approvedCount = applications.filter((a) => a.status === "approved").length;
   const rejectedCount = applications.filter((a) => a.status === "rejected").length;
+
+  function formatSubmittedAt(createdAt: string) {
+    const d = new Date(createdAt);
+    return (
+      d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) +
+      " • " +
+      d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true })
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -313,12 +326,13 @@ export default function SellerApplications() {
                         <TableHead className="whitespace-nowrap text-xs py-2 w-16">Pay.</TableHead>
                         <TableHead className="whitespace-nowrap text-xs py-2">Sender</TableHead>
                         <TableHead className="whitespace-nowrap text-xs py-2">NID</TableHead>
+                        <TableHead className="whitespace-nowrap text-xs py-2">Submitted</TableHead>
                         <TableHead className="whitespace-nowrap text-xs py-2">Status</TableHead>
                         <TableHead className="whitespace-nowrap text-xs py-2 text-right">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {applications.map((app) => (
+                      {sortedApplications.map((app) => (
                         <TableRow key={app.id} data-testid={`row-application-${app.id}`}>
                           <TableCell className="font-medium text-xs py-1.5" data-testid={`text-app-name-${app.id}`}>{app.name}</TableCell>
                           <TableCell className="text-xs py-1.5" data-testid={`text-app-phone-${app.id}`}>{app.phone}</TableCell>
@@ -359,6 +373,7 @@ export default function SellerApplications() {
                               <span className="text-xs text-muted-foreground/50">—</span>
                             )}
                           </TableCell>
+                          <TableCell className="text-xs py-1.5 whitespace-nowrap text-muted-foreground" data-testid={`text-app-submitted-${app.id}`}>{formatSubmittedAt(app.createdAt)}</TableCell>
                           <TableCell className="py-1.5"><StatusBadge status={app.status} /></TableCell>
                           <TableCell className="py-1.5">
                             <div className="flex items-center justify-end gap-1">
@@ -381,12 +396,13 @@ export default function SellerApplications() {
 
                 {/* Mobile card list */}
                 <div className="md:hidden space-y-3 px-4 pb-2">
-                  {applications.map((app) => (
+                  {sortedApplications.map((app) => (
                     <div key={app.id} className="border rounded-xl p-4 space-y-3 bg-card shadow-sm" data-testid={`row-application-${app.id}`}>
                       <div className="flex items-start justify-between gap-2">
                         <div>
                           <p className="font-semibold text-sm leading-tight" data-testid={`text-app-name-${app.id}`}>{app.name}</p>
                           <p className="text-xs text-muted-foreground mt-0.5" data-testid={`text-app-phone-${app.id}`}>{app.phone}</p>
+                          <p className="text-xs text-muted-foreground/70 mt-0.5" data-testid={`text-app-submitted-${app.id}`}>Submitted: {formatSubmittedAt(app.createdAt)}</p>
                         </div>
                         <StatusBadge status={app.status} />
                       </div>

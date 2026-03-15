@@ -963,8 +963,6 @@ export default function SellerCodeManager() {
 
         {!isLoading && <StatsCards sellers={sellers} />}
 
-        <PendingApplications />
-
         <Card>
           <CardHeader className="pb-4">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">

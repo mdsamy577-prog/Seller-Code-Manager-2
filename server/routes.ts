@@ -7,6 +7,7 @@ import { hashPassword, verifyPassword } from "./auth";
 import { sendSellerCodeEmail, sendExtensionEmail } from "./email";
 import multer from "multer";
 import { uploadNidFile, deleteCloudinaryFile } from "./cloudinary";
+import rateLimit from "express-rate-limit";
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -19,6 +20,22 @@ const upload = multer({
       cb(new Error("Only JPG and PNG image files are allowed"));
     }
   },
+});
+
+const applicationSubmitLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: "Too many applications submitted. Please try again later." },
+});
+
+const nidUploadLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: "Too many upload attempts. Please try again later." },
 });
 
 const DURATION_MONTHS: Record<string, number> = {
@@ -94,10 +111,7 @@ function calculateExpiryDate(startDate: string, duration: string): string {
 }
 
 async function getNextSerial(): Promise<number> {
-  const lastSerial = await storage.getSetting("LAST_SELLER_SERIAL");
-  const next = lastSerial ? parseInt(lastSerial) + 1 : 1;
-  await storage.setSetting("LAST_SELLER_SERIAL", String(next));
-  return next;
+  return storage.getAndIncrementSerial();
 }
 
 async function generateSellerCode(joinDate: string, duration: string): Promise<string> {
@@ -362,7 +376,10 @@ export async function registerRoutes(
       const existing = await storage.getSellerById(id);
       if (!existing) return res.status(404).json({ message: "Seller not found" });
 
-      const newExpiryDate = calculateExpiryDate(existing.expiryDate, String(months));
+      const today = new Date();
+      const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+      const baseDate = existing.expiryDate < todayStr ? todayStr : existing.expiryDate;
+      const newExpiryDate = calculateExpiryDate(baseDate, String(months));
       const updated = await storage.updateSeller(id, { expiryDate: newExpiryDate });
 
       if (existing.email) {
@@ -523,6 +540,14 @@ export async function registerRoutes(
       if (isNaN(id)) {
         return res.status(400).json({ message: "Invalid application ID" });
       }
+      const application = await storage.getSellerApplicationById(id);
+      if (!application) {
+        return res.status(404).json({ message: "Application not found" });
+      }
+      if (application.nidFileUrl) {
+        await deleteCloudinaryFile(application.nidFileUrl);
+        await storage.clearApplicationNidFileUrl(id);
+      }
       const deleted = await storage.deleteSellerApplication(id);
       if (!deleted) {
         return res.status(404).json({ message: "Application not found" });
@@ -533,7 +558,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/applications", async (req, res) => {
+  app.post("/api/applications", applicationSubmitLimiter, async (req, res) => {
     try {
       const parsed = insertSellerApplicationSchema.safeParse(req.body);
       if (!parsed.success) {
@@ -546,7 +571,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/applications/upload-nid", upload.single("nid"), async (req, res) => {
+  app.post("/api/applications/upload-nid", nidUploadLimiter, upload.single("nid"), async (req, res) => {
     try {
       if (!req.file) {
         return res.status(400).json({ message: "No file uploaded" });

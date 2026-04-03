@@ -36,6 +36,7 @@ export interface IStorage {
   getSellersWithEmail(): Promise<Seller[]>;
   hasReminderBeenSent(sellerId: number, reminderType: string, date: string): Promise<boolean>;
   logReminderSent(sellerId: number, reminderType: string, date: string): Promise<void>;
+  getAndIncrementSerial(): Promise<number>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -179,6 +180,17 @@ export class DatabaseStorage implements IStorage {
 
   async logReminderSent(sellerId: number, reminderType: string, date: string): Promise<void> {
     await db.insert(emailReminderLog).values({ sellerId, reminderType, sentDate: date });
+  }
+
+  async getAndIncrementSerial(): Promise<number> {
+    const result = await db.execute(sql`
+      INSERT INTO app_settings (key, value)
+      VALUES ('LAST_SELLER_SERIAL', '1')
+      ON CONFLICT (key)
+      DO UPDATE SET value = (CAST(app_settings.value AS INTEGER) + 1)::text
+      RETURNING value::integer AS serial
+    `);
+    return (result.rows[0] as any).serial;
   }
 }
 

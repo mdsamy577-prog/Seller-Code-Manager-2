@@ -1,5 +1,6 @@
 import { type User, type InsertUser, type Seller, type InsertSeller, type InsertSellerApplication, type SellerApplication, users, sellers, appSettings, sellerApplications, emailReminderLog } from "@shared/schema";
 import { eq, or, ilike, count, and } from "drizzle-orm";
+import { sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import pg from "pg";
 

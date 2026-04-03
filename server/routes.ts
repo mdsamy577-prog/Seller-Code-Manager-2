@@ -4,7 +4,7 @@ import { storage } from "./storage";
 import { insertSellerSchema, insertSellerApplicationSchema } from "@shared/schema";
 import passport from "passport";
 import { hashPassword, verifyPassword } from "./auth";
-import { sendSellerCodeEmail } from "./email";
+import { sendSellerCodeEmail, sendExtensionEmail } from "./email";
 import multer from "multer";
 import { uploadNidFile, deleteCloudinaryFile } from "./cloudinary";
 
@@ -347,6 +347,38 @@ export async function registerRoutes(
       res.json({ message: "Email sent successfully" });
     } catch (error) {
       res.status(500).json({ message: "Failed to resend email" });
+    }
+  });
+
+  app.post("/api/sellers/:id/extend", requireAuth, async (req, res) => {
+    try {
+      const id = parseInt(String(req.params.id));
+      const { months } = req.body;
+
+      if (!months || ![1, 3, 6, 12].includes(Number(months))) {
+        return res.status(400).json({ message: "Invalid duration. Must be 1, 3, 6, or 12 months." });
+      }
+
+      const existing = await storage.getSellerById(id);
+      if (!existing) return res.status(404).json({ message: "Seller not found" });
+
+      const newExpiryDate = calculateExpiryDate(existing.expiryDate, String(months));
+      const updated = await storage.updateSeller(id, { expiryDate: newExpiryDate });
+
+      if (existing.email) {
+        await sendExtensionEmail(
+          existing.email,
+          existing.name,
+          existing.sellerCode,
+          existing.expiryDate,
+          newExpiryDate,
+          Number(months)
+        );
+      }
+
+      res.json(updated);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to extend subscription" });
     }
   });
 

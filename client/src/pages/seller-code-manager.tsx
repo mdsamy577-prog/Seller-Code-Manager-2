@@ -29,6 +29,7 @@ import {
   Settings,
   BookOpen,
   Save,
+  CalendarPlus,
 } from "lucide-react";
 import { SiMeta } from "react-icons/si";
 import { useLocation } from "wouter";
@@ -811,6 +812,8 @@ export default function SellerCodeManager() {
   const [emailDialogSeller, setEmailDialogSeller] = useState<Seller | undefined>();
   const [emailDialogInput, setEmailDialogInput] = useState("");
   const [settingsPanel, setSettingsPanel] = useState<"registration" | "email" | "group-rules" | null>(null);
+  const [extendSeller, setExtendSeller] = useState<Seller | undefined>();
+  const [extendMonths, setExtendMonths] = useState<number>(1);
   const { toast } = useToast();
 
   const logoutMutation = useMutation({
@@ -921,6 +924,21 @@ export default function SellerCodeManager() {
     },
     onError: (error: Error) => {
       toast({ title: "Failed to send email", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const extendMutation = useMutation({
+    mutationFn: async ({ id, months }: { id: number; months: number }) => {
+      const res = await apiRequest("POST", `/api/sellers/${id}/extend`, { months });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/sellers"] });
+      setExtendSeller(undefined);
+      toast({ title: "Subscription extended successfully" });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Failed to extend subscription", description: error.message, variant: "destructive" });
     },
   });
 
@@ -1087,7 +1105,10 @@ export default function SellerCodeManager() {
                           </TableCell>
                           <TableCell><StatusBadge expiryDate={seller.expiryDate} /></TableCell>
                           <TableCell>
-                            <div className="flex items-center justify-end">
+                            <div className="flex items-center justify-end gap-1">
+                              <Button size="icon" variant="ghost" onClick={() => { setExtendSeller(seller); setExtendMonths(1); }} data-testid={`button-extend-${seller.id}`} title="Extend subscription">
+                                <CalendarPlus className="h-4 w-4 text-emerald-600" />
+                              </Button>
                               <Button size="icon" variant="ghost" onClick={() => setDeleteId(seller.id)} data-testid={`button-delete-${seller.id}`}>
                                 <Trash2 className="h-4 w-4 text-destructive" />
                               </Button>
@@ -1110,8 +1131,11 @@ export default function SellerCodeManager() {
                             <Phone className="h-3 w-3 shrink-0" />{seller.phone}
                           </p>
                         </div>
-                        <div className="flex items-center gap-1.5 shrink-0">
+                        <div className="flex items-center gap-1 shrink-0">
                           <StatusBadge expiryDate={seller.expiryDate} />
+                          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => { setExtendSeller(seller); setExtendMonths(1); }} data-testid={`button-extend-${seller.id}`} title="Extend subscription">
+                            <CalendarPlus className="h-3.5 w-3.5 text-emerald-600" />
+                          </Button>
                           <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setDeleteId(seller.id)} data-testid={`button-delete-${seller.id}`}>
                             <Trash2 className="h-3.5 w-3.5 text-destructive" />
                           </Button>
@@ -1239,6 +1263,70 @@ export default function SellerCodeManager() {
               <DialogTitle>{editingSeller ? "Edit Seller" : "Add New Seller"}</DialogTitle>
             </DialogHeader>
             <SellerForm seller={editingSeller} onClose={handleCloseDialog} />
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={extendSeller !== undefined} onOpenChange={(o) => { if (!o) setExtendSeller(undefined); }}>
+          <DialogContent className="w-[calc(100vw-2rem)] max-w-sm sm:w-full rounded-xl sm:rounded-lg" aria-describedby={undefined}>
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <CalendarPlus className="h-5 w-5 text-emerald-600" />
+                Extend Subscription
+              </DialogTitle>
+            </DialogHeader>
+            {extendSeller && (
+              <div className="space-y-4 pt-1">
+                <div className="rounded-lg border bg-muted/40 p-3 space-y-1.5 text-sm">
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Seller</span>
+                    <span className="font-medium">{extendSeller.name}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Code</span>
+                    <span className="font-mono font-semibold text-primary">{extendSeller.sellerCode}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Current expiry</span>
+                    <span className="font-medium">{format(parseISO(extendSeller.expiryDate), "MMM dd, yyyy")}</span>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <p className="text-sm font-medium">Extend by</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    {([1, 3, 6, 12] as const).map((m) => (
+                      <button
+                        key={m}
+                        type="button"
+                        onClick={() => setExtendMonths(m)}
+                        data-testid={`button-extend-months-${m}`}
+                        className={`rounded-lg border px-4 py-3 text-sm font-medium transition-colors ${
+                          extendMonths === m
+                            ? "border-emerald-600 bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400"
+                            : "border-border hover:bg-muted"
+                        }`}
+                      >
+                        {m === 1 ? "1 Month" : `${m} Months`}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="flex gap-2 pt-1">
+                  <Button variant="outline" className="flex-1" onClick={() => setExtendSeller(undefined)} data-testid="button-cancel-extend">
+                    Cancel
+                  </Button>
+                  <Button
+                    className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white"
+                    onClick={() => extendMutation.mutate({ id: extendSeller.id, months: extendMonths })}
+                    disabled={extendMutation.isPending}
+                    data-testid="button-confirm-extend"
+                  >
+                    {extendMutation.isPending ? "Extending..." : "Confirm"}
+                  </Button>
+                </div>
+              </div>
+            )}
           </DialogContent>
         </Dialog>
 

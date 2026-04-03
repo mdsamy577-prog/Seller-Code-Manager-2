@@ -477,7 +477,8 @@ export async function registerRoutes(
 
       res.json({ ...updated, emailSent });
     } catch (error) {
-      res.status(500).json({ message: "Failed to approve application" });
+      console.error("[approve] Error approving application:", error);
+      res.status(500).json({ message: "Failed to approve application", error: error instanceof Error ? error.message : String(error) });
     }
   });
 

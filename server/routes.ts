@@ -434,21 +434,33 @@ export async function registerRoutes(
         return res.status(400).json({ message: `Application already ${application.status}` });
       }
 
-      const today = new Date();
-      const startDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
-      const sellerCode = await generateSellerCode(startDate, application.duration);
-      const expiryDate = calculateExpiryDate(startDate, application.duration);
+      const existingSeller = await storage.getSellerByPhone(application.phone);
 
-      await storage.createSeller({
-        name: application.name,
-        phone: application.phone,
-        facebookLink: application.facebookLink,
-        sellerCode,
-        duration: application.duration,
-        startDate,
-        expiryDate,
-        email: application.email || undefined,
-      });
+      let sellerCode: string;
+      let startDate: string;
+      let expiryDate: string;
+
+      if (existingSeller) {
+        sellerCode = existingSeller.sellerCode;
+        startDate = existingSeller.startDate;
+        expiryDate = existingSeller.expiryDate;
+      } else {
+        const today = new Date();
+        startDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+        sellerCode = await generateSellerCode(startDate, application.duration);
+        expiryDate = calculateExpiryDate(startDate, application.duration);
+
+        await storage.createSeller({
+          name: application.name,
+          phone: application.phone,
+          facebookLink: application.facebookLink,
+          sellerCode,
+          duration: application.duration,
+          startDate,
+          expiryDate,
+          email: application.email || undefined,
+        });
+      }
 
       const updated = await storage.updateSellerApplicationStatus(id, "approved");
 

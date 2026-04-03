@@ -583,7 +583,7 @@ export default function SellerApplication() {
                   </div>
 
                   <div className="space-y-2">
-                    <p className="text-sm font-semibold text-foreground/80">NID / জাতীয় পরিচয়পত্র</p>
+                    <p className="text-sm font-bold text-red-600">NID / জাতীয় পরিচয়পত্র <span className="text-sm font-medium text-red-500 ml-1">(বাধ্যতামূলক)</span></p>
                     <div
                       className={`relative rounded-xl border-2 border-dashed transition-all duration-200 cursor-pointer ${
                         nidFile

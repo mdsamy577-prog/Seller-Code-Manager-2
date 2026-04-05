@@ -32,7 +32,6 @@ import {
   CalendarPlus,
   Archive,
   RotateCcw,
-  RefreshCw,
 } from "lucide-react";
 import { SiMeta } from "react-icons/si";
 import { useLocation } from "wouter";
@@ -136,21 +135,17 @@ function getRowClass(expiryDate: string): string {
 function StatsCards({
   sellers,
   archivedCount,
-  pendingRenewalsCount,
   onArchivedClick,
-  onRenewalsClick,
 }: {
   sellers: Seller[];
   archivedCount: number;
-  pendingRenewalsCount: number;
   onArchivedClick: () => void;
-  onRenewalsClick: () => void;
 }) {
   const active = sellers.filter((s) => getSellerStatus(s.expiryDate) === "active").length;
   const expiring = sellers.filter((s) => getSellerStatus(s.expiryDate) === "expiring").length;
 
   return (
-    <div className="grid grid-cols-3 sm:grid-cols-5 gap-2 sm:gap-4">
+    <div className="grid grid-cols-4 sm:grid-cols-4 gap-2 sm:gap-4">
       <Card>
         <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 p-3 pb-1 sm:p-6 sm:pb-2">
           <CardTitle className="text-[10px] sm:text-sm font-medium text-muted-foreground leading-tight">
@@ -184,28 +179,13 @@ function StatsCards({
           <div className="text-xl sm:text-2xl font-bold text-amber-600 dark:text-amber-400" data-testid="text-expiring-count">{expiring}</div>
         </CardContent>
       </Card>
-      <Card className="col-span-1 cursor-pointer hover:ring-1 hover:ring-red-400 transition-all" onClick={onArchivedClick} data-testid="card-archived">
+      <Card className="cursor-pointer hover:ring-1 hover:ring-red-400 transition-all" onClick={onArchivedClick} data-testid="card-archived">
         <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 p-3 pb-1 sm:p-6 sm:pb-2">
-          <CardTitle className="text-[10px] sm:text-sm font-medium text-muted-foreground leading-tight">
-            <span className="sm:hidden">Expired</span>
-            <span className="hidden sm:inline">Expired</span>
-          </CardTitle>
+          <CardTitle className="text-[10px] sm:text-sm font-medium text-muted-foreground leading-tight">Expired</CardTitle>
           <Archive className="hidden sm:block h-4 w-4 text-red-500" />
         </CardHeader>
         <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0 text-center sm:text-left">
           <div className="text-xl sm:text-2xl font-bold text-red-600 dark:text-red-400" data-testid="text-expired-count">{archivedCount}</div>
-        </CardContent>
-      </Card>
-      <Card className="col-span-1 cursor-pointer hover:ring-1 hover:ring-blue-400 transition-all" onClick={onRenewalsClick} data-testid="card-renewals">
-        <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 p-3 pb-1 sm:p-6 sm:pb-2">
-          <CardTitle className="text-[10px] sm:text-sm font-medium text-muted-foreground leading-tight">
-            <span className="sm:hidden">Renewals</span>
-            <span className="hidden sm:inline">Renewals</span>
-          </CardTitle>
-          <RefreshCw className="hidden sm:block h-4 w-4 text-blue-500" />
-        </CardHeader>
-        <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0 text-center sm:text-left">
-          <div className="text-xl sm:text-2xl font-bold text-blue-600 dark:text-blue-400" data-testid="text-renewals-count">{pendingRenewalsCount}</div>
         </CardContent>
       </Card>
     </div>
@@ -1067,12 +1047,18 @@ export default function SellerCodeManager() {
             <p className="text-muted-foreground mt-0.5 text-sm hidden sm:block">Manage Facebook group seller codes and subscriptions</p>
           </div>
           <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-            <Button variant="outline" size="sm" onClick={() => navigate("/applications")} data-testid="button-seller-applications" className="h-9">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigate(pendingRenewalsCount > 0 ? "/applications?tab=renewals" : "/applications")}
+              data-testid="button-seller-applications"
+              className="h-9"
+            >
               <div className="relative sm:mr-2">
                 <ClipboardList className="w-4 h-4" />
-                {pendingCount > 0 && (
+                {(pendingCount + pendingRenewalsCount) > 0 && (
                   <span className="absolute -top-2 -right-2 flex items-center justify-center rounded-full bg-amber-500 text-white font-semibold leading-none min-w-[16px] h-[16px] px-[3px] text-[10px]" data-testid="badge-pending-count">
-                    {pendingCount}
+                    {pendingCount + pendingRenewalsCount}
                   </span>
                 )}
               </div>
@@ -1101,9 +1087,7 @@ export default function SellerCodeManager() {
           <StatsCards
             sellers={sellers}
             archivedCount={archivedSellers.length}
-            pendingRenewalsCount={pendingRenewalsCount}
             onArchivedClick={() => setArchivedOpen(true)}
-            onRenewalsClick={() => navigate("/applications")}
           />
         )}
 

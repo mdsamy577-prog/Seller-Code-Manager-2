@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -423,7 +423,14 @@ function RenewalsTab() {
 
 export default function SellerApplications() {
   const { toast } = useToast();
-  const [activeTab, setActiveTab] = useState<Tab>("applications");
+  const initialTab = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("tab") === "renewals" ? "renewals" : "applications";
+  const [activeTab, setActiveTab] = useState<Tab>(initialTab as Tab);
+
+  useEffect(() => {
+    const tab = new URLSearchParams(window.location.search).get("tab");
+    if (tab === "renewals") setActiveTab("renewals");
+  }, []);
+
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const [nidPreviewUrl, setNidPreviewUrl] = useState<string | null>(null);
 

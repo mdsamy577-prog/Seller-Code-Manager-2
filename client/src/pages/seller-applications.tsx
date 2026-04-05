@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import type { SellerApplication } from "@shared/schema";
+import type { SellerApplication, SellerRenewalApplication } from "@shared/schema";
 import {
   CheckCircle2,
   XCircle,
@@ -12,6 +12,7 @@ import {
   FileText,
   Download,
   X,
+  RefreshCw,
 } from "lucide-react";
 import { SiMeta } from "react-icons/si";
 import { Button } from "@/components/ui/button";
@@ -42,6 +43,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 
+type Tab = "applications" | "renewals";
+
 function NidViewerModal({ url, onClose }: { url: string; onClose: () => void }) {
   const handleDownload = async () => {
     try {
@@ -64,16 +67,12 @@ function NidViewerModal({ url, onClose }: { url: string; onClose: () => void }) 
       onClick={onClose}
       data-testid="overlay-nid-modal"
     >
-      {/* Dark overlay */}
       <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
-
-      {/* Modal window */}
       <div
         className="relative z-10 w-full max-w-2xl bg-white dark:bg-gray-900 rounded-xl shadow-2xl overflow-hidden flex flex-col"
         style={{ maxHeight: "90vh" }}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700 shrink-0">
           <div className="flex items-center gap-2 text-sm font-semibold">
             <FileText className="h-4 w-4 text-violet-500 shrink-0" />
@@ -99,8 +98,6 @@ function NidViewerModal({ url, onClose }: { url: string; onClose: () => void }) 
             </button>
           </div>
         </div>
-
-        {/* Image area */}
         <div className="overflow-auto flex-1 flex items-center justify-center p-4 bg-gray-50 dark:bg-gray-800/50">
           <img
             src={url}
@@ -143,6 +140,21 @@ const durationLabels: Record<string, string> = {
   "12": "12 Months",
 };
 
+const renewalDurationLabels: Record<string, string> = {
+  "1": "১ মাস - ২০০ টাকা",
+  "2": "২ মাস - ৩৮০ টাকা",
+  "3": "৩ মাস - ৫৫০ টাকা",
+  "4": "৪ মাস - ৭০০ টাকা",
+  "5": "৫ মাস - ৮৫০ টাকা",
+  "6": "৬ মাস - ১০০০ টাকা",
+  "7": "৭ মাস - ১১০০ টাকা",
+  "8": "৮ মাস - ১২০০ টাকা",
+  "9": "৯ মাস - ১৩০০ টাকা",
+  "10": "১০ মাস - ১৪০০ টাকা",
+  "11": "১১ মাস - ১৫০০ টাকা",
+  "12": "১২ মাস - ১৬০০ টাকা",
+};
+
 const sellerTypeLabels: Record<string, string> = {
   "personal_facebook_id": "Personal Facebook ID",
   "facebook_business_page": "Facebook Business Page",
@@ -154,7 +166,7 @@ const sellerTypeShortLabels: Record<string, string> = {
 };
 
 const paymentMethodLabels: Record<string, string> = {
-  "bkash": "Bkash",
+  "bkash": "bKash",
   "nagad": "Nagad",
 };
 
@@ -166,7 +178,7 @@ function StatusBadge({ status }: { status: string }) {
   };
   const { label, className, icon: Icon } = config[status] || config.pending;
   return (
-    <Badge variant="outline" className={`${className} no-default-active-elevate text-xs`} data-testid={`badge-app-status-${status}`}>
+    <Badge variant="outline" className={`${className} no-default-active-elevate text-xs`} data-testid={`badge-status-${status}`}>
       <Icon className="w-3 h-3 mr-1" />
       {label}
     </Badge>
@@ -187,13 +199,240 @@ function TableSkeleton() {
   );
 }
 
+function formatDate(createdAt: string) {
+  const d = new Date(createdAt);
+  return (
+    d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) +
+    " • " +
+    d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true })
+  );
+}
+
+// ─── Renewals Tab ─────────────────────────────────────────────────────────────
+
+function RenewalsTab() {
+  const { toast } = useToast();
+
+  const { data: applications = [], isLoading } = useQuery<SellerRenewalApplication[]>({
+    queryKey: ["/api/renewals"],
+  });
+
+  const approveMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const res = await apiRequest("POST", `/api/renewals/${id}/approve`);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/renewals"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/sellers"] });
+      toast({ title: "Renewal approved", description: "Seller subscription has been extended." });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const rejectMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const res = await apiRequest("POST", `/api/renewals/${id}/reject`);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/renewals"] });
+      toast({ title: "Renewal rejected" });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const sorted = [...applications].sort(
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  );
+
+  const pendingCount = applications.filter((a) => a.status === "pending").length;
+  const approvedCount = applications.filter((a) => a.status === "approved").length;
+  const rejectedCount = applications.filter((a) => a.status === "rejected").length;
+
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-3 gap-2 sm:gap-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 p-3 pb-1 sm:p-6 sm:pb-2">
+            <CardTitle className="text-[10px] sm:text-sm font-medium text-muted-foreground leading-tight">Pending</CardTitle>
+            <Clock className="hidden sm:block h-4 w-4 text-amber-500" />
+          </CardHeader>
+          <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0 text-center sm:text-left">
+            <div className="text-xl sm:text-2xl font-bold text-amber-600 dark:text-amber-400" data-testid="text-renewals-pending-count">{pendingCount}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 p-3 pb-1 sm:p-6 sm:pb-2">
+            <CardTitle className="text-[10px] sm:text-sm font-medium text-muted-foreground leading-tight">Approved</CardTitle>
+            <CheckCircle2 className="hidden sm:block h-4 w-4 text-emerald-500" />
+          </CardHeader>
+          <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0 text-center sm:text-left">
+            <div className="text-xl sm:text-2xl font-bold text-emerald-600 dark:text-emerald-400" data-testid="text-renewals-approved-count">{approvedCount}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 p-3 pb-1 sm:p-6 sm:pb-2">
+            <CardTitle className="text-[10px] sm:text-sm font-medium text-muted-foreground leading-tight">Rejected</CardTitle>
+            <XCircle className="hidden sm:block h-4 w-4 text-red-500" />
+          </CardHeader>
+          <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0 text-center sm:text-left">
+            <div className="text-xl sm:text-2xl font-bold text-red-600 dark:text-red-400" data-testid="text-renewals-rejected-count">{rejectedCount}</div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-lg">Renewal Requests</CardTitle>
+        </CardHeader>
+        <CardContent className="p-0 pb-4">
+          {isLoading ? (
+            <div className="px-6"><TableSkeleton /></div>
+          ) : applications.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 text-center px-6">
+              <div className="rounded-full bg-muted p-4 mb-4">
+                <RefreshCw className="h-8 w-8 text-muted-foreground" />
+              </div>
+              <h3 className="text-lg font-semibold mb-1" data-testid="text-no-renewals">No renewal applications yet</h3>
+              <p className="text-muted-foreground max-w-sm">
+                Renewal requests submitted through the public form will appear here.
+              </p>
+            </div>
+          ) : (
+            <>
+              {/* Desktop table */}
+              <div className="hidden md:block rounded-md border mx-4">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="text-xs py-2">Phone</TableHead>
+                      <TableHead className="text-xs py-2">Duration & Price</TableHead>
+                      <TableHead className="text-xs py-2">Payment</TableHead>
+                      <TableHead className="text-xs py-2">Sender No.</TableHead>
+                      <TableHead className="text-xs py-2">Submitted</TableHead>
+                      <TableHead className="text-xs py-2">Status</TableHead>
+                      <TableHead className="text-xs py-2 text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {sorted.map((app) => (
+                      <TableRow key={app.id} data-testid={`row-renewal-${app.id}`}>
+                        <TableCell className="text-xs py-1.5 font-medium" data-testid={`text-renewal-phone-${app.id}`}>{app.phone}</TableCell>
+                        <TableCell className="py-1.5">
+                          <Badge variant="secondary" className="no-default-active-elevate text-xs" data-testid={`text-renewal-duration-${app.id}`}>
+                            {renewalDurationLabels[app.duration] || app.duration}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="py-1.5">
+                          <Badge variant="secondary" className="no-default-active-elevate text-xs" data-testid={`text-renewal-payment-${app.id}`}>
+                            {paymentMethodLabels[app.paymentMethod] || app.paymentMethod}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-xs py-1.5" data-testid={`text-renewal-sender-${app.id}`}>{app.senderNumber}</TableCell>
+                        <TableCell className="text-xs py-1.5 whitespace-nowrap text-muted-foreground" data-testid={`text-renewal-submitted-${app.id}`}>{formatDate(app.createdAt)}</TableCell>
+                        <TableCell className="py-1.5"><StatusBadge status={app.status} /></TableCell>
+                        <TableCell className="py-1.5">
+                          <div className="flex items-center justify-end gap-1">
+                            <Button
+                              size="sm"
+                              variant={app.status === "approved" ? "default" : "outline"}
+                              className={`h-6 text-xs px-1.5 ${app.status !== "approved" ? "text-emerald-700 border-emerald-300 hover:bg-emerald-50 dark:text-emerald-400 dark:border-emerald-700 dark:hover:bg-emerald-950" : "bg-emerald-600 hover:bg-emerald-700"}`}
+                              onClick={() => approveMutation.mutate(app.id)}
+                              disabled={approveMutation.isPending || rejectMutation.isPending || app.status !== "pending"}
+                              data-testid={`button-approve-renewal-${app.id}`}
+                            >
+                              <CheckCircle2 className="h-3 w-3 mr-1" />Approve
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant={app.status === "rejected" ? "default" : "outline"}
+                              className={`h-6 text-xs px-1.5 ${app.status !== "rejected" ? "text-red-700 border-red-300 hover:bg-red-50 dark:text-red-400 dark:border-red-700 dark:hover:bg-red-950" : "bg-red-600 hover:bg-red-700"}`}
+                              onClick={() => rejectMutation.mutate(app.id)}
+                              disabled={approveMutation.isPending || rejectMutation.isPending || app.status !== "pending"}
+                              data-testid={`button-reject-renewal-${app.id}`}
+                            >
+                              <XCircle className="h-3 w-3 mr-1" />Reject
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+
+              {/* Mobile cards */}
+              <div className="md:hidden space-y-3 px-4 pb-2">
+                {sorted.map((app) => (
+                  <div key={app.id} className="border rounded-xl p-4 space-y-3 bg-card shadow-sm" data-testid={`row-renewal-${app.id}`}>
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <p className="font-semibold text-sm" data-testid={`text-renewal-phone-${app.id}`}>{app.phone}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5" data-testid={`text-renewal-submitted-${app.id}`}>{formatDate(app.createdAt)}</p>
+                      </div>
+                      <StatusBadge status={app.status} />
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      <Badge variant="secondary" className="text-xs no-default-active-elevate" data-testid={`text-renewal-duration-${app.id}`}>
+                        {renewalDurationLabels[app.duration] || app.duration}
+                      </Badge>
+                      <Badge variant="secondary" className="text-xs no-default-active-elevate" data-testid={`text-renewal-payment-${app.id}`}>
+                        {paymentMethodLabels[app.paymentMethod] || app.paymentMethod}
+                      </Badge>
+                    </div>
+                    <p className="text-xs text-muted-foreground" data-testid={`text-renewal-sender-${app.id}`}>Sender: {app.senderNumber}</p>
+                    <div className="flex items-center gap-2 pt-0.5">
+                      <Button
+                        size="sm"
+                        variant={app.status === "approved" ? "default" : "outline"}
+                        className={`flex-1 h-9 text-xs ${app.status !== "approved" ? "text-emerald-700 border-emerald-300 hover:bg-emerald-50 dark:text-emerald-400 dark:border-emerald-700 dark:hover:bg-emerald-950" : "bg-emerald-600 hover:bg-emerald-700"}`}
+                        onClick={() => approveMutation.mutate(app.id)}
+                        disabled={approveMutation.isPending || rejectMutation.isPending || app.status !== "pending"}
+                        data-testid={`button-approve-renewal-${app.id}`}
+                      >
+                        <CheckCircle2 className="h-3.5 w-3.5 mr-1.5" />Approve
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant={app.status === "rejected" ? "default" : "outline"}
+                        className={`flex-1 h-9 text-xs ${app.status !== "rejected" ? "text-red-700 border-red-300 hover:bg-red-50 dark:text-red-400 dark:border-red-700 dark:hover:bg-red-950" : "bg-red-600 hover:bg-red-700"}`}
+                        onClick={() => rejectMutation.mutate(app.id)}
+                        disabled={approveMutation.isPending || rejectMutation.isPending || app.status !== "pending"}
+                        data-testid={`button-reject-renewal-${app.id}`}
+                      >
+                        <XCircle className="h-3.5 w-3.5 mr-1.5" />Reject
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+// ─── Main Page ─────────────────────────────────────────────────────────────────
+
 export default function SellerApplications() {
   const { toast } = useToast();
+  const [activeTab, setActiveTab] = useState<Tab>("applications");
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const [nidPreviewUrl, setNidPreviewUrl] = useState<string | null>(null);
 
   const { data: applications = [], isLoading } = useQuery<SellerApplication[]>({
     queryKey: ["/api/applications"],
+  });
+
+  const { data: renewals = [] } = useQuery<SellerRenewalApplication[]>({
+    queryKey: ["/api/renewals"],
   });
 
   const approveMutation = useMutation({
@@ -247,6 +486,8 @@ export default function SellerApplications() {
   const approvedCount = applications.filter((a) => a.status === "approved").length;
   const rejectedCount = applications.filter((a) => a.status === "rejected").length;
 
+  const pendingRenewalsCount = renewals.filter((r) => r.status === "pending").length;
+
   function formatSubmittedAt(createdAt: string) {
     const d = new Date(createdAt);
     return (
@@ -258,201 +499,251 @@ export default function SellerApplications() {
 
   return (
     <div className="min-h-screen bg-background">
+      {nidPreviewUrl && (
+        <NidViewerModal url={nidPreviewUrl} onClose={() => setNidPreviewUrl(null)} />
+      )}
+
       <div className="w-full max-w-[1400px] mx-auto p-3 sm:p-4 space-y-4">
         <div>
           <h1 className="text-xl sm:text-2xl font-bold tracking-tight" data-testid="text-applications-title">Seller Applications</h1>
-          <p className="text-muted-foreground mt-1 text-sm">Review and manage seller applications</p>
+          <p className="text-muted-foreground mt-1 text-sm">Review and manage seller applications and renewals</p>
         </div>
 
-        <div className="grid grid-cols-3 gap-2 sm:gap-4">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 p-3 pb-1 sm:p-6 sm:pb-2">
-              <CardTitle className="text-[10px] sm:text-sm font-medium text-muted-foreground leading-tight">Pending</CardTitle>
-              <Clock className="hidden sm:block h-4 w-4 text-amber-500" />
-            </CardHeader>
-            <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0 text-center sm:text-left">
-              <div className="text-xl sm:text-2xl font-bold text-amber-600 dark:text-amber-400" data-testid="text-pending-count">{pendingCount}</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 p-3 pb-1 sm:p-6 sm:pb-2">
-              <CardTitle className="text-[10px] sm:text-sm font-medium text-muted-foreground leading-tight">Approved</CardTitle>
-              <CheckCircle2 className="hidden sm:block h-4 w-4 text-emerald-500" />
-            </CardHeader>
-            <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0 text-center sm:text-left">
-              <div className="text-xl sm:text-2xl font-bold text-emerald-600 dark:text-emerald-400" data-testid="text-approved-count">{approvedCount}</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 p-3 pb-1 sm:p-6 sm:pb-2">
-              <CardTitle className="text-[10px] sm:text-sm font-medium text-muted-foreground leading-tight">Rejected</CardTitle>
-              <XCircle className="hidden sm:block h-4 w-4 text-red-500" />
-            </CardHeader>
-            <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0 text-center sm:text-left">
-              <div className="text-xl sm:text-2xl font-bold text-red-600 dark:text-red-400" data-testid="text-rejected-count">{rejectedCount}</div>
-            </CardContent>
-          </Card>
-        </div>
-
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg">Applications</CardTitle>
-          </CardHeader>
-          <CardContent className="p-0 pb-4">
-            {isLoading ? (
-              <div className="px-6"><TableSkeleton /></div>
-            ) : applications.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-16 text-center px-6">
-                <div className="rounded-full bg-muted p-4 mb-4">
-                  <ClipboardList className="h-8 w-8 text-muted-foreground" />
-                </div>
-                <h3 className="text-lg font-semibold mb-1" data-testid="text-no-applications">No applications yet</h3>
-                <p className="text-muted-foreground max-w-sm">
-                  Applications submitted through the public form will appear here.
-                </p>
-              </div>
-            ) : (
-              <>
-                {/* Desktop table */}
-                <div className="hidden md:block rounded-md border mx-4">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead className="whitespace-nowrap text-xs py-2">Name</TableHead>
-                        <TableHead className="whitespace-nowrap text-xs py-2">Phone</TableHead>
-                        <TableHead className="whitespace-nowrap text-xs py-2 w-10">FB</TableHead>
-                        <TableHead className="whitespace-nowrap text-xs py-2">Type</TableHead>
-                        <TableHead className="whitespace-nowrap text-xs py-2 w-16">Dur.</TableHead>
-                        <TableHead className="whitespace-nowrap text-xs py-2 w-16">Pay.</TableHead>
-                        <TableHead className="whitespace-nowrap text-xs py-2">Sender</TableHead>
-                        <TableHead className="whitespace-nowrap text-xs py-2">NID</TableHead>
-                        <TableHead className="whitespace-nowrap text-xs py-2">Submitted</TableHead>
-                        <TableHead className="whitespace-nowrap text-xs py-2">Status</TableHead>
-                        <TableHead className="whitespace-nowrap text-xs py-2 text-right">Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {sortedApplications.map((app) => (
-                        <TableRow key={app.id} data-testid={`row-application-${app.id}`}>
-                          <TableCell className="font-medium text-xs py-1.5" data-testid={`text-app-name-${app.id}`}>{app.name}</TableCell>
-                          <TableCell className="text-xs py-1.5" data-testid={`text-app-phone-${app.id}`}>{app.phone}</TableCell>
-                          <TableCell className="py-1.5 w-10 text-center">
-                            <a href={app.facebookLink} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center text-[#1877F2] hover:text-[#0e5bbf] transition-colors" data-testid={`link-app-facebook-${app.id}`}>
-                              <SiMeta className="h-4 w-4" />
-                            </a>
-                          </TableCell>
-                          <TableCell className="py-1.5" data-testid={`text-app-seller-type-${app.id}`}>
-                            <Tooltip>
-                              <TooltipTrigger>
-                                <Badge variant="secondary" className="no-default-active-elevate text-xs cursor-default">
-                                  {sellerTypeShortLabels[app.sellerType] || app.sellerType}
-                                </Badge>
-                              </TooltipTrigger>
-                              <TooltipContent><p>{sellerTypeLabels[app.sellerType] || app.sellerType}</p></TooltipContent>
-                            </Tooltip>
-                          </TableCell>
-                          <TableCell className="py-1.5 w-16" data-testid={`text-app-duration-${app.id}`}>
-                            <Badge variant="secondary" className="no-default-active-elevate text-xs">{durationLabels[app.duration] || app.duration}</Badge>
-                          </TableCell>
-                          <TableCell className="py-1.5 w-16" data-testid={`text-app-payment-method-${app.id}`}>
-                            <Badge variant="secondary" className="no-default-active-elevate text-xs">{paymentMethodLabels[app.paymentMethod] || app.paymentMethod}</Badge>
-                          </TableCell>
-                          <TableCell className="text-xs py-1.5" data-testid={`text-app-sender-number-${app.id}`}>{app.senderNumber}</TableCell>
-                          <TableCell className="py-1.5">
-                            {app.nidFileUrl ? (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="h-6 text-xs px-1.5 text-violet-700 border-violet-300 hover:bg-violet-50 dark:text-violet-400 dark:border-violet-700 dark:hover:bg-violet-950"
-                                onClick={() => setNidPreviewUrl(app.nidFileUrl!)}
-                                data-testid={`button-view-nid-${app.id}`}
-                              >
-                                <FileText className="h-3 w-3 mr-1" />View
-                              </Button>
-                            ) : (
-                              <span className="text-xs text-muted-foreground/50">—</span>
-                            )}
-                          </TableCell>
-                          <TableCell className="text-xs py-1.5 whitespace-nowrap text-muted-foreground" data-testid={`text-app-submitted-${app.id}`}>{formatSubmittedAt(app.createdAt)}</TableCell>
-                          <TableCell className="py-1.5"><StatusBadge status={app.status} /></TableCell>
-                          <TableCell className="py-1.5">
-                            <div className="flex items-center justify-end gap-1">
-                              <Button size="sm" variant={app.status === "approved" ? "default" : "outline"} className={`h-6 text-xs px-1.5 ${app.status !== "approved" ? "text-emerald-700 border-emerald-300 hover:bg-emerald-50 dark:text-emerald-400 dark:border-emerald-700 dark:hover:bg-emerald-950" : "bg-emerald-600 hover:bg-emerald-700"}`} onClick={() => approveMutation.mutate(app.id)} disabled={approveMutation.isPending || rejectMutation.isPending || app.status !== "pending"} data-testid={`button-approve-${app.id}`}>
-                                <CheckCircle2 className="h-3 w-3 mr-1" />Approve
-                              </Button>
-                              <Button size="sm" variant={app.status === "rejected" ? "default" : "outline"} className={`h-6 text-xs px-1.5 ${app.status !== "rejected" ? "text-red-700 border-red-300 hover:bg-red-50 dark:text-red-400 dark:border-red-700 dark:hover:bg-red-950" : "bg-red-600 hover:bg-red-700"}`} onClick={() => rejectMutation.mutate(app.id)} disabled={approveMutation.isPending || rejectMutation.isPending || app.status !== "pending"} data-testid={`button-reject-${app.id}`}>
-                                <XCircle className="h-3 w-3 mr-1" />Reject
-                              </Button>
-                              <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => setDeleteId(app.id)} data-testid={`button-delete-app-${app.id}`}>
-                                <Trash2 className="h-3 w-3 text-destructive" />
-                              </Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-
-                {/* Mobile card list */}
-                <div className="md:hidden space-y-3 px-4 pb-2">
-                  {sortedApplications.map((app) => (
-                    <div key={app.id} className="border rounded-xl p-4 space-y-3 bg-card shadow-sm" data-testid={`row-application-${app.id}`}>
-                      <div className="flex items-start justify-between gap-2">
-                        <div>
-                          <p className="font-semibold text-sm leading-tight" data-testid={`text-app-name-${app.id}`}>{app.name}</p>
-                          <p className="text-xs text-muted-foreground mt-0.5" data-testid={`text-app-phone-${app.id}`}>{app.phone}</p>
-                          <p className="text-xs text-muted-foreground/70 mt-0.5" data-testid={`text-app-submitted-${app.id}`}>Submitted: {formatSubmittedAt(app.createdAt)}</p>
-                        </div>
-                        <StatusBadge status={app.status} />
-                      </div>
-                      <div className="flex flex-wrap gap-1.5">
-                        <Badge variant="secondary" className="text-xs no-default-active-elevate" data-testid={`text-app-seller-type-${app.id}`}>
-                          {sellerTypeShortLabels[app.sellerType] || app.sellerType}
-                        </Badge>
-                        <Badge variant="secondary" className="text-xs no-default-active-elevate" data-testid={`text-app-duration-${app.id}`}>
-                          {durationLabels[app.duration] || app.duration}
-                        </Badge>
-                        <Badge variant="secondary" className="text-xs no-default-active-elevate" data-testid={`text-app-payment-method-${app.id}`}>
-                          {paymentMethodLabels[app.paymentMethod] || app.paymentMethod}
-                        </Badge>
-                      </div>
-                      <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                        <a href={app.facebookLink} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-[#1877F2] hover:text-[#0e5bbf]" data-testid={`link-app-facebook-${app.id}`}>
-                          <SiMeta className="h-3.5 w-3.5" />
-                          <span>Profile</span>
-                        </a>
-                        <span data-testid={`text-app-sender-number-${app.id}`}>Sender: {app.senderNumber}</span>
-                      </div>
-                      {app.nidFileUrl && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-8 text-xs text-violet-700 border-violet-300 hover:bg-violet-50 dark:text-violet-400 dark:border-violet-700 dark:hover:bg-violet-950"
-                          onClick={() => setNidPreviewUrl(app.nidFileUrl!)}
-                          data-testid={`button-view-nid-mobile-${app.id}`}
-                        >
-                          <FileText className="h-3.5 w-3.5 mr-1.5" />View
-                        </Button>
-                      )}
-                      <div className="flex items-center gap-2 pt-0.5">
-                        <Button size="sm" variant={app.status === "approved" ? "default" : "outline"} className={`flex-1 h-9 text-xs ${app.status !== "approved" ? "text-emerald-700 border-emerald-300 hover:bg-emerald-50 dark:text-emerald-400 dark:border-emerald-700 dark:hover:bg-emerald-950" : "bg-emerald-600 hover:bg-emerald-700"}`} onClick={() => approveMutation.mutate(app.id)} disabled={approveMutation.isPending || rejectMutation.isPending || app.status !== "pending"} data-testid={`button-approve-${app.id}`}>
-                          <CheckCircle2 className="h-3.5 w-3.5 mr-1.5" />Approve
-                        </Button>
-                        <Button size="sm" variant={app.status === "rejected" ? "default" : "outline"} className={`flex-1 h-9 text-xs ${app.status !== "rejected" ? "text-red-700 border-red-300 hover:bg-red-50 dark:text-red-400 dark:border-red-700 dark:hover:bg-red-950" : "bg-red-600 hover:bg-red-700"}`} onClick={() => rejectMutation.mutate(app.id)} disabled={approveMutation.isPending || rejectMutation.isPending || app.status !== "pending"} data-testid={`button-reject-${app.id}`}>
-                          <XCircle className="h-3.5 w-3.5 mr-1.5" />Reject
-                        </Button>
-                        <Button size="icon" variant="ghost" className="h-9 w-9 shrink-0" onClick={() => setDeleteId(app.id)} data-testid={`button-delete-app-${app.id}`}>
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </>
+        {/* Tab Bar */}
+        <div className="flex gap-1 border-b border-border">
+          <button
+            onClick={() => setActiveTab("applications")}
+            data-testid="tab-applications"
+            className={`relative flex items-center gap-2 px-4 py-2.5 text-sm font-medium transition-colors focus:outline-none ${
+              activeTab === "applications"
+                ? "text-foreground border-b-2 border-primary -mb-px"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <ClipboardList className="h-4 w-4" />
+            Applications
+            {pendingCount > 0 && (
+              <span className="flex items-center justify-center rounded-full bg-amber-500 text-white font-semibold leading-none min-w-[18px] h-[18px] px-1 text-[10px]" data-testid="badge-app-pending-count">
+                {pendingCount}
+              </span>
             )}
-          </CardContent>
-        </Card>
+          </button>
+          <button
+            onClick={() => setActiveTab("renewals")}
+            data-testid="tab-renewals"
+            className={`relative flex items-center gap-2 px-4 py-2.5 text-sm font-medium transition-colors focus:outline-none ${
+              activeTab === "renewals"
+                ? "text-foreground border-b-2 border-primary -mb-px"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <RefreshCw className="h-4 w-4" />
+            Renewals
+            {pendingRenewalsCount > 0 && (
+              <span className="flex items-center justify-center rounded-full bg-amber-500 text-white font-semibold leading-none min-w-[18px] h-[18px] px-1 text-[10px]" data-testid="badge-renewals-pending-count">
+                {pendingRenewalsCount}
+              </span>
+            )}
+          </button>
+        </div>
+
+        {/* Applications Tab */}
+        {activeTab === "applications" && (
+          <>
+            <div className="grid grid-cols-3 gap-2 sm:gap-4">
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 p-3 pb-1 sm:p-6 sm:pb-2">
+                  <CardTitle className="text-[10px] sm:text-sm font-medium text-muted-foreground leading-tight">Pending</CardTitle>
+                  <Clock className="hidden sm:block h-4 w-4 text-amber-500" />
+                </CardHeader>
+                <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0 text-center sm:text-left">
+                  <div className="text-xl sm:text-2xl font-bold text-amber-600 dark:text-amber-400" data-testid="text-pending-count">{pendingCount}</div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 p-3 pb-1 sm:p-6 sm:pb-2">
+                  <CardTitle className="text-[10px] sm:text-sm font-medium text-muted-foreground leading-tight">Approved</CardTitle>
+                  <CheckCircle2 className="hidden sm:block h-4 w-4 text-emerald-500" />
+                </CardHeader>
+                <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0 text-center sm:text-left">
+                  <div className="text-xl sm:text-2xl font-bold text-emerald-600 dark:text-emerald-400" data-testid="text-approved-count">{approvedCount}</div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 p-3 pb-1 sm:p-6 sm:pb-2">
+                  <CardTitle className="text-[10px] sm:text-sm font-medium text-muted-foreground leading-tight">Rejected</CardTitle>
+                  <XCircle className="hidden sm:block h-4 w-4 text-red-500" />
+                </CardHeader>
+                <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0 text-center sm:text-left">
+                  <div className="text-xl sm:text-2xl font-bold text-red-600 dark:text-red-400" data-testid="text-rejected-count">{rejectedCount}</div>
+                </CardContent>
+              </Card>
+            </div>
+
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg">Applications</CardTitle>
+              </CardHeader>
+              <CardContent className="p-0 pb-4">
+                {isLoading ? (
+                  <div className="px-6"><TableSkeleton /></div>
+                ) : applications.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-16 text-center px-6">
+                    <div className="rounded-full bg-muted p-4 mb-4">
+                      <ClipboardList className="h-8 w-8 text-muted-foreground" />
+                    </div>
+                    <h3 className="text-lg font-semibold mb-1" data-testid="text-no-applications">No applications yet</h3>
+                    <p className="text-muted-foreground max-w-sm">
+                      Applications submitted through the public form will appear here.
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    {/* Desktop table */}
+                    <div className="hidden md:block rounded-md border mx-4">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead className="whitespace-nowrap text-xs py-2">Name</TableHead>
+                            <TableHead className="whitespace-nowrap text-xs py-2">Phone</TableHead>
+                            <TableHead className="whitespace-nowrap text-xs py-2 w-10">FB</TableHead>
+                            <TableHead className="whitespace-nowrap text-xs py-2">Type</TableHead>
+                            <TableHead className="whitespace-nowrap text-xs py-2 w-16">Dur.</TableHead>
+                            <TableHead className="whitespace-nowrap text-xs py-2 w-16">Pay.</TableHead>
+                            <TableHead className="whitespace-nowrap text-xs py-2">Sender</TableHead>
+                            <TableHead className="whitespace-nowrap text-xs py-2">NID</TableHead>
+                            <TableHead className="whitespace-nowrap text-xs py-2">Submitted</TableHead>
+                            <TableHead className="whitespace-nowrap text-xs py-2">Status</TableHead>
+                            <TableHead className="whitespace-nowrap text-xs py-2 text-right">Actions</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {sortedApplications.map((app) => (
+                            <TableRow key={app.id} data-testid={`row-application-${app.id}`}>
+                              <TableCell className="font-medium text-xs py-1.5" data-testid={`text-app-name-${app.id}`}>{app.name}</TableCell>
+                              <TableCell className="text-xs py-1.5" data-testid={`text-app-phone-${app.id}`}>{app.phone}</TableCell>
+                              <TableCell className="py-1.5 w-10 text-center">
+                                <a href={app.facebookLink} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center text-[#1877F2] hover:text-[#0e5bbf] transition-colors" data-testid={`link-app-facebook-${app.id}`}>
+                                  <SiMeta className="h-4 w-4" />
+                                </a>
+                              </TableCell>
+                              <TableCell className="py-1.5" data-testid={`text-app-seller-type-${app.id}`}>
+                                <Tooltip>
+                                  <TooltipTrigger>
+                                    <Badge variant="secondary" className="no-default-active-elevate text-xs cursor-default">
+                                      {sellerTypeShortLabels[app.sellerType] || app.sellerType}
+                                    </Badge>
+                                  </TooltipTrigger>
+                                  <TooltipContent><p>{sellerTypeLabels[app.sellerType] || app.sellerType}</p></TooltipContent>
+                                </Tooltip>
+                              </TableCell>
+                              <TableCell className="py-1.5 w-16" data-testid={`text-app-duration-${app.id}`}>
+                                <Badge variant="secondary" className="no-default-active-elevate text-xs">{durationLabels[app.duration] || app.duration}</Badge>
+                              </TableCell>
+                              <TableCell className="py-1.5 w-16" data-testid={`text-app-payment-method-${app.id}`}>
+                                <Badge variant="secondary" className="no-default-active-elevate text-xs">{paymentMethodLabels[app.paymentMethod] || app.paymentMethod}</Badge>
+                              </TableCell>
+                              <TableCell className="text-xs py-1.5" data-testid={`text-app-sender-number-${app.id}`}>{app.senderNumber}</TableCell>
+                              <TableCell className="py-1.5">
+                                {app.nidFileUrl ? (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="h-6 text-xs px-1.5 text-violet-700 border-violet-300 hover:bg-violet-50 dark:text-violet-400 dark:border-violet-700 dark:hover:bg-violet-950"
+                                    onClick={() => setNidPreviewUrl(app.nidFileUrl!)}
+                                    data-testid={`button-view-nid-${app.id}`}
+                                  >
+                                    <FileText className="h-3 w-3 mr-1" />View
+                                  </Button>
+                                ) : (
+                                  <span className="text-xs text-muted-foreground/50">—</span>
+                                )}
+                              </TableCell>
+                              <TableCell className="text-xs py-1.5 whitespace-nowrap text-muted-foreground" data-testid={`text-app-submitted-${app.id}`}>{formatSubmittedAt(app.createdAt)}</TableCell>
+                              <TableCell className="py-1.5"><StatusBadge status={app.status} /></TableCell>
+                              <TableCell className="py-1.5">
+                                <div className="flex items-center justify-end gap-1">
+                                  <Button size="sm" variant={app.status === "approved" ? "default" : "outline"} className={`h-6 text-xs px-1.5 ${app.status !== "approved" ? "text-emerald-700 border-emerald-300 hover:bg-emerald-50 dark:text-emerald-400 dark:border-emerald-700 dark:hover:bg-emerald-950" : "bg-emerald-600 hover:bg-emerald-700"}`} onClick={() => approveMutation.mutate(app.id)} disabled={approveMutation.isPending || rejectMutation.isPending || app.status !== "pending"} data-testid={`button-approve-${app.id}`}>
+                                    <CheckCircle2 className="h-3 w-3 mr-1" />Approve
+                                  </Button>
+                                  <Button size="sm" variant={app.status === "rejected" ? "default" : "outline"} className={`h-6 text-xs px-1.5 ${app.status !== "rejected" ? "text-red-700 border-red-300 hover:bg-red-50 dark:text-red-400 dark:border-red-700 dark:hover:bg-red-950" : "bg-red-600 hover:bg-red-700"}`} onClick={() => rejectMutation.mutate(app.id)} disabled={approveMutation.isPending || rejectMutation.isPending || app.status !== "pending"} data-testid={`button-reject-${app.id}`}>
+                                    <XCircle className="h-3 w-3 mr-1" />Reject
+                                  </Button>
+                                  <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => setDeleteId(app.id)} data-testid={`button-delete-app-${app.id}`}>
+                                    <Trash2 className="h-3 w-3 text-destructive" />
+                                  </Button>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+
+                    {/* Mobile card list */}
+                    <div className="md:hidden space-y-3 px-4 pb-2">
+                      {sortedApplications.map((app) => (
+                        <div key={app.id} className="border rounded-xl p-4 space-y-3 bg-card shadow-sm" data-testid={`row-application-${app.id}`}>
+                          <div className="flex items-start justify-between gap-2">
+                            <div>
+                              <p className="font-semibold text-sm leading-tight" data-testid={`text-app-name-${app.id}`}>{app.name}</p>
+                              <p className="text-xs text-muted-foreground mt-0.5" data-testid={`text-app-phone-${app.id}`}>{app.phone}</p>
+                              <p className="text-xs text-muted-foreground/70 mt-0.5" data-testid={`text-app-submitted-${app.id}`}>Submitted: {formatSubmittedAt(app.createdAt)}</p>
+                            </div>
+                            <StatusBadge status={app.status} />
+                          </div>
+                          <div className="flex flex-wrap gap-1.5">
+                            <Badge variant="secondary" className="text-xs no-default-active-elevate" data-testid={`text-app-seller-type-${app.id}`}>
+                              {sellerTypeShortLabels[app.sellerType] || app.sellerType}
+                            </Badge>
+                            <Badge variant="secondary" className="text-xs no-default-active-elevate" data-testid={`text-app-duration-${app.id}`}>
+                              {durationLabels[app.duration] || app.duration}
+                            </Badge>
+                            <Badge variant="secondary" className="text-xs no-default-active-elevate" data-testid={`text-app-payment-method-${app.id}`}>
+                              {paymentMethodLabels[app.paymentMethod] || app.paymentMethod}
+                            </Badge>
+                          </div>
+                          <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                            <a href={app.facebookLink} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-[#1877F2] hover:text-[#0e5bbf]" data-testid={`link-app-facebook-${app.id}`}>
+                              <SiMeta className="h-3.5 w-3.5" />
+                              <span>Profile</span>
+                            </a>
+                            <span data-testid={`text-app-sender-number-${app.id}`}>Sender: {app.senderNumber}</span>
+                          </div>
+                          {app.nidFileUrl && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-8 text-xs text-violet-700 border-violet-300 hover:bg-violet-50 dark:text-violet-400 dark:border-violet-700 dark:hover:bg-violet-950"
+                              onClick={() => setNidPreviewUrl(app.nidFileUrl!)}
+                              data-testid={`button-view-nid-mobile-${app.id}`}
+                            >
+                              <FileText className="h-3.5 w-3.5 mr-1.5" />View
+                            </Button>
+                          )}
+                          <div className="flex items-center gap-2 pt-0.5">
+                            <Button size="sm" variant={app.status === "approved" ? "default" : "outline"} className={`flex-1 h-9 text-xs ${app.status !== "approved" ? "text-emerald-700 border-emerald-300 hover:bg-emerald-50 dark:text-emerald-400 dark:border-emerald-700 dark:hover:bg-emerald-950" : "bg-emerald-600 hover:bg-emerald-700"}`} onClick={() => approveMutation.mutate(app.id)} disabled={approveMutation.isPending || rejectMutation.isPending || app.status !== "pending"} data-testid={`button-approve-${app.id}`}>
+                              <CheckCircle2 className="h-3.5 w-3.5 mr-1.5" />Approve
+                            </Button>
+                            <Button size="sm" variant={app.status === "rejected" ? "default" : "outline"} className={`flex-1 h-9 text-xs ${app.status !== "rejected" ? "text-red-700 border-red-300 hover:bg-red-50 dark:text-red-400 dark:border-red-700 dark:hover:bg-red-950" : "bg-red-600 hover:bg-red-700"}`} onClick={() => rejectMutation.mutate(app.id)} disabled={approveMutation.isPending || rejectMutation.isPending || app.status !== "pending"} data-testid={`button-reject-${app.id}`}>
+                              <XCircle className="h-3.5 w-3.5 mr-1.5" />Reject
+                            </Button>
+                            <Button size="icon" variant="ghost" className="h-9 w-9 shrink-0" onClick={() => setDeleteId(app.id)} data-testid={`button-delete-app-${app.id}`}>
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          </>
+        )}
+
+        {/* Renewals Tab */}
+        {activeTab === "renewals" && <RenewalsTab />}
 
         <AlertDialog open={deleteId !== null} onOpenChange={() => setDeleteId(null)}>
           <AlertDialogContent>
@@ -465,18 +756,15 @@ export default function SellerApplications() {
             <AlertDialogFooter>
               <AlertDialogCancel>Cancel</AlertDialogCancel>
               <AlertDialogAction
-                onClick={() => deleteId && deleteMutation.mutate(deleteId)}
-                className="bg-destructive text-destructive-foreground"
+                onClick={() => deleteId !== null && deleteMutation.mutate(deleteId)}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                data-testid="button-confirm-delete"
               >
-                {deleteMutation.isPending ? "Deleting..." : "Delete"}
+                Delete
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
-
-        {nidPreviewUrl && (
-          <NidViewerModal url={nidPreviewUrl} onClose={() => setNidPreviewUrl(null)} />
-        )}
       </div>
     </div>
   );

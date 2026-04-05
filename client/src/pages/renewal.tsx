@@ -25,18 +25,18 @@ type Seller = {
 };
 
 const DURATION_OPTIONS = [
-  { value: "1", label: "১ মাস" },
-  { value: "2", label: "২ মাস" },
-  { value: "3", label: "৩ মাস" },
-  { value: "4", label: "৪ মাস" },
-  { value: "5", label: "৫ মাস" },
-  { value: "6", label: "৬ মাস" },
-  { value: "7", label: "৭ মাস" },
-  { value: "8", label: "৮ মাস" },
-  { value: "9", label: "৯ মাস" },
-  { value: "10", label: "১০ মাস" },
-  { value: "11", label: "১১ মাস" },
-  { value: "12", label: "১২ মাস" },
+  { value: "1",  label: "১ মাস - ২০০ টাকা" },
+  { value: "2",  label: "২ মাস - ৩৮০ টাকা" },
+  { value: "3",  label: "৩ মাস - ৫৫০ টাকা" },
+  { value: "4",  label: "৪ মাস - ৭০০ টাকা" },
+  { value: "5",  label: "৫ মাস - ৮৫০ টাকা" },
+  { value: "6",  label: "৬ মাস - ১০০০ টাকা" },
+  { value: "7",  label: "৭ মাস - ১১০০ টাকা" },
+  { value: "8",  label: "৮ মাস - ১২০০ টাকা" },
+  { value: "9",  label: "৯ মাস - ১৩০০ টাকা" },
+  { value: "10", label: "১০ মাস - ১৪০০ টাকা" },
+  { value: "11", label: "১১ মাস - ১৫০০ টাকা" },
+  { value: "12", label: "১২ মাস - ১৬০০ টাকা" },
 ];
 
 const PAYMENT_METHODS = [

@@ -4,7 +4,7 @@ import { storage } from "./storage";
 import { insertSellerSchema, insertSellerApplicationSchema } from "@shared/schema";
 import passport from "passport";
 import { hashPassword, verifyPassword } from "./auth";
-import { sendSellerCodeEmail, sendExtensionEmail, sendRenewalApprovalEmail } from "./email";
+import { sendSellerCodeEmail, sendExtensionEmail, sendRenewalApprovalEmail, sendRenewalRejectionEmail } from "./email";
 import multer from "multer";
 import { uploadNidFile, deleteCloudinaryFile } from "./cloudinary";
 import rateLimit from "express-rate-limit";
@@ -450,55 +450,6 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/sellers/renew", async (req, res) => {
-    try {
-      const { phone, duration, paymentMethod, senderNumber } = req.body;
-
-      if (!phone || typeof phone !== "string" || !phone.trim()) {
-        return res.status(400).json({ message: "phone is required" });
-      }
-      if (!duration || ![1, 3, 6, 12].includes(Number(duration))) {
-        return res.status(400).json({ message: "Invalid duration. Must be 1, 3, 6, or 12 months." });
-      }
-      if (!paymentMethod || typeof paymentMethod !== "string" || !paymentMethod.trim()) {
-        return res.status(400).json({ message: "paymentMethod is required" });
-      }
-      if (!senderNumber || typeof senderNumber !== "string" || !senderNumber.trim()) {
-        return res.status(400).json({ message: "senderNumber is required" });
-      }
-
-      const seller = await storage.getSellerByPhone(phone.trim());
-      if (!seller) {
-        return res.status(404).json({ message: "Seller not found" });
-      }
-
-      const today = new Date();
-      const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
-      const baseDate = seller.expiryDate < todayStr ? todayStr : seller.expiryDate;
-      const newExpiryDate = calculateExpiryDate(baseDate, String(Number(duration)));
-      const oldExpiryDate = seller.expiryDate;
-
-      const updated = await storage.updateSeller(seller.id, { expiryDate: newExpiryDate });
-
-      console.log(`[renew] Seller ${phone.trim()} extended from ${oldExpiryDate} → ${newExpiryDate}`);
-
-      if (seller.email) {
-        await sendExtensionEmail(
-          seller.email,
-          seller.name,
-          seller.sellerCode,
-          oldExpiryDate,
-          newExpiryDate,
-          Number(duration)
-        );
-      }
-
-      res.json({ message: "Subscription renewed successfully", seller: updated });
-    } catch (error) {
-      res.status(500).json({ message: "Failed to renew subscription" });
-    }
-  });
-
   app.post("/api/renewals", async (req, res) => {
     try {
       const { phone, duration, paymentMethod, senderNumber } = req.body;
@@ -596,8 +547,15 @@ export async function registerRoutes(
         return res.status(400).json({ message: `Application already ${application.status}` });
       }
 
+      const seller = await storage.getSellerById(application.sellerId);
+
       const updated = await storage.updateRenewalApplicationStatus(id, "rejected");
       console.log(`[renewals] Rejected renewal application ID: ${id}`);
+
+      if (seller?.email) {
+        await sendRenewalRejectionEmail(seller.email, seller.name, seller.sellerCode);
+      }
+
       res.json(updated);
     } catch (error) {
       res.status(500).json({ message: "Failed to reject renewal application" });

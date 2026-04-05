@@ -7,6 +7,7 @@ import NotFound from "@/pages/not-found";
 import SellerCodeManager from "@/pages/seller-code-manager";
 import SellerApplication from "@/pages/seller-application";
 import SellerApplications from "@/pages/seller-applications";
+import RenewalPage from "@/pages/renewal";
 import Login from "@/pages/login";
 import AdminSetup from "@/pages/admin-setup";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -29,6 +30,10 @@ function ProtectedRouter() {
 
   if (location === "/apply") {
     return <SellerApplication />;
+  }
+
+  if (location === "/renew") {
+    return <RenewalPage />;
   }
 
   if (isLoading) {

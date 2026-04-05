@@ -226,6 +226,22 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/sellers/lookup", async (req, res) => {
+    try {
+      const q = (req.query.q as string || "").trim();
+      if (!q) {
+        return res.status(400).json({ message: "Query is required" });
+      }
+      const byPhone = await storage.getSellerByPhone(q);
+      if (byPhone) return res.json(byPhone);
+      const byCode = await storage.getSellerByCode(q);
+      if (byCode) return res.json(byCode);
+      return res.status(404).json({ message: "Seller not found" });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to lookup seller" });
+    }
+  });
+
   app.get("/api/sellers", requireAuth, async (_req, res) => {
     try {
       const sellers = await storage.getAllSellers();

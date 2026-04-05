@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import type { Seller, SellerApplication } from "@shared/schema";
+import type { Seller, SellerApplication, SellerRenewalApplication } from "@shared/schema";
 import { format, differenceInDays, parseISO } from "date-fns";
 import {
   Search,
@@ -30,6 +30,9 @@ import {
   BookOpen,
   Save,
   CalendarPlus,
+  Archive,
+  RotateCcw,
+  RefreshCw,
 } from "lucide-react";
 import { SiMeta } from "react-icons/si";
 import { useLocation } from "wouter";
@@ -130,13 +133,24 @@ function getRowClass(expiryDate: string): string {
   return "";
 }
 
-function StatsCards({ sellers }: { sellers: Seller[] }) {
+function StatsCards({
+  sellers,
+  archivedCount,
+  pendingRenewalsCount,
+  onArchivedClick,
+  onRenewalsClick,
+}: {
+  sellers: Seller[];
+  archivedCount: number;
+  pendingRenewalsCount: number;
+  onArchivedClick: () => void;
+  onRenewalsClick: () => void;
+}) {
   const active = sellers.filter((s) => getSellerStatus(s.expiryDate) === "active").length;
   const expiring = sellers.filter((s) => getSellerStatus(s.expiryDate) === "expiring").length;
-  const expired = sellers.filter((s) => getSellerStatus(s.expiryDate) === "expired").length;
 
   return (
-    <div className="grid grid-cols-4 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
+    <div className="grid grid-cols-3 sm:grid-cols-5 gap-2 sm:gap-4">
       <Card>
         <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 p-3 pb-1 sm:p-6 sm:pb-2">
           <CardTitle className="text-[10px] sm:text-sm font-medium text-muted-foreground leading-tight">
@@ -170,13 +184,28 @@ function StatsCards({ sellers }: { sellers: Seller[] }) {
           <div className="text-xl sm:text-2xl font-bold text-amber-600 dark:text-amber-400" data-testid="text-expiring-count">{expiring}</div>
         </CardContent>
       </Card>
-      <Card>
+      <Card className="col-span-1 cursor-pointer hover:ring-1 hover:ring-red-400 transition-all" onClick={onArchivedClick} data-testid="card-archived">
         <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 p-3 pb-1 sm:p-6 sm:pb-2">
-          <CardTitle className="text-[10px] sm:text-sm font-medium text-muted-foreground leading-tight">Expired</CardTitle>
-          <XCircle className="hidden sm:block h-4 w-4 text-red-500" />
+          <CardTitle className="text-[10px] sm:text-sm font-medium text-muted-foreground leading-tight">
+            <span className="sm:hidden">Expired</span>
+            <span className="hidden sm:inline">Expired</span>
+          </CardTitle>
+          <Archive className="hidden sm:block h-4 w-4 text-red-500" />
         </CardHeader>
         <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0 text-center sm:text-left">
-          <div className="text-xl sm:text-2xl font-bold text-red-600 dark:text-red-400" data-testid="text-expired-count">{expired}</div>
+          <div className="text-xl sm:text-2xl font-bold text-red-600 dark:text-red-400" data-testid="text-expired-count">{archivedCount}</div>
+        </CardContent>
+      </Card>
+      <Card className="col-span-1 cursor-pointer hover:ring-1 hover:ring-blue-400 transition-all" onClick={onRenewalsClick} data-testid="card-renewals">
+        <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 p-3 pb-1 sm:p-6 sm:pb-2">
+          <CardTitle className="text-[10px] sm:text-sm font-medium text-muted-foreground leading-tight">
+            <span className="sm:hidden">Renewals</span>
+            <span className="hidden sm:inline">Renewals</span>
+          </CardTitle>
+          <RefreshCw className="hidden sm:block h-4 w-4 text-blue-500" />
+        </CardHeader>
+        <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0 text-center sm:text-left">
+          <div className="text-xl sm:text-2xl font-bold text-blue-600 dark:text-blue-400" data-testid="text-renewals-count">{pendingRenewalsCount}</div>
         </CardContent>
       </Card>
     </div>
@@ -850,6 +879,8 @@ export default function SellerCodeManager() {
   const [settingsPanel, setSettingsPanel] = useState<"registration" | "email" | "group-rules" | null>(null);
   const [extendSeller, setExtendSeller] = useState<Seller | undefined>();
   const [extendMonths, setExtendMonths] = useState<number>(1);
+  const [archivedOpen, setArchivedOpen] = useState(false);
+  const [permanentDeleteId, setPermanentDeleteId] = useState<number | null>(null);
   const { toast } = useToast();
 
   const logoutMutation = useMutation({
@@ -873,7 +904,16 @@ export default function SellerCodeManager() {
     queryKey: ["/api/applications"],
   });
 
+  const { data: archivedSellers = [] } = useQuery<Seller[]>({
+    queryKey: ["/api/sellers/archived"],
+  });
+
+  const { data: renewalApplications = [] } = useQuery<SellerRenewalApplication[]>({
+    queryKey: ["/api/renewals"],
+  });
+
   const pendingCount = applications.filter((a) => a.status === "pending").length;
+  const pendingRenewalsCount = renewalApplications.filter((r) => r.status === "pending").length;
 
   const sortedSellers = [...sellers].sort(
     (a, b) => new Date(a.expiryDate).getTime() - new Date(b.expiryDate).getTime()
@@ -904,7 +944,8 @@ export default function SellerCodeManager() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/sellers"] });
-      toast({ title: "Seller deleted successfully" });
+      queryClient.invalidateQueries({ queryKey: ["/api/sellers/archived"] });
+      toast({ title: "Seller moved to Expired" });
       setDeleteId(null);
     },
     onError: (error: Error) => {
@@ -978,6 +1019,34 @@ export default function SellerCodeManager() {
     },
   });
 
+  const restoreMutation = useMutation({
+    mutationFn: async (id: number) => {
+      await apiRequest("POST", `/api/sellers/${id}/restore`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/sellers"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/sellers/archived"] });
+      toast({ title: "Seller restored successfully" });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Failed to restore seller", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const permanentDeleteMutation = useMutation({
+    mutationFn: async (id: number) => {
+      await apiRequest("DELETE", `/api/sellers/${id}/permanent`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/sellers/archived"] });
+      toast({ title: "Seller permanently deleted" });
+      setPermanentDeleteId(null);
+    },
+    onError: (error: Error) => {
+      toast({ title: "Failed to delete seller", description: error.message, variant: "destructive" });
+    },
+  });
+
   const handleAdd = () => {
     setEditingSeller(undefined);
     setDialogOpen(true);
@@ -1028,7 +1097,15 @@ export default function SellerCodeManager() {
           </div>
         </div>
 
-        {!isLoading && <StatsCards sellers={sellers} />}
+        {!isLoading && (
+          <StatsCards
+            sellers={sellers}
+            archivedCount={archivedSellers.length}
+            pendingRenewalsCount={pendingRenewalsCount}
+            onArchivedClick={() => setArchivedOpen(true)}
+            onRenewalsClick={() => navigate("/applications")}
+          />
+        )}
 
         <Card>
           <CardHeader className="pb-4">
@@ -1370,9 +1447,9 @@ export default function SellerCodeManager() {
         <AlertDialog open={deleteId !== null} onOpenChange={() => setDeleteId(null)}>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Delete Seller</AlertDialogTitle>
+              <AlertDialogTitle>Move Seller to Expired</AlertDialogTitle>
               <AlertDialogDescription>
-                Are you sure you want to delete this seller? This action cannot be undone.
+                This seller will be moved to the Expired section. You can restore them later if needed.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
@@ -1382,11 +1459,90 @@ export default function SellerCodeManager() {
                 className="bg-destructive text-destructive-foreground"
                 data-testid="button-confirm-delete"
               >
-                {deleteMutation.isPending ? "Deleting..." : "Delete"}
+                {deleteMutation.isPending ? "Moving..." : "Move to Expired"}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        <AlertDialog open={permanentDeleteId !== null} onOpenChange={() => setPermanentDeleteId(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Permanently Delete Seller</AlertDialogTitle>
+              <AlertDialogDescription>
+                This action cannot be undone. The seller will be permanently removed from the database.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel data-testid="button-cancel-permanent-delete">Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => permanentDeleteId && permanentDeleteMutation.mutate(permanentDeleteId)}
+                className="bg-destructive text-destructive-foreground"
+                data-testid="button-confirm-permanent-delete"
+              >
+                {permanentDeleteMutation.isPending ? "Deleting..." : "Permanently Delete"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        <Dialog open={archivedOpen} onOpenChange={setArchivedOpen}>
+          <DialogContent className="w-[calc(100vw-2rem)] max-w-2xl sm:w-full rounded-xl sm:rounded-lg" aria-describedby={undefined}>
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Archive className="h-5 w-5 text-red-500" />
+                Expired Sellers ({archivedSellers.length})
+              </DialogTitle>
+            </DialogHeader>
+            <div className="max-h-[60vh] overflow-y-auto">
+              {archivedSellers.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-10 text-center">
+                  <Archive className="h-10 w-10 text-muted-foreground mb-3" />
+                  <p className="text-muted-foreground">No expired sellers</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {archivedSellers.map((seller) => (
+                    <div key={seller.id} className="flex items-center justify-between gap-3 rounded-lg border p-3 bg-red-500/5" data-testid={`row-archived-${seller.id}`}>
+                      <div className="min-w-0 flex-1 space-y-0.5">
+                        <p className="font-semibold text-sm truncate" data-testid={`text-archived-name-${seller.id}`}>{seller.name}</p>
+                        <p className="text-xs text-muted-foreground flex items-center gap-1" data-testid={`text-archived-phone-${seller.id}`}>
+                          <Phone className="h-3 w-3" />{seller.phone}
+                        </p>
+                        <p className="text-xs font-mono text-primary" data-testid={`text-archived-code-${seller.id}`}>{seller.sellerCode}</p>
+                        <p className="text-xs text-muted-foreground flex items-center gap-1" data-testid={`text-archived-expiry-${seller.id}`}>
+                          <Clock className="h-3 w-3" />Expired: {format(parseISO(seller.expiryDate), "MMM dd, yyyy")}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-8 text-emerald-600 border-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-950"
+                          onClick={() => restoreMutation.mutate(seller.id)}
+                          disabled={restoreMutation.isPending}
+                          data-testid={`button-restore-${seller.id}`}
+                        >
+                          <RotateCcw className="h-3.5 w-3.5 sm:mr-1" />
+                          <span className="hidden sm:inline">Restore</span>
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-8 text-destructive hover:text-destructive"
+                          onClick={() => setPermanentDeleteId(seller.id)}
+                          data-testid={`button-permanent-delete-${seller.id}`}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
 
       </div>
     </div>

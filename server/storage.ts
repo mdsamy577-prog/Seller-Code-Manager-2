@@ -15,10 +15,13 @@ export interface IStorage {
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
   getAllSellers(): Promise<Seller[]>;
+  getDeletedSellers(): Promise<Seller[]>;
   getSellerById(id: number): Promise<Seller | undefined>;
   createSeller(seller: InsertSeller & { expiryDate: string }): Promise<Seller>;
-  updateSeller(id: number, seller: Partial<InsertSeller & { expiryDate: string }>): Promise<Seller | undefined>;
+  updateSeller(id: number, seller: Partial<InsertSeller & { expiryDate: string; status?: string }>): Promise<Seller | undefined>;
+  softDeleteSeller(id: number): Promise<boolean>;
   deleteSeller(id: number): Promise<boolean>;
+  restoreSeller(id: number): Promise<Seller | undefined>;
   searchSellers(query: string): Promise<Seller[]>;
   getSetting(key: string): Promise<string | null>;
   setSetting(key: string, value: string): Promise<void>;
@@ -75,7 +78,11 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAllSellers(): Promise<Seller[]> {
-    return await db.select().from(sellers);
+    return await db.select().from(sellers).where(eq(sellers.status, "active"));
+  }
+
+  async getDeletedSellers(): Promise<Seller[]> {
+    return await db.select().from(sellers).where(eq(sellers.status, "deleted"));
   }
 
   async getSellerById(id: number): Promise<Seller | undefined> {
@@ -93,18 +100,31 @@ export class DatabaseStorage implements IStorage {
     return result[0];
   }
 
+  async softDeleteSeller(id: number): Promise<boolean> {
+    const result = await db.update(sellers).set({ status: "deleted" }).where(eq(sellers.id, id)).returning();
+    return result.length > 0;
+  }
+
   async deleteSeller(id: number): Promise<boolean> {
     const result = await db.delete(sellers).where(eq(sellers.id, id)).returning();
     return result.length > 0;
   }
 
+  async restoreSeller(id: number): Promise<Seller | undefined> {
+    const result = await db.update(sellers).set({ status: "active" }).where(eq(sellers.id, id)).returning();
+    return result[0];
+  }
+
   async searchSellers(query: string): Promise<Seller[]> {
     const searchTerm = `%${query}%`;
     return await db.select().from(sellers).where(
-      or(
-        ilike(sellers.name, searchTerm),
-        ilike(sellers.phone, searchTerm),
-        ilike(sellers.sellerCode, searchTerm)
+      and(
+        eq(sellers.status, "active"),
+        or(
+          ilike(sellers.name, searchTerm),
+          ilike(sellers.phone, searchTerm),
+          ilike(sellers.sellerCode, searchTerm)
+        )
       )
     );
   }
@@ -174,8 +194,8 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getSellersWithEmail(): Promise<Seller[]> {
-    const allSellers = await db.select().from(sellers);
-    return allSellers.filter(s => s.email);
+    const activeSellers = await db.select().from(sellers).where(eq(sellers.status, "active"));
+    return activeSellers.filter(s => s.email);
   }
 
   async hasReminderBeenSent(sellerId: number, reminderType: string, date: string): Promise<boolean> {

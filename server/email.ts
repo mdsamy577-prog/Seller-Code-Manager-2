@@ -277,3 +277,67 @@ export async function sendReminderEmail(
     return false;
   }
 }
+
+export async function sendRenewalApprovalEmail(
+  recipientEmail: string,
+  sellerName: string,
+  sellerCode: string,
+  newExpiryDate: string
+): Promise<boolean> {
+  if (!process.env.RESEND_API_KEY) {
+    console.log("RESEND_API_KEY not configured, skipping renewal approval email");
+    return false;
+  }
+
+  const senderName = await getSenderName();
+  const replyTo = await getReplyEmail();
+  const formattedExpiry = formatDateBangla(newExpiryDate);
+
+  const htmlBody = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+      <div style="background-color: #16a34a; color: white; padding: 20px; border-radius: 8px 8px 0 0; text-align: center;">
+        <h1 style="margin: 0; font-size: 24px;">সাবস্ক্রিপশন নবায়ন সম্পন্ন</h1>
+      </div>
+      <div style="border: 1px solid #e5e7eb; border-top: none; padding: 24px; border-radius: 0 0 8px 8px;">
+        <p style="font-size: 16px; color: #374151;">প্রিয় <strong>${sellerName}</strong>,</p>
+        <p style="font-size: 15px; color: #4b5563;">আপনার সেলার কোডের মেয়াদ সফলভাবে নবায়ন করা হয়েছে।</p>
+        <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
+          <tr style="border-bottom: 1px solid #e5e7eb;">
+            <td style="padding: 12px; font-weight: bold; color: #374151;">সেলার নাম</td>
+            <td style="padding: 12px; color: #4b5563;">${sellerName}</td>
+          </tr>
+          <tr style="border-bottom: 1px solid #e5e7eb; background-color: #f9fafb;">
+            <td style="padding: 12px; font-weight: bold; color: #374151;">সেলার কোড</td>
+            <td style="padding: 12px; color: #1e40af; font-weight: bold; font-size: 18px; font-family: monospace;">${sellerCode}</td>
+          </tr>
+          <tr style="background-color: #f0fdf4;">
+            <td style="padding: 12px; font-weight: bold; color: #374151;">নতুন মেয়াদ শেষ</td>
+            <td style="padding: 12px; color: #16a34a; font-weight: bold;">${formattedExpiry}</td>
+          </tr>
+        </table>
+        <div style="border-top: 1px solid #e5e7eb; margin-top: 20px; padding-top: 16px; text-align: center;">
+          <p style="font-size: 13px; color: #9ca3af; margin: 0 0 8px 0;">সাপোর্টের জন্য যোগাযোগ করুন</p>
+          <a href="https://www.facebook.com/CPSSbd.1" style="background-color: #1877f2; color: white; padding: 8px 20px; text-decoration: none; border-radius: 5px; font-size: 14px; font-weight: bold; display: inline-block;">Facebook Page</a>
+        </div>
+      </div>
+    </div>
+  `;
+
+  const resend = getResendClient();
+  if (!resend) return false;
+
+  try {
+    await resend.emails.send({
+      from: `${senderName} <noreply@shoprizqon.com>`,
+      to: recipientEmail,
+      replyTo,
+      subject: `সাবস্ক্রিপশন নবায়ন সম্পন্ন: ${sellerCode}`,
+      html: htmlBody,
+    });
+    console.log(`Renewal approval email sent to ${recipientEmail}`);
+    return true;
+  } catch (error) {
+    console.error(`Failed to send renewal approval email to ${recipientEmail}:`, error);
+    return false;
+  }
+}

@@ -4,7 +4,7 @@ import { storage } from "./storage";
 import { insertSellerSchema, insertSellerApplicationSchema } from "@shared/schema";
 import passport from "passport";
 import { hashPassword, verifyPassword } from "./auth";
-import { sendSellerCodeEmail, sendExtensionEmail } from "./email";
+import { sendSellerCodeEmail, sendExtensionEmail, sendRenewalApprovalEmail } from "./email";
 import multer from "multer";
 import { uploadNidFile, deleteCloudinaryFile } from "./cloudinary";
 import rateLimit from "express-rate-limit";
@@ -265,6 +265,15 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/sellers/archived", requireAuth, async (_req, res) => {
+    try {
+      const deleted = await storage.getDeletedSellers();
+      res.json(deleted);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch archived sellers" });
+    }
+  });
+
   app.get("/api/sellers/:id", requireAuth, async (req, res) => {
     try {
       const id = parseInt(String(req.params.id));
@@ -334,13 +343,39 @@ export async function registerRoutes(
   app.delete("/api/sellers/:id", requireAuth, async (req, res) => {
     try {
       const id = parseInt(String(req.params.id));
+      const deleted = await storage.softDeleteSeller(id);
+      if (!deleted) {
+        return res.status(404).json({ message: "Seller not found" });
+      }
+      res.json({ message: "Seller moved to archived" });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to archive seller" });
+    }
+  });
+
+  app.post("/api/sellers/:id/restore", requireAuth, async (req, res) => {
+    try {
+      const id = parseInt(String(req.params.id));
+      const seller = await storage.restoreSeller(id);
+      if (!seller) {
+        return res.status(404).json({ message: "Seller not found" });
+      }
+      res.json(seller);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to restore seller" });
+    }
+  });
+
+  app.delete("/api/sellers/:id/permanent", requireAuth, async (req, res) => {
+    try {
+      const id = parseInt(String(req.params.id));
       const deleted = await storage.deleteSeller(id);
       if (!deleted) {
         return res.status(404).json({ message: "Seller not found" });
       }
-      res.json({ message: "Seller deleted" });
+      res.json({ message: "Seller permanently deleted" });
     } catch (error) {
-      res.status(500).json({ message: "Failed to delete seller" });
+      res.status(500).json({ message: "Failed to permanently delete seller" });
     }
   });
 
@@ -526,19 +561,21 @@ export async function registerRoutes(
       const newExpiryDate = calculateExpiryDate(baseDate, application.duration);
       const oldExpiryDate = seller.expiryDate;
 
-      await storage.updateSeller(seller.id, { expiryDate: newExpiryDate });
+      const updates: { expiryDate: string; status?: string } = { expiryDate: newExpiryDate };
+      if (seller.status === "deleted") {
+        updates.status = "active";
+      }
+      await storage.updateSeller(seller.id, updates);
       const updated = await storage.updateRenewalApplicationStatus(id, "approved");
 
-      console.log(`[renewals] Approved renewal for ${seller.phone}: ${oldExpiryDate} → ${newExpiryDate}`);
+      console.log(`[renewals] Approved renewal for ${seller.phone}: ${oldExpiryDate} → ${newExpiryDate}${seller.status === "deleted" ? " (restored from archived)" : ""}`);
 
       if (seller.email) {
-        await sendExtensionEmail(
+        await sendRenewalApprovalEmail(
           seller.email,
           seller.name,
           seller.sellerCode,
-          oldExpiryDate,
-          newExpiryDate,
-          Number(application.duration)
+          newExpiryDate
         );
       }
 

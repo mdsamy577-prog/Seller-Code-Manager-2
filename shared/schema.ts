@@ -29,6 +29,7 @@ export const sellers = pgTable("sellers", {
   startDate: date("start_date").notNull(),
   expiryDate: date("expiry_date").notNull(),
   email: text("email"),
+  status: text("status").notNull().default("active"),
 });
 
 export const emailReminderLog = pgTable("email_reminder_log", {

@@ -435,39 +435,75 @@ function GroupRules() {
 
 function RegistrationLink() {
   const { toast } = useToast();
-  const [copied, setCopied] = useState(false);
+  const [copiedReg, setCopiedReg] = useState(false);
+  const [copiedRenew, setCopiedRenew] = useState(false);
   const registrationUrl = `${window.location.origin}/apply`;
+  const renewalUrl = `${window.location.origin}/renew`;
 
-  const handleCopy = async () => {
+  const handleCopyReg = async () => {
     try {
       await navigator.clipboard.writeText(registrationUrl);
-      setCopied(true);
+      setCopiedReg(true);
       toast({ title: "Link copied to clipboard" });
-      setTimeout(() => setCopied(false), 2000);
+      setTimeout(() => setCopiedReg(false), 2000);
+    } catch {
+      toast({ title: "Failed to copy", variant: "destructive" });
+    }
+  };
+
+  const handleCopyRenew = async () => {
+    try {
+      await navigator.clipboard.writeText(renewalUrl);
+      setCopiedRenew(true);
+      toast({ title: "Link copied to clipboard" });
+      setTimeout(() => setCopiedRenew(false), 2000);
     } catch {
       toast({ title: "Failed to copy", variant: "destructive" });
     }
   };
 
   return (
-    <div className="space-y-3" data-testid="card-registration-link">
-      <p className="text-sm text-muted-foreground">Share this link for sellers to apply for a seller code</p>
-      <div className="flex items-center gap-2">
-        <Input
-          readOnly
-          value={registrationUrl}
-          className="font-mono text-xs sm:text-sm min-w-0"
-          data-testid="input-registration-url"
-        />
-        <Button
-          variant="outline"
-          size="icon"
-          onClick={handleCopy}
-          className="shrink-0"
-          data-testid="button-copy-registration-link"
-        >
-          {copied ? <Check className="h-4 w-4 text-emerald-600" /> : <Copy className="h-4 w-4" />}
-        </Button>
+    <div className="space-y-4" data-testid="card-registration-link">
+      <div className="space-y-2">
+        <p className="text-sm text-muted-foreground">Share this link for sellers to apply for a seller code</p>
+        <div className="flex items-center gap-2">
+          <Input
+            readOnly
+            value={registrationUrl}
+            className="font-mono text-xs sm:text-sm min-w-0"
+            data-testid="input-registration-url"
+          />
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={handleCopyReg}
+            className="shrink-0"
+            data-testid="button-copy-registration-link"
+          >
+            {copiedReg ? <Check className="h-4 w-4 text-emerald-600" /> : <Copy className="h-4 w-4" />}
+          </Button>
+        </div>
+      </div>
+
+      <div className="space-y-2" data-testid="card-renewal-link">
+        <p className="text-sm font-medium">Renewal Link</p>
+        <div className="flex items-center gap-2">
+          <Input
+            readOnly
+            value={renewalUrl}
+            className="font-mono text-xs sm:text-sm min-w-0"
+            data-testid="input-renewal-url"
+          />
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={handleCopyRenew}
+            className="shrink-0"
+            data-testid="button-copy-renewal-link"
+          >
+            {copiedRenew ? <Check className="h-4 w-4 text-emerald-600" /> : <Copy className="h-4 w-4" />}
+          </Button>
+        </div>
       </div>
     </div>
   );

@@ -1,4 +1,4 @@
-import { type User, type InsertUser, type Seller, type InsertSeller, type InsertSellerApplication, type SellerApplication, users, sellers, appSettings, sellerApplications, emailReminderLog } from "@shared/schema";
+import { type User, type InsertUser, type Seller, type InsertSeller, type InsertSellerApplication, type SellerApplication, type InsertSellerRenewalApplication, type SellerRenewalApplication, users, sellers, appSettings, sellerApplications, emailReminderLog, sellerRenewalApplications } from "@shared/schema";
 import { eq, or, ilike, count, and } from "drizzle-orm";
 import { sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
@@ -39,6 +39,10 @@ export interface IStorage {
   hasReminderBeenSent(sellerId: number, reminderType: string, date: string): Promise<boolean>;
   logReminderSent(sellerId: number, reminderType: string, date: string): Promise<void>;
   getAndIncrementSerial(): Promise<number>;
+  createRenewalApplication(data: InsertSellerRenewalApplication): Promise<SellerRenewalApplication>;
+  getAllRenewalApplications(): Promise<SellerRenewalApplication[]>;
+  getRenewalApplicationById(id: number): Promise<SellerRenewalApplication | undefined>;
+  updateRenewalApplicationStatus(id: number, status: string): Promise<SellerRenewalApplication | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -198,6 +202,25 @@ export class DatabaseStorage implements IStorage {
       RETURNING value::integer AS serial
     `);
     return (result.rows[0] as any).serial;
+  }
+
+  async createRenewalApplication(data: InsertSellerRenewalApplication): Promise<SellerRenewalApplication> {
+    const result = await db.insert(sellerRenewalApplications).values(data).returning();
+    return result[0];
+  }
+
+  async getAllRenewalApplications(): Promise<SellerRenewalApplication[]> {
+    return await db.select().from(sellerRenewalApplications);
+  }
+
+  async getRenewalApplicationById(id: number): Promise<SellerRenewalApplication | undefined> {
+    const result = await db.select().from(sellerRenewalApplications).where(eq(sellerRenewalApplications.id, id));
+    return result[0];
+  }
+
+  async updateRenewalApplicationStatus(id: number, status: string): Promise<SellerRenewalApplication | undefined> {
+    const result = await db.update(sellerRenewalApplications).set({ status }).where(eq(sellerRenewalApplications.id, id)).returning();
+    return result[0];
   }
 }
 

@@ -90,3 +90,25 @@ export const insertSellerApplicationSchema = createInsertSchema(sellerApplicatio
 export type InsertSellerApplication = z.infer<typeof insertSellerApplicationSchema>;
 export type SellerApplication = typeof sellerApplications.$inferSelect;
 
+export const sellerRenewalApplications = pgTable("seller_renewal_applications", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  sellerId: integer("seller_id").notNull(),
+  phone: text("phone").notNull(),
+  duration: text("duration").notNull(),
+  paymentMethod: text("payment_method").notNull(),
+  senderNumber: text("sender_number").notNull(),
+  status: text("status").notNull().default("pending"),
+  createdAt: text("created_at").notNull().default(sql`now()`),
+});
+
+export const insertSellerRenewalApplicationSchema = createInsertSchema(sellerRenewalApplications).pick({
+  sellerId: true,
+  phone: true,
+  duration: true,
+  paymentMethod: true,
+  senderNumber: true,
+});
+
+export type InsertSellerRenewalApplication = z.infer<typeof insertSellerRenewalApplicationSchema>;
+export type SellerRenewalApplication = typeof sellerRenewalApplications.$inferSelect;
+

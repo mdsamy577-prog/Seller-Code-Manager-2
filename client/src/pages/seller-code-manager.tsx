@@ -30,6 +30,7 @@ import {
   BookOpen,
   Save,
   CalendarPlus,
+  RefreshCw,
 } from "lucide-react";
 import { SiMeta } from "react-icons/si";
 import { useLocation } from "wouter";
@@ -1008,6 +1009,10 @@ export default function SellerCodeManager() {
                 )}
               </div>
               <span className="hidden sm:inline">Seller Applications</span>
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => navigate("/renewals")} data-testid="button-renewal-applications" className="h-9">
+              <RefreshCw className="w-4 h-4 sm:mr-2" />
+              <span className="hidden sm:inline">Renewals</span>
             </Button>
             <Button size="sm" onClick={handleAdd} data-testid="button-add-seller" className="h-9">
               <Plus className="w-4 h-4 sm:mr-2" />

@@ -464,6 +464,109 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/renewals", async (req, res) => {
+    try {
+      const { phone, duration, paymentMethod, senderNumber } = req.body;
+      if (!phone || typeof phone !== "string" || !phone.trim()) {
+        return res.status(400).json({ message: "phone is required" });
+      }
+      if (!duration || ![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].includes(Number(duration))) {
+        return res.status(400).json({ message: "Invalid duration. Must be 1–12 months." });
+      }
+      if (!paymentMethod || !["bkash", "nagad"].includes(paymentMethod)) {
+        return res.status(400).json({ message: "paymentMethod must be bkash or nagad" });
+      }
+      if (!senderNumber || typeof senderNumber !== "string" || !senderNumber.trim()) {
+        return res.status(400).json({ message: "senderNumber is required" });
+      }
+      const seller = await storage.getSellerByPhone(phone.trim());
+      if (!seller) {
+        return res.status(404).json({ message: "Seller not found" });
+      }
+      const application = await storage.createRenewalApplication({
+        sellerId: seller.id,
+        phone: seller.phone,
+        duration: String(Number(duration)),
+        paymentMethod,
+        senderNumber: senderNumber.trim(),
+      });
+      console.log(`[renewals] New renewal application from ${seller.phone} (seller ID: ${seller.id}), duration: ${duration} months`);
+      res.status(201).json({ message: "Renewal application submitted successfully", application });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to submit renewal application" });
+    }
+  });
+
+  app.get("/api/renewals", requireAuth, async (_req, res) => {
+    try {
+      const applications = await storage.getAllRenewalApplications();
+      res.json(applications);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch renewal applications" });
+    }
+  });
+
+  app.post("/api/renewals/:id/approve", requireAuth, async (req, res) => {
+    try {
+      const id = parseInt(String(req.params.id));
+      if (isNaN(id)) return res.status(400).json({ message: "Invalid application ID" });
+
+      const application = await storage.getRenewalApplicationById(id);
+      if (!application) return res.status(404).json({ message: "Renewal application not found" });
+      if (application.status !== "pending") {
+        return res.status(400).json({ message: `Application already ${application.status}` });
+      }
+
+      const seller = await storage.getSellerById(application.sellerId);
+      if (!seller) return res.status(404).json({ message: "Seller not found" });
+
+      const today = new Date();
+      const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+      const baseDate = seller.expiryDate < todayStr ? todayStr : seller.expiryDate;
+      const newExpiryDate = calculateExpiryDate(baseDate, application.duration);
+      const oldExpiryDate = seller.expiryDate;
+
+      await storage.updateSeller(seller.id, { expiryDate: newExpiryDate });
+      const updated = await storage.updateRenewalApplicationStatus(id, "approved");
+
+      console.log(`[renewals] Approved renewal for ${seller.phone}: ${oldExpiryDate} → ${newExpiryDate}`);
+
+      if (seller.email) {
+        await sendExtensionEmail(
+          seller.email,
+          seller.name,
+          seller.sellerCode,
+          oldExpiryDate,
+          newExpiryDate,
+          Number(application.duration)
+        );
+      }
+
+      res.json(updated);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to approve renewal application" });
+    }
+  });
+
+  app.post("/api/renewals/:id/reject", requireAuth, async (req, res) => {
+    try {
+      const id = parseInt(String(req.params.id));
+      if (isNaN(id)) return res.status(400).json({ message: "Invalid application ID" });
+
+      const application = await storage.getRenewalApplicationById(id);
+      if (!application) return res.status(404).json({ message: "Renewal application not found" });
+      if (application.status !== "pending") {
+        return res.status(400).json({ message: `Application already ${application.status}` });
+      }
+
+      const updated = await storage.updateRenewalApplicationStatus(id, "rejected");
+      console.log(`[renewals] Rejected renewal application ID: ${id}`);
+      res.json(updated);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to reject renewal application" });
+    }
+  });
+
   app.get("/api/settings/messenger", requireAuth, async (_req, res) => {
     try {
       const pageName = await storage.getSetting("FACEBOOK_PAGE_NAME");

@@ -7,6 +7,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 type Seller = {
   id: number;
@@ -17,13 +24,20 @@ type Seller = {
   startDate: string;
 };
 
-type RenewResult = {
-  message: string;
-  seller: Seller;
-};
-
-const DURATIONS = [1, 3, 6, 12] as const;
-type Duration = (typeof DURATIONS)[number];
+const DURATION_OPTIONS = [
+  { value: "1", label: "১ মাস" },
+  { value: "2", label: "২ মাস" },
+  { value: "3", label: "৩ মাস" },
+  { value: "4", label: "৪ মাস" },
+  { value: "5", label: "৫ মাস" },
+  { value: "6", label: "৬ মাস" },
+  { value: "7", label: "৭ মাস" },
+  { value: "8", label: "৮ মাস" },
+  { value: "9", label: "৯ মাস" },
+  { value: "10", label: "১০ মাস" },
+  { value: "11", label: "১১ মাস" },
+  { value: "12", label: "১২ মাস" },
+];
 
 const PAYMENT_METHODS = [
   { value: "bkash", label: "বিকাশ", number: "01827259372", color: "pink" },
@@ -51,11 +65,11 @@ export default function RenewalPage() {
   const [searchError, setSearchError] = useState("");
   const [searching, setSearching] = useState(false);
 
-  const [duration, setDuration] = useState<Duration>(1);
+  const [duration, setDuration] = useState("1");
   const [paymentMethod, setPaymentMethod] = useState<"bkash" | "nagad">("bkash");
   const [senderNumber, setSenderNumber] = useState("");
   const [senderError, setSenderError] = useState("");
-  const [renewResult, setRenewResult] = useState<RenewResult | null>(null);
+  const [submitted, setSubmitted] = useState(false);
 
   const selectedPayment = PAYMENT_METHODS.find((p) => p.value === paymentMethod)!;
 
@@ -64,7 +78,7 @@ export default function RenewalPage() {
     if (!q) return;
     setSearchError("");
     setSeller(null);
-    setRenewResult(null);
+    setSubmitted(false);
     setSearching(true);
     try {
       const res = await fetch(`/api/sellers/lookup?q=${encodeURIComponent(q)}`);
@@ -85,20 +99,20 @@ export default function RenewalPage() {
 
   const renewMutation = useMutation({
     mutationFn: async () => {
-      const res = await apiRequest("POST", "/api/sellers/renew", {
+      const res = await apiRequest("POST", "/api/renewals", {
         phone: seller!.phone,
         duration,
         paymentMethod,
         senderNumber: senderNumber.trim(),
       });
-      return res.json() as Promise<RenewResult>;
+      return res.json();
     },
-    onSuccess: (data) => {
-      setRenewResult(data);
-      toast({ title: "রিনিউ সফল হয়েছে!" });
+    onSuccess: () => {
+      setSubmitted(true);
+      toast({ title: "আবেদন সফলভাবে জমা হয়েছে!" });
     },
     onError: () => {
-      toast({ title: "ত্রুটি", description: "রিনিউ করা সম্ভব হয়নি। আবার চেষ্টা করুন।", variant: "destructive" });
+      toast({ title: "ত্রুটি", description: "আবেদন জমা দেওয়া সম্ভব হয়নি। আবার চেষ্টা করুন।", variant: "destructive" });
     },
   });
 
@@ -112,7 +126,7 @@ export default function RenewalPage() {
     renewMutation.mutate();
   }
 
-  if (renewResult) {
+  if (submitted) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/40 to-indigo-50 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950 flex items-center justify-center p-6">
         <div className="w-full max-w-sm animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -124,26 +138,23 @@ export default function RenewalPage() {
               </div>
               <div className="space-y-1">
                 <h2 className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight" data-testid="text-renew-success-title">
-                  রিনিউ সফল!
+                  ধন্যবাদ!
                 </h2>
-                <p className="text-sm text-muted-foreground">সাবস্ক্রিপশন সফলভাবে নবায়ন হয়েছে।</p>
               </div>
-              <div className="w-full rounded-xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/30 px-5 py-4 space-y-2 text-left">
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">সেলার কোড</span>
-                  <span className="font-bold font-mono text-blue-700 dark:text-blue-400" data-testid="text-renew-code">{renewResult.seller.sellerCode}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">নতুন মেয়াদ শেষ</span>
-                  <span className="font-semibold text-emerald-700 dark:text-emerald-400" data-testid="text-renew-expiry">{formatDate(renewResult.seller.expiryDate)}</span>
-                </div>
+              <div className="space-y-3 w-full" data-testid="text-renew-success-message">
+                <p className="text-[15px] text-gray-700 dark:text-gray-300 leading-relaxed">
+                  আপনার রিনিউ আবেদন সফলভাবে গ্রহণ করা হয়েছে।
+                </p>
+                <p className="text-[14px] text-gray-500 dark:text-gray-400 leading-relaxed">
+                  পেমেন্ট যাচাইয়ের পর আপনার সাবস্ক্রিপশন নবায়ন করা হবে।
+                </p>
               </div>
               <button
-                onClick={() => { setSeller(null); setRenewResult(null); setQuery(""); }}
+                onClick={() => { setSeller(null); setSubmitted(false); setQuery(""); setSenderNumber(""); }}
                 data-testid="button-renew-again"
                 className="w-full py-2.5 px-6 rounded-xl text-white text-sm font-semibold bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:from-blue-700 hover:via-indigo-700 hover:to-purple-700 shadow-md shadow-indigo-200/50 dark:shadow-indigo-900/30 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
               >
-                আবার রিনিউ করুন
+                আবার আবেদন করুন
               </button>
             </div>
           </div>
@@ -202,7 +213,6 @@ export default function RenewalPage() {
                   {searching ? "..." : "খুঁজুন"}
                 </Button>
               </div>
-
               {searchError && (
                 <p className="text-sm text-red-600 dark:text-red-400 text-center" data-testid="text-search-error">{searchError}</p>
               )}
@@ -210,7 +220,7 @@ export default function RenewalPage() {
           </Card>
 
           {/* Seller Info */}
-          {seller && !renewResult && (
+          {seller && (
             <Card className="shadow-lg border-0 bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-300">
               <div className="h-1 bg-gradient-to-r from-teal-400 via-emerald-500 to-green-400" />
               <CardContent className="px-6 py-5 space-y-3">
@@ -251,7 +261,7 @@ export default function RenewalPage() {
           )}
 
           {/* Payment Info */}
-          {seller && !renewResult && (
+          {seller && (
             <Card className="shadow-lg border-0 bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-300">
               <div className="h-1 bg-gradient-to-r from-pink-500 via-rose-500 to-orange-500" />
               <CardContent className="px-6 py-5 space-y-3">
@@ -295,35 +305,30 @@ export default function RenewalPage() {
           )}
 
           {/* Renewal Form */}
-          {seller && !renewResult && (
+          {seller && (
             <Card className="shadow-xl border-0 bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-300">
               <div className="h-1.5 bg-gradient-to-r from-emerald-400 via-teal-500 to-cyan-500" />
               <CardHeader className="text-center pb-2 pt-6 px-6">
-                <CardTitle className="text-xl font-bold" data-testid="text-renew-form-title">রিনিউ ফর্ম</CardTitle>
+                <CardTitle className="text-xl font-bold" data-testid="text-renew-form-title">রিনিউ আবেদন</CardTitle>
               </CardHeader>
               <CardContent className="px-6 pb-8">
                 <form onSubmit={handleSubmit} className="space-y-5 mt-2">
 
-                  {/* Duration */}
+                  {/* Duration Dropdown */}
                   <div className="space-y-2">
                     <label className="text-sm font-semibold text-foreground/80">মেয়াদ বেছে নিন</label>
-                    <div className="grid grid-cols-4 gap-2">
-                      {DURATIONS.map((d) => (
-                        <button
-                          key={d}
-                          type="button"
-                          onClick={() => setDuration(d)}
-                          className={`rounded-xl border-2 py-3 text-center transition-all duration-200 focus:outline-none ${
-                            duration === d
-                              ? "border-blue-500 dark:border-blue-400 bg-gradient-to-br from-blue-100 to-indigo-100 dark:from-blue-900/40 dark:to-indigo-900/40 shadow-md ring-2 ring-blue-500/25 scale-[1.05]"
-                              : "border-blue-100 dark:border-blue-900/40 bg-gradient-to-br from-blue-50/60 to-indigo-50/60 dark:from-blue-950/10 dark:to-indigo-950/10 hover:border-blue-300 dark:hover:border-blue-700 hover:shadow-sm hover:scale-[1.02]"
-                          }`}
-                          data-testid={`button-duration-${d}`}
-                        >
-                          <div className={`text-xs font-semibold uppercase tracking-wide ${duration === d ? "text-blue-600 dark:text-blue-300" : "text-muted-foreground"}`}>{d} মাস</div>
-                        </button>
-                      ))}
-                    </div>
+                    <Select value={duration} onValueChange={setDuration}>
+                      <SelectTrigger className="h-11 rounded-xl border-border/60 focus:ring-2 focus:ring-blue-500/25 focus:border-blue-400" data-testid="select-duration">
+                        <SelectValue placeholder="মেয়াদ নির্বাচন করুন" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {DURATION_OPTIONS.map((opt) => (
+                          <SelectItem key={opt.value} value={opt.value} data-testid={`option-duration-${opt.value}`}>
+                            {opt.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
 
                   {/* Payment Method */}
@@ -374,7 +379,7 @@ export default function RenewalPage() {
                     className="w-full h-12 rounded-xl text-white font-semibold text-base bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 hover:from-emerald-600 hover:via-teal-600 hover:to-cyan-600 shadow-lg shadow-teal-200/50 dark:shadow-teal-900/30 transition-all duration-200 hover:scale-[1.01] active:scale-[0.99]"
                     data-testid="button-submit-renew"
                   >
-                    {renewMutation.isPending ? "রিনিউ হচ্ছে..." : "সাবস্ক্রিপশন রিনিউ করুন"}
+                    {renewMutation.isPending ? "জমা হচ্ছে..." : "রিনিউ আবেদন জমা দিন"}
                   </Button>
                 </form>
               </CardContent>

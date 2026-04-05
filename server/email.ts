@@ -194,7 +194,6 @@ export async function sendReminderEmail(
   const formattedExpiry = formatDateBangla(expiryDate);
   const baseUrl = await getBaseUrl();
   const renewalLink = `${baseUrl}/renew`;
-  const applyLink = `${baseUrl}/apply`;
 
   let subject: string;
   let headerColor: string;
@@ -251,10 +250,6 @@ export async function sendReminderEmail(
         <div style="background-color: #f0f9ff; border: 1px solid #bae6fd; border-radius: 6px; padding: 14px 16px; margin: 0 0 12px 0;">
           <p style="margin: 0 0 6px 0; font-size: 13px; color: #374151; font-weight: bold;">নবায়ন করতে ক্লিক করুন:</p>
           <a href="${renewalLink}" style="font-size: 13px; color: #1e40af; word-break: break-all;">${renewalLink}</a>
-        </div>
-        <div style="background-color: #f9fafb; border: 1px solid #e5e7eb; border-radius: 6px; padding: 14px 16px; margin: 0 0 8px 0;">
-          <p style="margin: 0 0 6px 0; font-size: 13px; color: #374151; font-weight: bold;">নতুন সেলার হতে চাইলে:</p>
-          <a href="${applyLink}" style="font-size: 13px; color: #6b7280; word-break: break-all;">${applyLink}</a>
         </div>
         <div style="border-top: 1px solid #e5e7eb; margin-top: 20px; padding-top: 16px; text-align: center;">
           <p style="font-size: 13px; color: #9ca3af; margin: 0 0 8px 0;">\u09B8\u09BE\u09AA\u09CB\u09B0\u09CD\u099F\u09C7\u09B0 \u099C\u09A8\u09CD\u09AF \u09AF\u09CB\u0997\u09BE\u09AF\u09CB\u0997 \u0995\u09B0\u09C1\u09A8</p>

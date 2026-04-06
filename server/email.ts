@@ -85,7 +85,7 @@ export async function sendSellerCodeEmail(
 
   try {
     await resend.emails.send({
-      from: `${senderName} <noreply@seller-code.onrender.com>`,
+      from: `${senderName} <noreply@shoprizqon.com>`,
       to: recipientEmail,
       replyTo,
       subject: `\u09B8\u09C7\u09B2\u09BE\u09B0 \u0995\u09CB\u09A1: ${sellerCode}`,
@@ -157,7 +157,7 @@ export async function sendExtensionEmail(
 
   try {
     await resend.emails.send({
-      from: `${senderName} <noreply@seller-code.onrender.com>`,
+      from: `${senderName} <noreply@shoprizqon.com>`,
       to: recipientEmail,
       replyTo,
       subject: `সাবস্ক্রিপশন বাড়ানো হয়েছে: ${sellerCode}`,
@@ -257,7 +257,7 @@ export async function sendReminderEmail(
 
   try {
     await resend.emails.send({
-      from: `${senderName} <noreply@seller-code.onrender.com>`,
+      from: `${senderName} <noreply@shoprizqon.com>`,
       to: recipientEmail,
       replyTo,
       subject,
@@ -321,7 +321,7 @@ export async function sendRenewalApprovalEmail(
 
   try {
     await resend.emails.send({
-      from: `${senderName} <noreply@seller-code.onrender.com>`,
+      from: `${senderName} <noreply@shoprizqon.com>`,
       to: recipientEmail,
       replyTo,
       subject: `সাবস্ক্রিপশন নবায়ন সম্পন্ন: ${sellerCode}`,
@@ -380,7 +380,7 @@ export async function sendRenewalRejectionEmail(
 
   try {
     await resend.emails.send({
-      from: `${senderName} <noreply@seller-code.onrender.com>`,
+      from: `${senderName} <noreply@shoprizqon.com>`,
       to: recipientEmail,
       replyTo,
       subject: `নবায়ন আবেদন বাতিল: ${sellerCode}`,

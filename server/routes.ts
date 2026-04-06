@@ -5,6 +5,7 @@ import { insertSellerSchema, insertSellerApplicationSchema } from "@shared/schem
 import passport from "passport";
 import { hashPassword, verifyPassword } from "./auth";
 import { sendSellerCodeEmail, sendExtensionEmail, sendRenewalApprovalEmail, sendRenewalRejectionEmail } from "./email";
+import { scheduleSellerEmails } from "./scheduler";
 import multer from "multer";
 import { uploadNidFile, deleteCloudinaryFile } from "./cloudinary";
 import rateLimit from "express-rate-limit";
@@ -301,6 +302,8 @@ export async function registerRoutes(
         await sendSellerCodeEmail(email, name, sellerCode, startDate, expiryDate);
       }
 
+      await scheduleSellerEmails(seller);
+
       res.status(201).json(seller);
     } catch (error: any) {
       if (error.code === "23505") {
@@ -347,6 +350,7 @@ export async function registerRoutes(
       if (!deleted) {
         return res.status(404).json({ message: "Seller not found" });
       }
+      await storage.cancelPendingEmailsForSeller(id);
       res.json({ message: "Seller moved to archived" });
     } catch (error) {
       res.status(500).json({ message: "Failed to archive seller" });
@@ -444,6 +448,10 @@ export async function registerRoutes(
         );
       }
 
+      if (updated) {
+        await scheduleSellerEmails(updated);
+      }
+
       res.json(updated);
     } catch (error) {
       res.status(500).json({ message: "Failed to extend subscription" });
@@ -516,7 +524,7 @@ export async function registerRoutes(
       if (seller.status === "deleted") {
         updates.status = "active";
       }
-      await storage.updateSeller(seller.id, updates);
+      const updatedSeller = await storage.updateSeller(seller.id, updates);
       const updated = await storage.updateRenewalApplicationStatus(id, "approved");
 
       console.log(`[renewals] Approved renewal for ${seller.phone}: ${oldExpiryDate} → ${newExpiryDate}${seller.status === "deleted" ? " (restored from archived)" : ""}`);
@@ -528,6 +536,10 @@ export async function registerRoutes(
           seller.sellerCode,
           newExpiryDate
         );
+      }
+
+      if (updatedSeller) {
+        await scheduleSellerEmails(updatedSeller);
       }
 
       res.json(updated);
@@ -613,7 +625,7 @@ export async function registerRoutes(
         sellerCode = await generateSellerCode(startDate, application.duration);
         expiryDate = calculateExpiryDate(startDate, application.duration);
 
-        await storage.createSeller({
+        const newSeller = await storage.createSeller({
           name: application.name,
           phone: application.phone,
           facebookLink: application.facebookLink,
@@ -623,6 +635,7 @@ export async function registerRoutes(
           expiryDate,
           email: application.email || undefined,
         });
+        await scheduleSellerEmails(newSeller);
       }
 
       const updated = await storage.updateSellerApplicationStatus(id, "approved");

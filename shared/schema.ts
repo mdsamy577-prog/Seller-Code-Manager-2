@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, date, integer, uniqueIndex } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, date, integer, uniqueIndex, boolean } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -112,4 +112,15 @@ export const insertSellerRenewalApplicationSchema = createInsertSchema(sellerRen
 
 export type InsertSellerRenewalApplication = z.infer<typeof insertSellerRenewalApplicationSchema>;
 export type SellerRenewalApplication = typeof sellerRenewalApplications.$inferSelect;
+
+export const emailSchedule = pgTable("email_schedule", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  sellerId: integer("seller_id").notNull(),
+  sendAt: text("send_at").notNull(),
+  reminderType: text("reminder_type").notNull(),
+  emailType: text("email_type").notNull(),
+  status: text("status").notNull().default("pending"),
+});
+
+export type EmailScheduleEntry = typeof emailSchedule.$inferSelect;
 

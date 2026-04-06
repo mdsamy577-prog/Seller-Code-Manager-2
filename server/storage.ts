@@ -1,5 +1,5 @@
-import { type User, type InsertUser, type Seller, type InsertSeller, type InsertSellerApplication, type SellerApplication, type InsertSellerRenewalApplication, type SellerRenewalApplication, users, sellers, appSettings, sellerApplications, emailReminderLog, sellerRenewalApplications } from "@shared/schema";
-import { eq, or, ilike, count, and } from "drizzle-orm";
+import { type User, type InsertUser, type Seller, type InsertSeller, type InsertSellerApplication, type SellerApplication, type InsertSellerRenewalApplication, type SellerRenewalApplication, type EmailScheduleEntry, users, sellers, appSettings, sellerApplications, emailReminderLog, sellerRenewalApplications, emailSchedule } from "@shared/schema";
+import { eq, or, ilike, count, and, lte, ne } from "drizzle-orm";
 import { sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import pg from "pg";
@@ -46,6 +46,11 @@ export interface IStorage {
   getAllRenewalApplications(): Promise<SellerRenewalApplication[]>;
   getRenewalApplicationById(id: number): Promise<SellerRenewalApplication | undefined>;
   updateRenewalApplicationStatus(id: number, status: string): Promise<SellerRenewalApplication | undefined>;
+  createEmailScheduleEntries(entries: { sellerId: number; sendAt: string; reminderType: string; emailType: string }[]): Promise<void>;
+  getPendingScheduledEmails(): Promise<EmailScheduleEntry[]>;
+  markScheduledEmailStatus(id: number, status: string): Promise<void>;
+  cancelPendingEmailsForSeller(sellerId: number): Promise<void>;
+  hasPendingScheduleForSeller(sellerId: number): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -241,6 +246,35 @@ export class DatabaseStorage implements IStorage {
   async updateRenewalApplicationStatus(id: number, status: string): Promise<SellerRenewalApplication | undefined> {
     const result = await db.update(sellerRenewalApplications).set({ status }).where(eq(sellerRenewalApplications.id, id)).returning();
     return result[0];
+  }
+
+  async createEmailScheduleEntries(entries: { sellerId: number; sendAt: string; reminderType: string; emailType: string }[]): Promise<void> {
+    if (entries.length === 0) return;
+    await db.insert(emailSchedule).values(entries);
+  }
+
+  async getPendingScheduledEmails(): Promise<EmailScheduleEntry[]> {
+    const now = new Date().toISOString();
+    return await db.select().from(emailSchedule).where(
+      and(eq(emailSchedule.status, "pending"), lte(emailSchedule.sendAt, now))
+    );
+  }
+
+  async markScheduledEmailStatus(id: number, status: string): Promise<void> {
+    await db.update(emailSchedule).set({ status }).where(eq(emailSchedule.id, id));
+  }
+
+  async cancelPendingEmailsForSeller(sellerId: number): Promise<void> {
+    await db.update(emailSchedule)
+      .set({ status: "cancelled" })
+      .where(and(eq(emailSchedule.sellerId, sellerId), eq(emailSchedule.status, "pending")));
+  }
+
+  async hasPendingScheduleForSeller(sellerId: number): Promise<boolean> {
+    const result = await db.select({ id: emailSchedule.id }).from(emailSchedule)
+      .where(and(eq(emailSchedule.sellerId, sellerId), eq(emailSchedule.status, "pending")))
+      .limit(1);
+    return result.length > 0;
   }
 }
 

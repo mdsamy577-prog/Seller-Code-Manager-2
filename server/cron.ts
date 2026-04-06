@@ -1,64 +1,20 @@
 import cron from "node-cron";
 import { storage } from "./storage";
 import { sendReminderEmail } from "./email";
+import { scheduleSellerEmails } from "./scheduler";
 
-function getTodayString(): string {
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
-}
-
-function getDaysDifference(expiryDate: string): number {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const expiry = new Date(expiryDate);
-  expiry.setHours(0, 0, 0, 0);
-  return Math.round((expiry.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-}
-
-function getReminderType(daysUntilExpiry: number): { type: string; emailType: "before_expiry" | "expiry_day" | "after_expiry" } | null {
-  if (daysUntilExpiry >= 1 && daysUntilExpiry <= 3) {
-    return { type: `before_${daysUntilExpiry}`, emailType: "before_expiry" };
-  }
-
-  if (daysUntilExpiry === 0) {
-    return { type: "expiry_day", emailType: "expiry_day" };
-  }
-
-  if (daysUntilExpiry < 0) {
-    const daysAfter = Math.abs(daysUntilExpiry);
-
-    if (daysAfter <= 4) {
-      return { type: `after_${daysAfter}`, emailType: "after_expiry" };
-    }
-
-    if (daysAfter % 7 === 0) {
-      return { type: `weekly_${daysAfter}`, emailType: "after_expiry" };
-    }
-  }
-
-  return null;
-}
-
-async function checkExpiringSellers(): Promise<void> {
-  console.log(`[Cron] Running subscription reminder check at ${new Date().toISOString()}`);
-
+async function processEmailSchedule(): Promise<void> {
   try {
-    const sellers = await storage.getSellersWithEmail();
-    const todayStr = getTodayString();
-    let sentCount = 0;
-    let skippedCount = 0;
+    const due = await storage.getPendingScheduledEmails();
+    if (due.length === 0) return;
 
-    for (const seller of sellers) {
-      if (!seller.email || !seller.expiryDate) continue;
+    console.log(`[Email] Processing ${due.length} scheduled email(s)`);
 
-      const daysUntilExpiry = getDaysDifference(seller.expiryDate);
-      const reminder = getReminderType(daysUntilExpiry);
+    for (const entry of due) {
+      const seller = await storage.getSellerById(entry.sellerId);
 
-      if (!reminder) continue;
-
-      const alreadySent = await storage.hasReminderBeenSent(seller.id, reminder.type, todayStr);
-      if (alreadySent) {
-        skippedCount++;
+      if (!seller || !seller.email || seller.status !== "active") {
+        await storage.markScheduledEmailStatus(entry.id, "cancelled");
         continue;
       }
 
@@ -67,25 +23,51 @@ async function checkExpiringSellers(): Promise<void> {
         seller.name,
         seller.sellerCode,
         seller.expiryDate,
-        reminder.emailType
+        entry.emailType as "before_expiry" | "expiry_day" | "after_expiry"
       );
 
-      if (success) {
-        await storage.logReminderSent(seller.id, reminder.type, todayStr);
-        sentCount++;
+      await storage.markScheduledEmailStatus(entry.id, success ? "sent" : "failed");
+
+      console.log(
+        `[Email] ${success ? "Sent" : "Failed"}: ${entry.reminderType} → ${seller.name} (${seller.email})`
+      );
+    }
+  } catch (error) {
+    console.error("[Email] Error processing email schedule:", error);
+  }
+}
+
+async function seedSchedulesForExistingSellers(): Promise<void> {
+  try {
+    const sellers = await storage.getSellersWithEmail();
+    let seeded = 0;
+
+    for (const seller of sellers) {
+      const hasPending = await storage.hasPendingScheduleForSeller(seller.id);
+      if (!hasPending) {
+        await scheduleSellerEmails(seller);
+        seeded++;
       }
     }
 
-    console.log(`[Cron] Reminder check complete. Sent: ${sentCount}, Skipped (already sent): ${skippedCount}, Total sellers with email: ${sellers.length}`);
+    if (seeded > 0) {
+      console.log(`[Scheduler] Seeded email schedules for ${seeded} existing seller(s)`);
+    } else {
+      console.log(`[Scheduler] All sellers already have scheduled emails`);
+    }
   } catch (error) {
-    console.error("[Cron] Error in subscription reminder check:", error);
+    console.error("[Scheduler] Error seeding schedules:", error);
   }
 }
 
 export function startCronJobs(): void {
-  cron.schedule("0 9 * * *", () => {
-    checkExpiringSellers();
+  cron.schedule("*/5 * * * *", () => {
+    processEmailSchedule();
   });
 
-  console.log("[Cron] Subscription reminder cron job scheduled (daily at 9:00 AM)");
+  console.log("[Cron] Email schedule processor started (checks every 5 minutes)");
+
+  setTimeout(() => {
+    seedSchedulesForExistingSellers();
+  }, 5000);
 }

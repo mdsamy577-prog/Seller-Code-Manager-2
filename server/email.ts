@@ -16,13 +16,7 @@ async function getReplyEmail(): Promise<string | undefined> {
   return email || undefined;
 }
 
-async function getBaseUrl(): Promise<string> {
-  const appUrl = await storage.getSetting("APP_URL");
-  if (appUrl) return appUrl.replace(/\/$/, "");
-  if (process.env.APP_URL) return process.env.APP_URL.replace(/\/$/, "");
-  if (process.env.REPLIT_DOMAINS) return `https://${process.env.REPLIT_DOMAINS.split(",")[0].trim()}`;
-  return "https://shoprizqon.com";
-}
+const BASE_URL = "https://seller-code.onrender.com";
 
 function formatDateBangla(dateStr: string): string {
   const [y, m, d] = dateStr.split("-").map(Number);
@@ -91,7 +85,7 @@ export async function sendSellerCodeEmail(
 
   try {
     await resend.emails.send({
-      from: `${senderName} <noreply@shoprizqon.com>`,
+      from: `${senderName} <noreply@seller-code.onrender.com>`,
       to: recipientEmail,
       replyTo,
       subject: `\u09B8\u09C7\u09B2\u09BE\u09B0 \u0995\u09CB\u09A1: ${sellerCode}`,
@@ -163,7 +157,7 @@ export async function sendExtensionEmail(
 
   try {
     await resend.emails.send({
-      from: `${senderName} <noreply@shoprizqon.com>`,
+      from: `${senderName} <noreply@seller-code.onrender.com>`,
       to: recipientEmail,
       replyTo,
       subject: `সাবস্ক্রিপশন বাড়ানো হয়েছে: ${sellerCode}`,
@@ -192,8 +186,7 @@ export async function sendReminderEmail(
   const senderName = await getSenderName();
   const replyTo = await getReplyEmail();
   const formattedExpiry = formatDateBangla(expiryDate);
-  const baseUrl = await getBaseUrl();
-  const renewalLink = `${baseUrl}/renew`;
+  const renewalLink = `${BASE_URL}/renew`;
 
   let subject: string;
   let headerColor: string;
@@ -264,7 +257,7 @@ export async function sendReminderEmail(
 
   try {
     await resend.emails.send({
-      from: `${senderName} <noreply@shoprizqon.com>`,
+      from: `${senderName} <noreply@seller-code.onrender.com>`,
       to: recipientEmail,
       replyTo,
       subject,
@@ -328,7 +321,7 @@ export async function sendRenewalApprovalEmail(
 
   try {
     await resend.emails.send({
-      from: `${senderName} <noreply@shoprizqon.com>`,
+      from: `${senderName} <noreply@seller-code.onrender.com>`,
       to: recipientEmail,
       replyTo,
       subject: `সাবস্ক্রিপশন নবায়ন সম্পন্ন: ${sellerCode}`,
@@ -354,8 +347,7 @@ export async function sendRenewalRejectionEmail(
 
   const senderName = await getSenderName();
   const replyTo = await getReplyEmail();
-  const baseUrl = await getBaseUrl();
-  const renewalLink = `${baseUrl}/renew`;
+  const renewalLink = `${BASE_URL}/renew`;
 
   const htmlBody = `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
@@ -392,7 +384,7 @@ export async function sendRenewalRejectionEmail(
 
   try {
     await resend.emails.send({
-      from: `${senderName} <noreply@shoprizqon.com>`,
+      from: `${senderName} <noreply@seller-code.onrender.com>`,
       to: recipientEmail,
       replyTo,
       subject: `নবায়ন আবেদন বাতিল: ${sellerCode}`,

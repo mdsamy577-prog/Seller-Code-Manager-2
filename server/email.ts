@@ -347,7 +347,6 @@ export async function sendRenewalRejectionEmail(
 
   const senderName = await getSenderName();
   const replyTo = await getReplyEmail();
-  const renewalLink = `${BASE_URL}/renew`;
 
   const htmlBody = `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
@@ -367,10 +366,7 @@ export async function sendRenewalRejectionEmail(
             <td style="padding: 12px; color: #1e40af; font-weight: bold; font-size: 18px; font-family: monospace;">${sellerCode}</td>
           </tr>
         </table>
-        <p style="font-size: 14px; color: #6b7280;">পেমেন্টের তথ্য সঠিকভাবে প্রদান করে পুনরায় আবেদন করতে পারবেন।</p>
-        <div style="text-align: center; margin: 24px 0;">
-          <a href="${renewalLink}" style="background-color: #1e40af; color: white; padding: 14px 32px; text-decoration: none; border-radius: 6px; font-size: 16px; font-weight: bold; display: inline-block;">পুনরায় আবেদন করুন</a>
-        </div>
+        <p style="font-size: 15px; color: #374151;">অনুগ্রহ করে সঠিক তথ্য দিয়ে পুনরায় আবেদন করুন।</p>
         <div style="border-top: 1px solid #e5e7eb; margin-top: 20px; padding-top: 16px; text-align: center;">
           <p style="font-size: 13px; color: #9ca3af; margin: 0 0 8px 0;">সাপোর্টের জন্য যোগাযোগ করুন</p>
           <a href="https://www.facebook.com/CPSSbd.1" style="background-color: #1877f2; color: white; padding: 8px 20px; text-decoration: none; border-radius: 5px; font-size: 14px; font-weight: bold; display: inline-block;">Facebook Page</a>

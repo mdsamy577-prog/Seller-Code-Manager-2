@@ -122,6 +122,14 @@ app.use((req, res, next) => {
   next();
 });
 
+process.on("uncaughtException", (err) => {
+  console.error("[Process] Uncaught Exception — server will keep running:", err.message, err.stack);
+});
+
+process.on("unhandledRejection", (reason) => {
+  console.error("[Process] Unhandled Promise Rejection — server will keep running:", reason);
+});
+
 (async () => {
   if (process.env.NODE_ENV !== "production") {
     await seedDatabase();

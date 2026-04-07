@@ -4,17 +4,27 @@ import { sendReminderEmail } from "./email";
 import { scheduleSellerEmails } from "./scheduler";
 
 async function processEmailSchedule(): Promise<void> {
+  console.log(`[Scheduler] Checking email queue at ${new Date().toISOString()}`);
+
+  let due: Awaited<ReturnType<typeof storage.getPendingScheduledEmails>>;
+
   try {
-    const due = await storage.getPendingScheduledEmails();
-    if (due.length === 0) return;
+    due = await storage.getPendingScheduledEmails();
+  } catch (err) {
+    console.error("[Scheduler] Failed to query email queue — will retry next cycle:", err);
+    return;
+  }
 
-    console.log(`[Email] Processing ${due.length} scheduled email(s)`);
+  console.log(`[Scheduler] Emails due: ${due.length}`);
+  if (due.length === 0) return;
 
-    for (const entry of due) {
+  for (const entry of due) {
+    try {
       const seller = await storage.getSellerById(entry.sellerId);
 
       if (!seller || !seller.email || seller.status !== "active") {
         await storage.markScheduledEmailStatus(entry.id, "cancelled");
+        console.log(`[Scheduler] Cancelled entry ${entry.id} (seller inactive or no email)`);
         continue;
       }
 
@@ -29,11 +39,11 @@ async function processEmailSchedule(): Promise<void> {
       await storage.markScheduledEmailStatus(entry.id, success ? "sent" : "failed");
 
       console.log(
-        `[Email] ${success ? "Sent" : "Failed"}: ${entry.reminderType} → ${seller.name} (${seller.email})`
+        `[Scheduler] ${success ? "✓ Sent" : "✗ Failed"}: ${entry.reminderType} → ${seller.name} (${seller.email})`
       );
+    } catch (err) {
+      console.error(`[Scheduler] Error processing entry ${entry.id} — skipping:`, err);
     }
-  } catch (error) {
-    console.error("[Email] Error processing email schedule:", error);
   }
 }
 

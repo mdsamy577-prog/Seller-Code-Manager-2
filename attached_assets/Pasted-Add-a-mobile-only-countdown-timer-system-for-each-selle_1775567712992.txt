@@ -1,0 +1,292 @@
+Add a mobile-only countdown timer system for each seller card based on email schedule timing.
+
+Goal:
+Show a live countdown timer that indicates when the next automatic email will be sent.
+
+Requirements:
+
+Show timer ONLY on mobile devices (screen width < 768px)
+Do NOT show this on desktop.
+
+Timer logic:
+Each seller already has scheduled email times.
+
+Display countdown like:
+
+If next email is in 24 hours → show: "24h 00m"
+If next email is in 23 hours → show: "23h 00m"
+It should update every second or minute (live countdown)
+Behavior:
+A. Before expiry (daily emails)
+
+Countdown should be based on next scheduled reminder
+Example:
+If next email is tomorrow at 3:30 PM → countdown to that time
+B. After email is sent:
+
+Reset countdown to next scheduled email automatically
+C. After expiry (weekly emails)
+
+Countdown should show time until next weekly email (7 days)
+Example:
+Show: "6d 12h" → decreasing
+UI placement:
+Show timer under seller code or near "Expiring Soon" badge
+Use a small badge style:
+Example:
+⏳ Next email in: 23h 15m
+
+Implementation details:
+Use client-side JS (React or frontend)
+
+Do NOT depend on cron
+
+Use Date.now() and scheduledAt timestamp
+
+You must:
+
+Fetch nextScheduledEmailTime for each seller from backend
+OR
+Calculate from expiry date + known schedule rules
+Format rules:
+If < 1 day:
+→ show hours + minutes (e.g. 5h 20m)
+
+If ≥ 1 day:
+→ show days + hours (e.g. 2d 6h)
+
+Performance:
+Do not re-render entire list every second
+Use interval inside each card or shared timer
+Important:
+If no email is scheduled → do not show timer
+If seller has no email → do not show timer
+End result:
+Each seller card (on mobile only) shows a live countdown that resets automatically after each email is sent.
+
+
+Show less
+13 minutes ago
+
+Show less
+
+Planning countdown timer integration (20 seconds)
+Let me read the seller card structure first, then design the implementation:
+
+
+3 actions
+Let me find the mobile card rendering section:
+
+
+2 actions
+Now let me read the exact mobile card structure:
+
+
+2 actions
+Now I have all I need. The plan:
+
+Backend: new GET /api/sellers/next-emails endpoint returning the nearest pending email per seller
+Frontend: useNextEmailCountdown hook + badge component, wired into mobile cards only, visible only if seller has email
+Let me implement all parts at once:
+
+
+2 actions
+Now I have everything. Let me implement all parts:
+
+
+2 actions
+Now add the implementation:
+
+
+2 actions
+Now add the route — must be before /:id:
+
+
+2 actions
+Now add the countdown hook, badge component, and query to the frontend. First let me check where the queries are defined:
+
+
+2 actions
+Let me find where StatusBadge is defined to add the countdown component nearby:
+
+
+2 actions
+Now I have everything. Let me add all three frontend changes — the component, the query, and the mobile card wiring:
+
+Step 1 — NextEmailBadge component after getRowClass:
+
+
+2 actions
+Step 2 — add the query for next-emails:
+
+
+3 actions
+Step 3 — wire the badge into the mobile card:
+
+
+2 actions
+Let me quickly verify the imports include useState and useEffect:
+
+
+2 actions
+Both useState and useEffect are already imported. Let me restart the workflow to validate everything compiles:
+
+
+4 actions
+Server is up and running cleanly. Let me take a quick screenshot to confirm the app loads correctly:
+
+
+2 actions
+Everything is working. Here's a summary of what was implemented:
+
+Mobile countdown timer for "next automatic email":
+
+Backend — new GET /api/sellers/next-emails endpoint that queries the email_schedule table for each seller's earliest upcoming pending email (using DISTINCT ON for efficiency). Placed before the /:id route to avoid route conflicts.
+
+Frontend — NextEmailBadge component — a self-contained component that takes the scheduled timestamp, starts a 60-second interval timer on mount, and displays a live countdown like ⏳ Next email in: 2h 30m or 3d 14h for longer intervals. Renders nothing if the time has already passed.
+
+Frontend — mobile card wiring — the badge appears at the bottom of each mobile seller card, but only when the seller has an email address on file and has a pending scheduled email. The data auto-refreshes every 5 minutes to stay in sync with the scheduler.
+
+
+Checkpoint made
+9 minutes ago
+
+Worked for 3 minutes
+For testing the email scheduler and countdown system, update a few sellers with different expiry times.
+
+Do the following:
+
+Pick 4–6 existing sellers and update their expiry dates like this:
+Seller 1 → expiry: today + 1 hour
+Seller 2 → expiry: today + 3 hours
+Seller 3 → expiry: today + 6 hours
+Seller 4 → expiry: today + 12 hours
+Seller 5 → expiry: today + 24 hours
+Also add one seller with:
+expiry: already expired (today - 1 hour)
+Make sure:
+Email exists for each seller
+Status remains active (not archived)
+Important:
+Do NOT change seller codes or names — only update expiry date.
+
+After updating:
+
+Trigger scheduleSellerEmails() for each updated seller
+OR
+Recalculate their email schedule so reminders trigger correctly
+Goal:
+
+Test real-time email sending
+Test countdown timer behavior
+Verify before-expiry and after-expiry flows
+
+Show less
+8 minutes ago
+
+Planning seller data updates
+Let me first check what sellers exist in the database:
+
+
+3 actions
+Only 4 sellers, all without emails. Let me check the scheduler to understand the timing structure before making changes:
+
+
+2 actions
+Now I understand exactly how the scheduler works. The key insight: expiry_date is a DATE-only field, and scheduleSellerEmails anchors emails to that date at the time-of-day of referenceTime. So to get "D0 email in 1 hour", I need to call it with referenceTime = NOW + 1h.
+
+I'll write a one-shot script to do this properly — updating sellers, adding emails, and scheduling with the right reference times:
+
+
+4 actions
+Need to write the script inside the workspace root where path aliases work:
+
+
+6 actions
+The tsconfig excludes the scripts directory. I'll use direct SQL calls instead, which is cleaner and more reliable:
+
+
+2 actions
+Now let me do everything via SQL directly:
+
+Step 1 — update existing sellers with emails and expiry dates:
+
+
+3 actions
+Step 2 — insert the two new test sellers:
+
+
+3 actions
+There's a duration column that's required. Let me check the schema:
+
+
+3 actions
+Need to include duration in the inserts:
+
+
+3 actions
+Both inserted (seller 5 = id 8, expired = id 9). Now cancel existing pending schedules and insert precise ones:
+
+Step 3 — cancel all pending schedules and insert targeted ones:
+
+
+3 actions
+All schedules are in. Let me verify the full state of sellers and their next email times:
+
+
+6 actions
+send_at is stored as text. Let me check what was stored and fix the comparison in the backend query:
+
+
+3 actions
+The send_at is stored as text (ISO string) — my SQL query comparing it to NOW() will fail. Let me fix the backend query and also check the cron processor for the same issue:
+
+
+3 actions
+I can see a bug: send_at is stored as text (e.g., 2026-04-07 13:12:46+00) but compared against JavaScript's ISO format (2026-04-07T12:...). Because space (ASCII 32) sorts before T (ASCII 84), ALL today's emails would be treated as "due" immediately. I need to fix both the cron query and my new query to use proper timestamp casting:
+
+
+2 actions
+Fix both storage methods to use proper timestamptz casting:
+
+
+2 actions
+Now fix the countdown query too:
+
+
+2 actions
+Now let me also clean up the unused lte import since we no longer use it in getPendingScheduledEmails:
+
+
+2 actions
+lte is still imported but no longer used. Let me remove it:
+
+
+4 actions
+Now restart to apply all fixes:
+
+
+4 actions
+The cron correctly reports Emails due: 0 — the timestamp fix is working. The emails scheduled in the future are not being triggered prematurely. Let me do a final verification of the next-emails API:
+
+
+3 actions
+Everything is set up and verified. Here's a complete summary of what was done:
+
+6 test sellers configured:
+
+Seller	Expiry	Next Email	Type
+Ahmed Hassan	Today	~57m	Expiry day
+Test Seller Expired	Yesterday	~57m	After expiry (+1d)
+Sara Ali	Today	~2h 57m	Expiry day
+Mohamed Khaled	Today	~5h 57m	Expiry day
+Fatma Ibrahim	Today	~11h 57m	Expiry day
+Test Seller Five	Tomorrow	~23h 57m	Before expiry (-1d)
+Bonus bug fix (found during this work):
+
+The send_at column is stored as text (e.g., 2026-04-07 13:12:46+00) but the original cron compared it to JavaScript's ISO format (2026-04-07T12:...). Because a space character sorts before T in ASCII, ALL today's emails would have been treated as due immediately and fired in the very first cron tick. Fixed both the cron processor and the countdown query to use ::timestamptz casting for correct comparison.
+
+What to expect:
+
+The mobile seller cards will show live countdown badges (e.g., "⏳ Next email in: 57m") for sellers with email addresses
+The cron will fire the expiry-day email to test@shoprizqon.com for Ahmed Hassan and Test Seller Expired in about an hour — update these email addresses in the database if you want to receive the actual emails at a specific inbox

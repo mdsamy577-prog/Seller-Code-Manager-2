@@ -1,5 +1,5 @@
 import { type User, type InsertUser, type Seller, type InsertSeller, type InsertSellerApplication, type SellerApplication, type InsertSellerRenewalApplication, type SellerRenewalApplication, type EmailScheduleEntry, users, sellers, appSettings, sellerApplications, emailReminderLog, sellerRenewalApplications, emailSchedule } from "@shared/schema";
-import { eq, or, ilike, count, and, lte, ne } from "drizzle-orm";
+import { eq, or, ilike, count, and, ne } from "drizzle-orm";
 import { sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import pg from "pg";
@@ -262,10 +262,18 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getPendingScheduledEmails(): Promise<EmailScheduleEntry[]> {
-    const now = new Date().toISOString();
-    return await db.select().from(emailSchedule).where(
-      and(eq(emailSchedule.status, "pending"), lte(emailSchedule.sendAt, now))
-    );
+    const result = await db.execute(sql`
+      SELECT * FROM email_schedule
+      WHERE status = 'pending' AND send_at::timestamptz <= NOW()
+    `);
+    return (result.rows as any[]).map((r) => ({
+      id: r.id as number,
+      sellerId: r.seller_id as number,
+      sendAt: r.send_at as string,
+      reminderType: r.reminder_type as string,
+      emailType: r.email_type as string,
+      status: r.status as string,
+    }));
   }
 
   async markScheduledEmailStatus(id: number, status: string): Promise<void> {
@@ -289,8 +297,8 @@ export class DatabaseStorage implements IStorage {
     const result = await db.execute(sql`
       SELECT DISTINCT ON (seller_id) seller_id, send_at
       FROM email_schedule
-      WHERE status = 'pending' AND send_at > NOW()
-      ORDER BY seller_id, send_at ASC
+      WHERE status = 'pending' AND send_at::timestamptz > NOW()
+      ORDER BY seller_id, send_at::timestamptz ASC
     `);
     return (result.rows as any[]).map((r) => ({
       sellerId: r.seller_id as number,

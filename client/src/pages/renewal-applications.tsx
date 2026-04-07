@@ -2,7 +2,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { SellerRenewalApplication } from "@shared/schema";
-import { CheckCircle2, XCircle, Clock, RefreshCw } from "lucide-react";
+import { CheckCircle2, XCircle, Clock, RefreshCw, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -95,6 +95,20 @@ export default function RenewalApplications() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/renewals"] });
       toast({ title: "Renewal rejected" });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const res = await apiRequest("DELETE", `/api/renewals/${id}`);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/renewals"] });
+      toast({ title: "Renewal application deleted" });
     },
     onError: (error: Error) => {
       toast({ title: "Error", description: error.message, variant: "destructive" });
@@ -219,6 +233,17 @@ export default function RenewalApplications() {
                               >
                                 <XCircle className="h-3 w-3 mr-1" />Reject
                               </Button>
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="h-6 w-6"
+                                onClick={() => deleteMutation.mutate(app.id)}
+                                disabled={deleteMutation.isPending}
+                                data-testid={`button-delete-renewal-${app.id}`}
+                                title="Delete application"
+                              >
+                                <Trash2 className="h-3 w-3 text-destructive" />
+                              </Button>
                             </div>
                           </TableCell>
                         </TableRow>
@@ -236,7 +261,20 @@ export default function RenewalApplications() {
                           <p className="font-semibold text-sm" data-testid={`text-renewal-phone-${app.id}`}>{app.phone}</p>
                           <p className="text-xs text-muted-foreground mt-0.5" data-testid={`text-renewal-submitted-${app.id}`}>{formatDate(app.createdAt)}</p>
                         </div>
-                        <StatusBadge status={app.status} />
+                        <div className="flex items-center gap-1">
+                          <StatusBadge status={app.status} />
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-6 w-6 ml-1"
+                            onClick={() => deleteMutation.mutate(app.id)}
+                            disabled={deleteMutation.isPending}
+                            data-testid={`button-delete-renewal-${app.id}`}
+                            title="Delete application"
+                          >
+                            <Trash2 className="h-3 w-3 text-destructive" />
+                          </Button>
+                        </div>
                       </div>
                       <div className="flex flex-wrap gap-1.5">
                         <Badge variant="secondary" className="text-xs no-default-active-elevate" data-testid={`text-renewal-duration-${app.id}`}>

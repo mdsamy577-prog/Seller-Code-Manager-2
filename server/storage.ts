@@ -53,6 +53,7 @@ export interface IStorage {
   getAllRenewalApplications(): Promise<SellerRenewalApplication[]>;
   getRenewalApplicationById(id: number): Promise<SellerRenewalApplication | undefined>;
   updateRenewalApplicationStatus(id: number, status: string): Promise<SellerRenewalApplication | undefined>;
+  softDeleteRenewalApplication(id: number): Promise<void>;
   createEmailScheduleEntries(entries: { sellerId: number; sendAt: string; reminderType: string; emailType: string }[]): Promise<void>;
   getPendingScheduledEmails(): Promise<EmailScheduleEntry[]>;
   markScheduledEmailStatus(id: number, status: string): Promise<void>;
@@ -243,7 +244,11 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAllRenewalApplications(): Promise<SellerRenewalApplication[]> {
-    return await db.select().from(sellerRenewalApplications);
+    return await db.select().from(sellerRenewalApplications).where(eq(sellerRenewalApplications.isDeleted, false));
+  }
+
+  async softDeleteRenewalApplication(id: number): Promise<void> {
+    await db.update(sellerRenewalApplications).set({ isDeleted: true }).where(eq(sellerRenewalApplications.id, id));
   }
 
   async getRenewalApplicationById(id: number): Promise<SellerRenewalApplication | undefined> {

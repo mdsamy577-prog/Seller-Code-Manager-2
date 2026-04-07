@@ -586,6 +586,20 @@ export async function registerRoutes(
     }
   });
 
+  app.delete("/api/renewals/:id", requireAuth, async (req, res) => {
+    try {
+      const id = parseInt(String(req.params.id));
+      if (isNaN(id)) return res.status(400).json({ message: "Invalid application ID" });
+      const application = await storage.getRenewalApplicationById(id);
+      if (!application) return res.status(404).json({ message: "Renewal application not found" });
+      await storage.softDeleteRenewalApplication(id);
+      console.log(`[renewals] Soft-deleted renewal application ID: ${id}`);
+      res.json({ message: "Renewal application deleted" });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete renewal application" });
+    }
+  });
+
   app.get("/api/settings/messenger", requireAuth, async (_req, res) => {
     try {
       const pageName = await storage.getSetting("FACEBOOK_PAGE_NAME");

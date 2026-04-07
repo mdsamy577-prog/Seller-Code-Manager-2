@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, date, integer, uniqueIndex } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, date, integer, uniqueIndex, boolean } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -100,6 +100,7 @@ export const sellerRenewalApplications = pgTable("seller_renewal_applications", 
   senderNumber: text("sender_number").notNull(),
   status: text("status").notNull().default("pending"),
   createdAt: text("created_at").notNull().default(sql`now()`),
+  isDeleted: boolean("is_deleted").notNull().default(false),
 });
 
 export const insertSellerRenewalApplicationSchema = createInsertSchema(sellerRenewalApplications).pick({

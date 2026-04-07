@@ -275,6 +275,15 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/sellers/next-emails", requireAuth, async (_req, res) => {
+    try {
+      const nextEmails = await storage.getNextPendingEmailPerSeller();
+      res.json(nextEmails);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch next email times" });
+    }
+  });
+
   app.get("/api/sellers/:id", requireAuth, async (req, res) => {
     try {
       const id = parseInt(String(req.params.id));

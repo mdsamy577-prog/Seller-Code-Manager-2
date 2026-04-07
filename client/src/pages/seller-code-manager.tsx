@@ -132,6 +132,44 @@ function getRowClass(expiryDate: string): string {
   return "";
 }
 
+function NextEmailBadge({ sendAt }: { sendAt: string }) {
+  const [display, setDisplay] = useState<string | null>(null);
+
+  useEffect(() => {
+    const compute = () => {
+      const ms = new Date(sendAt).getTime() - Date.now();
+      if (ms <= 0) {
+        setDisplay(null);
+        return;
+      }
+      const totalMins = Math.floor(ms / 60000);
+      const totalHours = Math.floor(totalMins / 60);
+      const days = Math.floor(totalHours / 24);
+      const hours = totalHours % 24;
+      const mins = totalMins % 60;
+      if (days >= 1) {
+        setDisplay(`${days}d ${hours}h`);
+      } else {
+        setDisplay(`${totalHours}h ${String(mins).padStart(2, "0")}m`);
+      }
+    };
+    compute();
+    const timer = setInterval(compute, 60000);
+    return () => clearInterval(timer);
+  }, [sendAt]);
+
+  if (!display) return null;
+
+  return (
+    <span
+      className="inline-flex items-center gap-1 text-xs text-muted-foreground bg-muted/60 border border-border/50 rounded-full px-2 py-0.5"
+      data-testid="badge-next-email"
+    >
+      ⏳ Next email in: <span className="font-medium text-foreground">{display}</span>
+    </span>
+  );
+}
+
 function StatsCards({
   sellers,
   archivedCount,
@@ -892,6 +930,13 @@ export default function SellerCodeManager() {
     queryKey: ["/api/renewals"],
   });
 
+  const { data: nextEmails = [] } = useQuery<{ sellerId: number; sendAt: string }[]>({
+    queryKey: ["/api/sellers/next-emails"],
+    refetchInterval: 5 * 60 * 1000,
+  });
+
+  const nextEmailMap = Object.fromEntries(nextEmails.map((e) => [e.sellerId, e.sendAt]));
+
   const pendingCount = applications.filter((a) => a.status === "pending").length;
   const pendingRenewalsCount = renewalApplications.filter((r) => r.status === "pending").length;
 
@@ -1260,6 +1305,9 @@ export default function SellerCodeManager() {
                           <Clock className="h-3 w-3 shrink-0" />Exp: {format(parseISO(seller.expiryDate), "MMM dd, yyyy")}
                         </span>
                       </div>
+                      {seller.email && nextEmailMap[seller.id] && (
+                        <NextEmailBadge sendAt={nextEmailMap[seller.id]} />
+                      )}
                     </div>
                   ))}
                 </div>

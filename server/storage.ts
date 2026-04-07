@@ -58,6 +58,7 @@ export interface IStorage {
   markScheduledEmailStatus(id: number, status: string): Promise<void>;
   cancelPendingEmailsForSeller(sellerId: number): Promise<void>;
   hasPendingScheduleForSeller(sellerId: number): Promise<boolean>;
+  getNextPendingEmailPerSeller(): Promise<{ sellerId: number; sendAt: string }[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -282,6 +283,19 @@ export class DatabaseStorage implements IStorage {
       .where(and(eq(emailSchedule.sellerId, sellerId), eq(emailSchedule.status, "pending")))
       .limit(1);
     return result.length > 0;
+  }
+
+  async getNextPendingEmailPerSeller(): Promise<{ sellerId: number; sendAt: string }[]> {
+    const result = await db.execute(sql`
+      SELECT DISTINCT ON (seller_id) seller_id, send_at
+      FROM email_schedule
+      WHERE status = 'pending' AND send_at > NOW()
+      ORDER BY seller_id, send_at ASC
+    `);
+    return (result.rows as any[]).map((r) => ({
+      sellerId: r.seller_id as number,
+      sendAt: r.send_at as string,
+    }));
   }
 }
 

@@ -40,21 +40,26 @@ async function processEmailSchedule(): Promise<void> {
 async function seedSchedulesForExistingSellers(): Promise<void> {
   try {
     const sellers = await storage.getSellersWithEmail();
+
+    if (sellers.length === 0) {
+      console.log(`[Scheduler] No sellers with email addresses found — nothing to seed`);
+      return;
+    }
+
     let seeded = 0;
+    let alreadyScheduled = 0;
 
     for (const seller of sellers) {
       const hasPending = await storage.hasPendingScheduleForSeller(seller.id);
       if (!hasPending) {
         await scheduleSellerEmails(seller);
         seeded++;
+      } else {
+        alreadyScheduled++;
       }
     }
 
-    if (seeded > 0) {
-      console.log(`[Scheduler] Seeded email schedules for ${seeded} existing seller(s)`);
-    } else {
-      console.log(`[Scheduler] All sellers already have scheduled emails`);
-    }
+    console.log(`[Scheduler] Startup seed complete — seeded: ${seeded}, already scheduled: ${alreadyScheduled}, total sellers with email: ${sellers.length}`);
   } catch (error) {
     console.error("[Scheduler] Error seeding schedules:", error);
   }

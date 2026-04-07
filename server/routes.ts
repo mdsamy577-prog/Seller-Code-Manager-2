@@ -334,6 +334,9 @@ export async function registerRoutes(
       const expiryDate = calculateExpiryDate(baseDate, duration);
 
       const seller = await storage.updateSeller(id, { ...parsed.data, expiryDate });
+      if (seller) {
+        await scheduleSellerEmails(seller);
+      }
       res.json(seller);
     } catch (error: any) {
       if (error.code === "23505") {

@@ -906,7 +906,7 @@ export default function SellerCodeManager() {
       await apiRequest("POST", "/api/auth/logout");
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/auth/status"] });
+      queryClient.clear();
       toast({ title: "Logged out successfully" });
     },
     onError: (error: Error) => {

@@ -27,6 +27,9 @@ function ProtectedRouter() {
   const { data: authStatus, isLoading } = useQuery<AuthStatus>({
     queryKey: ["/api/auth/status"],
     queryFn: getQueryFn({ on401: "returnNull" }),
+    staleTime: 0,
+    retry: 2,
+    retryDelay: (attempt: number) => Math.min(1000 * 2 ** attempt, 8000),
   });
 
   if (location === "/apply") {

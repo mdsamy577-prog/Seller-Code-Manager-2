@@ -57,7 +57,7 @@ export default function Login() {
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/auth/status"] });
+      queryClient.clear();
       toast({ title: "Login successful" });
     },
     onError: (error: Error) => {

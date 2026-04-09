@@ -15,6 +15,34 @@ pool.on("error", (err) => {
   console.error("[DB] Unexpected PostgreSQL pool error:", err.message);
 });
 
+const RETRYABLE_CODES = new Set(["ECONNRESET", "ECONNREFUSED", "ETIMEDOUT", "EPIPE", "57P01", "08006", "08001", "08004"]);
+
+function isRetryableError(err: any): boolean {
+  return (
+    RETRYABLE_CODES.has(err?.code) ||
+    (typeof err?.message === "string" && (
+      err.message.includes("terminating connection") ||
+      err.message.includes("Connection terminated") ||
+      err.message.includes("connection timeout") ||
+      err.message.includes("ssl connection has been closed unexpectedly")
+    ))
+  );
+}
+
+const originalQuery = pool.query.bind(pool);
+(pool as any).query = async function (...args: any[]) {
+  try {
+    return await originalQuery(...args);
+  } catch (err: any) {
+    if (isRetryableError(err)) {
+      console.error(`[DB] Retryable connection error — retrying once: ${err.message}`);
+      await new Promise((r) => setTimeout(r, 500));
+      return await originalQuery(...args);
+    }
+    throw err;
+  }
+};
+
 const db = drizzle(pool);
 
 export interface IStorage {

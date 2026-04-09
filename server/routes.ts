@@ -366,7 +366,6 @@ export async function registerRoutes(
       if (!deleted) {
         return res.status(404).json({ message: "Seller not found" });
       }
-      await storage.cancelPendingEmailsForSeller(id);
       res.json({ message: "Seller moved to archived" });
     } catch (error) {
       res.status(500).json({ message: "Failed to archive seller" });
@@ -393,6 +392,7 @@ export async function registerRoutes(
       if (!deleted) {
         return res.status(404).json({ message: "Seller not found" });
       }
+      await storage.cancelPendingEmailsForSeller(id);
       res.json({ message: "Seller permanently deleted" });
     } catch (error) {
       res.status(500).json({ message: "Failed to permanently delete seller" });

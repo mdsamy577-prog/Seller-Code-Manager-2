@@ -22,9 +22,9 @@ async function processEmailSchedule(): Promise<void> {
     try {
       const seller = await storage.getSellerById(entry.sellerId);
 
-      if (!seller || !seller.email || seller.status !== "active") {
+      if (!seller || !seller.email) {
         await storage.markScheduledEmailStatus(entry.id, "cancelled");
-        console.log(`[Scheduler] Cancelled entry ${entry.id} (seller inactive or no email)`);
+        console.log(`[Scheduler] Cancelled entry ${entry.id} (seller not found or no email)`);
         continue;
       }
 

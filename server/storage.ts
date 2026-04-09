@@ -236,8 +236,8 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getSellersWithEmail(): Promise<Seller[]> {
-    const activeSellers = await db.select().from(sellers).where(eq(sellers.status, "active"));
-    return activeSellers.filter(s => s.email);
+    const allSellers = await db.select().from(sellers);
+    return allSellers.filter(s => s.email);
   }
 
   async hasReminderBeenSent(sellerId: number, reminderType: string, date: string): Promise<boolean> {

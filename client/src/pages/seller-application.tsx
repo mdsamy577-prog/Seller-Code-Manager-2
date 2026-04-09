@@ -115,6 +115,12 @@ export default function SellerApplication() {
       const res = await apiRequest("POST", "/api/applications", data);
       return res.json();
     },
+    retry: (failureCount, error) => {
+      if (failureCount >= 2) return false;
+      const msg = (error as Error).message || "";
+      return msg.startsWith("5") || !msg.includes(":");
+    },
+    retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 5000),
     onSuccess: () => {
       setSubmitted(true);
       toast({ title: "Application submitted successfully" });
@@ -663,6 +669,9 @@ export default function SellerApplication() {
                       <Send className="h-4 w-4 mr-2" />
                       {nidUploading ? "NID আপলোড হচ্ছে..." : submitMutation.isPending ? "জমা হচ্ছে..." : "আবেদন জমা দিন"}
                     </Button>
+                    {submitMutation.isPending && (
+                      <p className="text-center text-xs text-muted-foreground mt-2">Server is waking up, please wait...</p>
+                    )}
                   </div>
                 </form>
               </Form>

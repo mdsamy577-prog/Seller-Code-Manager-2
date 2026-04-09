@@ -73,6 +73,22 @@ export default function RenewalPage() {
 
   const selectedPayment = PAYMENT_METHODS.find((p) => p.value === paymentMethod)!;
 
+  async function fetchWithRetry(url: string, retries = 2): Promise<Response> {
+    let lastErr: unknown;
+    for (let attempt = 0; attempt <= retries; attempt++) {
+      if (attempt > 0) {
+        await new Promise((r) => setTimeout(r, Math.min(1000 * 2 ** (attempt - 1), 5000)));
+      }
+      try {
+        const res = await fetch(url);
+        return res;
+      } catch (err) {
+        lastErr = err;
+      }
+    }
+    throw lastErr;
+  }
+
   async function handleSearch() {
     const q = query.trim();
     if (!q) return;
@@ -81,7 +97,7 @@ export default function RenewalPage() {
     setSubmitted(false);
     setSearching(true);
     try {
-      const res = await fetch(`/api/sellers/lookup?q=${encodeURIComponent(q)}`);
+      const res = await fetchWithRetry(`/api/sellers/lookup?q=${encodeURIComponent(q)}`);
       if (res.status === 404) {
         setSearchError("কোনো সেলার পাওয়া যায়নি।");
       } else if (!res.ok) {
@@ -91,7 +107,7 @@ export default function RenewalPage() {
         setSeller(data);
       }
     } catch {
-      setSearchError("সংযোগে সমস্যা হয়েছে।");
+      setSearchError("সার্ভার চালু হচ্ছে, একটু অপেক্ষা করুন...");
     } finally {
       setSearching(false);
     }
@@ -107,6 +123,12 @@ export default function RenewalPage() {
       });
       return res.json();
     },
+    retry: (failureCount, error) => {
+      if (failureCount >= 2) return false;
+      const msg = (error as Error).message || "";
+      return msg.startsWith("5") || !msg.includes(":");
+    },
+    retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 5000),
     onSuccess: () => {
       setSubmitted(true);
       toast({ title: "আবেদন সফলভাবে জমা হয়েছে!" });
@@ -381,6 +403,9 @@ export default function RenewalPage() {
                   >
                     {renewMutation.isPending ? "জমা হচ্ছে..." : "রিনিউ আবেদন জমা দিন"}
                   </Button>
+                  {renewMutation.isPending && (
+                    <p className="text-center text-xs text-muted-foreground mt-1">সার্ভার চালু হচ্ছে, একটু অপেক্ষা করুন...</p>
+                  )}
                 </form>
               </CardContent>
             </Card>

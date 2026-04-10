@@ -1545,6 +1545,9 @@ export default function SellerCodeManager() {
                         <p className="text-xs text-muted-foreground flex items-center gap-1" data-testid={`text-archived-expiry-${seller.id}`}>
                           <Clock className="h-3 w-3" />Expired: {format(parseISO(seller.expiryDate), "MMM dd, yyyy")}
                         </p>
+                        {seller.email && nextEmailMap[seller.id] && (
+                          <NextEmailBadge sendAt={nextEmailMap[seller.id]} />
+                        )}
                       </div>
                       <div className="flex items-center gap-1 shrink-0">
                         <Button

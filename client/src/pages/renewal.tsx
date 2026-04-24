@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -59,6 +59,10 @@ function isExpired(dateStr: string): boolean {
 }
 
 export default function RenewalPage() {
+  useEffect(() => {
+    fetch("/health").catch(() => {});
+  }, []);
+
   const { toast } = useToast();
   const [query, setQuery] = useState("");
   const [seller, setSeller] = useState<Seller | null>(null);

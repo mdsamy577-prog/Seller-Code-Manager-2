@@ -73,6 +73,10 @@ const monthLabels: Record<string, string> = {
 const dashboardPackages = ["1", "6", "9", "12"];
 
 export default function SellerApplication() {
+  useEffect(() => {
+    fetch("/health").catch(() => {});
+  }, []);
+
   const { toast } = useToast();
   const [submitted, setSubmitted] = useState(false);
   const [emailErrorOpen, setEmailErrorOpen] = useState(false);

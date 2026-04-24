@@ -30,6 +30,7 @@ export const sellers = pgTable("sellers", {
   expiryDate: date("expiry_date").notNull(),
   email: text("email"),
   status: text("status").notNull().default("active"),
+  renewalStartDate: date("renewal_start_date"),
 });
 
 export const emailReminderLog = pgTable("email_reminder_log", {

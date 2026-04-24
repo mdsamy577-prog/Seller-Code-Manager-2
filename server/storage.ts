@@ -53,7 +53,7 @@ export interface IStorage {
   getDeletedSellers(): Promise<Seller[]>;
   getSellerById(id: number): Promise<Seller | undefined>;
   createSeller(seller: InsertSeller & { expiryDate: string }): Promise<Seller>;
-  updateSeller(id: number, seller: Partial<InsertSeller & { expiryDate: string; status?: string }>): Promise<Seller | undefined>;
+  updateSeller(id: number, seller: Partial<InsertSeller & { expiryDate: string; status?: string; renewalStartDate?: string | null }>): Promise<Seller | undefined>;
   softDeleteSeller(id: number): Promise<boolean>;
   deleteSeller(id: number): Promise<boolean>;
   restoreSeller(id: number): Promise<Seller | undefined>;

@@ -536,7 +536,10 @@ export async function registerRoutes(
       const newExpiryDate = calculateExpiryDate(baseDate, application.duration);
       const oldExpiryDate = seller.expiryDate;
 
-      const updates: { expiryDate: string; status?: string } = { expiryDate: newExpiryDate };
+      const updates: { expiryDate: string; renewalStartDate: string; status?: string } = {
+        expiryDate: newExpiryDate,
+        renewalStartDate: oldExpiryDate,
+      };
       if (seller.status === "deleted") {
         updates.status = "active";
       }

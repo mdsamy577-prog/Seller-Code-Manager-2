@@ -1242,9 +1242,16 @@ export default function SellerCodeManager() {
                             </span>
                           </TableCell>
                           <TableCell data-testid={`text-expiry-${seller.id}`}>
-                            <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                              <Clock className="h-3.5 w-3.5" />{format(parseISO(seller.expiryDate), "MMM dd, yyyy")}
-                            </span>
+                            <div className="flex flex-col gap-0.5">
+                              <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                                <Clock className="h-3.5 w-3.5" />{format(parseISO(seller.expiryDate), "MMM dd, yyyy")}
+                              </span>
+                              {seller.renewalStartDate && (
+                                <span className="flex items-center gap-1.5 text-xs text-emerald-600" data-testid={`text-renewal-start-${seller.id}`}>
+                                  <RotateCcw className="h-3 w-3" />Renewed from {format(parseISO(seller.renewalStartDate), "MMM dd, yyyy")}
+                                </span>
+                              )}
+                            </div>
                           </TableCell>
                           <TableCell><StatusBadge expiryDate={seller.expiryDate} /></TableCell>
                           <TableCell>
@@ -1304,6 +1311,11 @@ export default function SellerCodeManager() {
                         <span className="flex items-center gap-1" data-testid={`text-expiry-${seller.id}`}>
                           <Clock className="h-3 w-3 shrink-0" />Exp: {format(parseISO(seller.expiryDate), "MMM dd, yyyy")}
                         </span>
+                        {seller.renewalStartDate && (
+                          <span className="flex items-center gap-1 text-emerald-600" data-testid={`text-renewal-start-${seller.id}`}>
+                            <RotateCcw className="h-3 w-3 shrink-0" />Renewed from {format(parseISO(seller.renewalStartDate), "MMM dd, yyyy")}
+                          </span>
+                        )}
                       </div>
                       {seller.email && nextEmailMap[seller.id] && (
                         <NextEmailBadge sendAt={nextEmailMap[seller.id]} />

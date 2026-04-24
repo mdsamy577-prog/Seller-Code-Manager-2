@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useLocation } from "wouter";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -37,6 +38,7 @@ type RecoveryValues = z.infer<typeof recoverySchema>;
 
 export default function Login() {
   const { toast } = useToast();
+  const [, navigate] = useLocation();
   const [showRecovery, setShowRecovery] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
@@ -59,6 +61,7 @@ export default function Login() {
     onSuccess: () => {
       queryClient.clear();
       toast({ title: "Login successful" });
+      navigate("/");
     },
     onError: (error: Error) => {
       toast({ title: "Login failed", description: error.message, variant: "destructive" });

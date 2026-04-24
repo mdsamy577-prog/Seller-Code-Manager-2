@@ -57,19 +57,16 @@ async function seedSchedulesForExistingSellers(): Promise<void> {
     }
 
     let seeded = 0;
-    let alreadyScheduled = 0;
+    let skipped = 0;
 
     for (const seller of sellers) {
-      const hasPending = await storage.hasPendingScheduleForSeller(seller.id);
-      if (!hasPending) {
-        await scheduleSellerEmails(seller);
-        seeded++;
-      } else {
-        alreadyScheduled++;
-      }
+      // Always cancel and re-seed so any old-style (before/after/weekly)
+      // pending entries are replaced with just the single expiry-day email.
+      await scheduleSellerEmails(seller);
+      seeded++;
     }
 
-    console.log(`[Scheduler] Startup seed complete — seeded: ${seeded}, already scheduled: ${alreadyScheduled}, total sellers with email: ${sellers.length}`);
+    console.log(`[Scheduler] Startup seed complete — re-seeded: ${seeded}, skipped: ${skipped}, total sellers with email: ${sellers.length}`);
   } catch (error) {
     console.error("[Scheduler] Error seeding schedules:", error);
   }

@@ -1,0 +1,70 @@
+Make ONLY these 2 changes. Do NOT change any other UI, text, styling, workflow, database structure, form fields, validation rules, email templates, or functionality.
+
+==================================================
+CHANGE #1 - Facebook Page URL Setting
+==================================================
+
+Inside the existing Admin → Email Settings modal:
+
+Add a new field below "Sender Name".
+
+Label:
+Facebook Page URL
+
+Placeholder:
+https://facebook.com/yourpage
+
+Requirements:
+
+1. Save this value in settings/database.
+2. Remove all hardcoded Facebook URLs from email templates.
+3. Use the saved Facebook Page URL everywhere a Facebook button/link appears in emails.
+4. If Facebook Page URL is empty, hide the Facebook button/link completely.
+5. Apply to all email templates:
+   - Seller Activation Email
+   - Renewal Email
+   - Expiry Reminder Email
+   - Welcome Email
+   - Test Email
+6. Validate URL format before saving.
+7. Keep the current Email Settings design unchanged.
+
+==================================================
+CHANGE #2 - NID Upload Must Be Mandatory
+==================================================
+
+On the public seller registration form:
+
+Field:
+"NID / জাতীয় পরিচয়পত্র (বাধ্যতামূলক)"
+
+Requirements:
+
+1. User MUST upload an NID image before submitting.
+2. If no NID image is uploaded:
+   - Disable submission.
+   OR
+   - Show validation error:
+     "জাতীয় পরিচয়পত্রের ছবি আপলোড করা বাধ্যতামূলক"
+3. The form must NOT submit without an uploaded NID image.
+4. Server-side validation must also enforce this rule.
+5. Existing NID upload functionality should remain unchanged.
+6. Do not modify any other registration fields or form behavior.
+
+==================================================
+IMPORTANT
+==================================================
+
+Do NOT change anything else.
+
+Do NOT modify:
+- UI design
+- Colors
+- Text content
+- Email templates (except Facebook URL source)
+- Database structure unrelated to these features
+- Registration workflow
+- Seller activation process
+- Payment process
+
+Only implement the two changes above.

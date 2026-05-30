@@ -4,13 +4,31 @@ import { sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import pg from "pg";
 
-const pool = new pg.Pool({
-  connectionString: process.env.SUPABASE_DATABASE_URL,
-  max: 10,
-  idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 5000,
-  ssl: { rejectUnauthorized: false },
-});
+function parseSupabaseUrl(raw: string): pg.PoolConfig {
+  // Handle passwords containing '@' by splitting from the right on '@'
+  // Format: postgresql://user:password@host:port/db
+  const withoutScheme = raw.replace(/^postgresql:\/\//, "");
+  const lastAt = withoutScheme.lastIndexOf("@");
+  const userInfo = withoutScheme.substring(0, lastAt);
+  const hostInfo = withoutScheme.substring(lastAt + 1);
+  const colonInUser = userInfo.indexOf(":");
+  const user = userInfo.substring(0, colonInUser);
+  const password = userInfo.substring(colonInUser + 1);
+  const slashInHost = hostInfo.indexOf("/");
+  const hostPort = slashInHost === -1 ? hostInfo : hostInfo.substring(0, slashInHost);
+  const database = slashInHost === -1 ? "postgres" : hostInfo.substring(slashInHost + 1);
+  const colonInHost = hostPort.lastIndexOf(":");
+  const host = colonInHost === -1 ? hostPort : hostPort.substring(0, colonInHost);
+  const port = colonInHost === -1 ? 5432 : parseInt(hostPort.substring(colonInHost + 1), 10);
+  return { user, password, host, port, database };
+}
+
+const rawUrl = process.env.SUPABASE_DATABASE_URL || "";
+const poolConfig: pg.PoolConfig = rawUrl
+  ? { ...parseSupabaseUrl(rawUrl), max: 10, idleTimeoutMillis: 30000, connectionTimeoutMillis: 5000, ssl: { rejectUnauthorized: false } }
+  : { connectionString: process.env.DATABASE_URL, max: 10, idleTimeoutMillis: 30000, connectionTimeoutMillis: 5000 };
+
+const pool = new pg.Pool(poolConfig);
 
 pool.on("error", (err) => {
   console.error("[DB] Unexpected PostgreSQL pool error:", err.message);

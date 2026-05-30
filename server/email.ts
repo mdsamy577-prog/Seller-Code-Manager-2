@@ -16,6 +16,20 @@ async function getReplyEmail(): Promise<string | undefined> {
   return email || undefined;
 }
 
+async function getFacebookPageUrl(): Promise<string | undefined> {
+  const url = await storage.getSetting("FACEBOOK_PAGE_URL");
+  return url?.trim() || undefined;
+}
+
+function facebookButton(url: string | undefined): string {
+  if (!url) return "";
+  return `
+        <div style="border-top: 1px solid #e5e7eb; margin-top: 20px; padding-top: 16px; text-align: center;">
+          <p style="font-size: 13px; color: #9ca3af; margin: 0 0 8px 0;">সাপোর্টের জন্য যোগাযোগ করুন</p>
+          <a href="${url}" style="background-color: #1877f2; color: white; padding: 8px 20px; text-decoration: none; border-radius: 5px; font-size: 14px; font-weight: bold; display: inline-block;">Facebook Page</a>
+        </div>`;
+}
+
 const BASE_URL = "https://seller-code.onrender.com";
 
 function formatDateBangla(dateStr: string): string {
@@ -42,6 +56,7 @@ export async function sendSellerCodeEmail(
 
   const senderName = await getSenderName();
   const replyTo = await getReplyEmail();
+  const fbUrl = await getFacebookPageUrl();
   const formattedStart = formatDateBangla(startDate);
   const formattedExpiry = formatDateBangla(expiryDate);
 
@@ -72,10 +87,7 @@ export async function sendSellerCodeEmail(
           </tr>
         </table>
         <p style="font-size: 14px; color: #6b7280;">\u0986\u09AE\u09BE\u09A6\u09C7\u09B0 \u09B8\u09BE\u09A5\u09C7 \u09AF\u09C1\u0995\u09CD\u09A4 \u09B9\u0993\u09AF\u09BC\u09BE\u09B0 \u099C\u09A8\u09CD\u09AF \u09A7\u09A8\u09CD\u09AF\u09AC\u09BE\u09A6\u0964</p>
-        <div style="border-top: 1px solid #e5e7eb; margin-top: 20px; padding-top: 16px; text-align: center;">
-          <p style="font-size: 13px; color: #9ca3af; margin: 0 0 8px 0;">\u09B8\u09BE\u09AA\u09CB\u09B0\u09CD\u099F\u09C7\u09B0 \u099C\u09A8\u09CD\u09AF \u09AF\u09CB\u0997\u09BE\u09AF\u09CB\u0997 \u0995\u09B0\u09C1\u09A8</p>
-          <a href="https://www.facebook.com/CPSSbd.1" style="background-color: #1877f2; color: white; padding: 8px 20px; text-decoration: none; border-radius: 5px; font-size: 14px; font-weight: bold; display: inline-block;">Facebook Page</a>
-        </div>
+        ${facebookButton(fbUrl)}
       </div>
     </div>
   `;
@@ -114,6 +126,7 @@ export async function sendExtensionEmail(
 
   const senderName = await getSenderName();
   const replyTo = await getReplyEmail();
+  const fbUrl = await getFacebookPageUrl();
   const formattedOld = formatDateBangla(oldExpiryDate);
   const formattedNew = formatDateBangla(newExpiryDate);
 
@@ -144,10 +157,7 @@ export async function sendExtensionEmail(
           </tr>
         </table>
         <p style="font-size: 14px; color: #6b7280;">আমাদের সাথে থাকার জন্য ধন্যবাদ।</p>
-        <div style="border-top: 1px solid #e5e7eb; margin-top: 20px; padding-top: 16px; text-align: center;">
-          <p style="font-size: 13px; color: #9ca3af; margin: 0 0 8px 0;">সাপোর্টের জন্য যোগাযোগ করুন</p>
-          <a href="https://www.facebook.com/CPSSbd.1" style="background-color: #1877f2; color: white; padding: 8px 20px; text-decoration: none; border-radius: 5px; font-size: 14px; font-weight: bold; display: inline-block;">Facebook Page</a>
-        </div>
+        ${facebookButton(fbUrl)}
       </div>
     </div>
   `;
@@ -185,6 +195,7 @@ export async function sendReminderEmail(
 
   const senderName = await getSenderName();
   const replyTo = await getReplyEmail();
+  const fbUrl = await getFacebookPageUrl();
   const formattedExpiry = formatDateBangla(expiryDate);
   const renewalLink = `${BASE_URL}/renew`;
 
@@ -244,10 +255,7 @@ export async function sendReminderEmail(
           <p style="margin: 0 0 6px 0; font-size: 13px; color: #374151; font-weight: bold;">নবায়ন করতে ক্লিক করুন:</p>
           <a href="${renewalLink}" style="font-size: 13px; color: #1e40af; word-break: break-all;">${renewalLink}</a>
         </div>
-        <div style="border-top: 1px solid #e5e7eb; margin-top: 20px; padding-top: 16px; text-align: center;">
-          <p style="font-size: 13px; color: #9ca3af; margin: 0 0 8px 0;">\u09B8\u09BE\u09AA\u09CB\u09B0\u09CD\u099F\u09C7\u09B0 \u099C\u09A8\u09CD\u09AF \u09AF\u09CB\u0997\u09BE\u09AF\u09CB\u0997 \u0995\u09B0\u09C1\u09A8</p>
-          <a href="https://www.facebook.com/CPSSbd.1" style="background-color: #1877f2; color: white; padding: 8px 20px; text-decoration: none; border-radius: 5px; font-size: 14px; font-weight: bold; display: inline-block;">Facebook Page</a>
-        </div>
+        ${facebookButton(fbUrl)}
       </div>
     </div>
   `;
@@ -284,6 +292,7 @@ export async function sendRenewalApprovalEmail(
 
   const senderName = await getSenderName();
   const replyTo = await getReplyEmail();
+  const fbUrl = await getFacebookPageUrl();
   const formattedExpiry = formatDateBangla(newExpiryDate);
 
   const htmlBody = `
@@ -308,10 +317,7 @@ export async function sendRenewalApprovalEmail(
             <td style="padding: 12px; color: #16a34a; font-weight: bold;">${formattedExpiry}</td>
           </tr>
         </table>
-        <div style="border-top: 1px solid #e5e7eb; margin-top: 20px; padding-top: 16px; text-align: center;">
-          <p style="font-size: 13px; color: #9ca3af; margin: 0 0 8px 0;">সাপোর্টের জন্য যোগাযোগ করুন</p>
-          <a href="https://www.facebook.com/CPSSbd.1" style="background-color: #1877f2; color: white; padding: 8px 20px; text-decoration: none; border-radius: 5px; font-size: 14px; font-weight: bold; display: inline-block;">Facebook Page</a>
-        </div>
+        ${facebookButton(fbUrl)}
       </div>
     </div>
   `;
@@ -347,6 +353,7 @@ export async function sendRenewalRejectionEmail(
 
   const senderName = await getSenderName();
   const replyTo = await getReplyEmail();
+  const fbUrl = await getFacebookPageUrl();
 
   const htmlBody = `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
@@ -367,10 +374,7 @@ export async function sendRenewalRejectionEmail(
           </tr>
         </table>
         <p style="font-size: 15px; color: #374151;">অনুগ্রহ করে সঠিক তথ্য দিয়ে পুনরায় আবেদন করুন।</p>
-        <div style="border-top: 1px solid #e5e7eb; margin-top: 20px; padding-top: 16px; text-align: center;">
-          <p style="font-size: 13px; color: #9ca3af; margin: 0 0 8px 0;">সাপোর্টের জন্য যোগাযোগ করুন</p>
-          <a href="https://www.facebook.com/CPSSbd.1" style="background-color: #1877f2; color: white; padding: 8px 20px; text-decoration: none; border-radius: 5px; font-size: 14px; font-weight: bold; display: inline-block;">Facebook Page</a>
-        </div>
+        ${facebookButton(fbUrl)}
       </div>
     </div>
   `;

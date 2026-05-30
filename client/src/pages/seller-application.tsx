@@ -137,6 +137,15 @@ export default function SellerApplication() {
   const onSubmit = async (data: ApplicationFormValues) => {
     let nidFileUrl = data.nidFileUrl || "";
 
+    if (!nidFile && !nidFileUrl) {
+      toast({
+        title: "NID প্রয়োজন",
+        description: "জাতীয় পরিচয়পত্রের ছবি আপলোড করা বাধ্যতামূলক",
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (nidFile && !nidFileUrl) {
       try {
         setNidUploading(true);

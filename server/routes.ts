@@ -786,6 +786,9 @@ export async function registerRoutes(
       if (!parsed.success) {
         return res.status(400).json({ message: "Invalid application data", errors: parsed.error.errors });
       }
+      if (!parsed.data.nidFileUrl) {
+        return res.status(400).json({ message: "জাতীয় পরিচয়পত্রের ছবি আপলোড করা বাধ্যতামূলক" });
+      }
       const application = await storage.createSellerApplication(parsed.data);
       res.status(201).json(application);
     } catch (error) {
@@ -834,9 +837,11 @@ export async function registerRoutes(
     try {
       const senderName = await storage.getSetting("SENDER_NAME");
       const replyEmail = await storage.getSetting("REPLY_EMAIL");
+      const facebookPageUrl = await storage.getSetting("FACEBOOK_PAGE_URL");
       res.json({
         senderName: senderName || "",
         replyEmail: replyEmail || "",
+        facebookPageUrl: facebookPageUrl || "",
         hasApiKey: !!process.env.RESEND_API_KEY,
       });
     } catch (error) {
@@ -846,9 +851,16 @@ export async function registerRoutes(
 
   app.post("/api/settings/email", requireAuth, async (req, res) => {
     try {
-      const { senderName, replyEmail } = req.body;
+      const { senderName, replyEmail, facebookPageUrl } = req.body;
       await storage.setSetting("SENDER_NAME", (senderName || "").trim());
       await storage.setSetting("REPLY_EMAIL", (replyEmail || "").trim());
+      const fbUrl = (facebookPageUrl || "").trim();
+      if (fbUrl) {
+        try { new URL(fbUrl); } catch {
+          return res.status(400).json({ message: "Invalid Facebook Page URL format" });
+        }
+      }
+      await storage.setSetting("FACEBOOK_PAGE_URL", fbUrl);
       res.json({ message: "Email settings saved successfully" });
     } catch (error) {
       res.status(500).json({ message: "Failed to save email settings" });

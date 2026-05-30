@@ -559,11 +559,13 @@ function RegistrationLink() {
 function EmailSettings() {
   const { toast } = useToast();
   const [senderName, setSenderName] = useState("");
+  const [facebookPageUrl, setFacebookPageUrl] = useState("");
   const [testEmail, setTestEmail] = useState("");
   const [initialized, setInitialized] = useState(false);
 
   const { data: emailSettings, isLoading } = useQuery<{
     senderName: string;
+    facebookPageUrl: string;
     hasApiKey: boolean;
   }>({
     queryKey: ["/api/settings/email"],
@@ -572,6 +574,7 @@ function EmailSettings() {
   useEffect(() => {
     if (emailSettings && !initialized) {
       setSenderName(emailSettings.senderName);
+      setFacebookPageUrl(emailSettings.facebookPageUrl || "");
       setInitialized(true);
     }
   }, [emailSettings, initialized]);
@@ -580,6 +583,7 @@ function EmailSettings() {
     mutationFn: async () => {
       const res = await apiRequest("POST", "/api/settings/email", {
         senderName,
+        facebookPageUrl,
       });
       return res.json();
     },
@@ -626,6 +630,15 @@ function EmailSettings() {
           placeholder="CPS&S Seller Code"
           value={senderName}
           onChange={(e) => setSenderName(e.target.value)}
+        />
+      </div>
+      <div className="space-y-2">
+        <label className="text-sm font-medium">Facebook Page URL</label>
+        <Input
+          placeholder="https://facebook.com/yourpage"
+          value={facebookPageUrl}
+          onChange={(e) => setFacebookPageUrl(e.target.value)}
+          type="url"
         />
       </div>
       <Button

@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useMutation } from "@tanstack/react-query";
+import { useDiscount, personalPrices, formatPrice, discountedAmount } from "@/lib/pricing";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Search, Phone, Hash, CheckCircle2, ShieldCheck, RefreshCw, CalendarCheck, Copy } from "lucide-react";
@@ -24,20 +25,11 @@ type Seller = {
   startDate: string;
 };
 
-const DURATION_OPTIONS = [
-  { value: "1",  label: "১ মাস - ২০০ টাকা" },
-  { value: "2",  label: "২ মাস - ৩৮০ টাকা" },
-  { value: "3",  label: "৩ মাস - ৫৫০ টাকা" },
-  { value: "4",  label: "৪ মাস - ৭০০ টাকা" },
-  { value: "5",  label: "৫ মাস - ৮৫০ টাকা" },
-  { value: "6",  label: "৬ মাস - ১০০০ টাকা" },
-  { value: "7",  label: "৭ মাস - ১১০০ টাকা" },
-  { value: "8",  label: "৮ মাস - ১২০০ টাকা" },
-  { value: "9",  label: "৯ মাস - ১৩০০ টাকা" },
-  { value: "10", label: "১০ মাস - ১৪০০ টাকা" },
-  { value: "11", label: "১১ মাস - ১৫০০ টাকা" },
-  { value: "12", label: "১২ মাস - ১৬০০ টাকা" },
-];
+const MONTH_LABELS: Record<string, string> = {
+  "1": "১ মাস", "2": "২ মাস", "3": "৩ মাস", "4": "৪ মাস",
+  "5": "৫ মাস", "6": "৬ মাস", "7": "৭ মাস", "8": "৮ মাস",
+  "9": "৯ মাস", "10": "১০ মাস", "11": "১১ মাস", "12": "১২ মাস",
+};
 
 const PAYMENT_METHODS = [
   { value: "bkash", label: "বিকাশ", number: "01827259372", color: "pink" },
@@ -75,6 +67,7 @@ export default function RenewalPage() {
   const [senderError, setSenderError] = useState("");
   const [submitted, setSubmitted] = useState(false);
 
+  const discount = useDiscount();
   const selectedPayment = PAYMENT_METHODS.find((p) => p.value === paymentMethod)!;
 
   async function fetchWithRetry(url: string, retries = 2): Promise<Response> {
@@ -348,11 +341,17 @@ export default function RenewalPage() {
                         <SelectValue placeholder="মেয়াদ নির্বাচন করুন" />
                       </SelectTrigger>
                       <SelectContent>
-                        {DURATION_OPTIONS.map((opt) => (
-                          <SelectItem key={opt.value} value={opt.value} data-testid={`option-duration-${opt.value}`}>
-                            {opt.label}
-                          </SelectItem>
-                        ))}
+                        {Object.keys(MONTH_LABELS).map((key) => {
+                          const base = personalPrices[key];
+                          const label = discount > 0
+                            ? `${MONTH_LABELS[key]} - ${formatPrice(discountedAmount(base, discount))} (${discount}% ছাড়)`
+                            : `${MONTH_LABELS[key]} - ${formatPrice(base)}`;
+                          return (
+                            <SelectItem key={key} value={key} data-testid={`option-duration-${key}`}>
+                              {label}
+                            </SelectItem>
+                          );
+                        })}
                       </SelectContent>
                     </Select>
                   </div>

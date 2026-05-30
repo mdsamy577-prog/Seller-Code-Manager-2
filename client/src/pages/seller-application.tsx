@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useMutation } from "@tanstack/react-query";
+import { useDiscount, personalPrices, businessPrices, formatPrice, discountedAmount } from "@/lib/pricing";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { User, Phone, CheckCircle2, Wallet, Hash, Copy, Mail, BookOpen, ShieldCheck, Send, ClipboardList, CreditCard, Link, TriangleAlert, Upload, FileText, X, ImageIcon } from "lucide-react";
@@ -52,17 +53,6 @@ const applicationFormSchema = z.object({
 
 type ApplicationFormValues = z.infer<typeof applicationFormSchema>;
 
-const personalPricing: Record<string, string> = {
-  "1": "২০০ টাকা", "2": "৩৮০ টাকা", "3": "৫৫০ টাকা", "4": "৭০০ টাকা",
-  "5": "৮৫০ টাকা", "6": "১০০০ টাকা", "7": "১১০০ টাকা", "8": "১২০০ টাকা",
-  "9": "১৩০০ টাকা", "10": "১৪০০ টাকা", "11": "১৫০০ টাকা", "12": "১৬০০ টাকা",
-};
-
-const businessPricing: Record<string, string> = {
-  "1": "৩০০ টাকা", "2": "৫৫০ টাকা", "3": "৮০০ টাকা", "4": "১০০০ টাকা",
-  "5": "১২০০ টাকা", "6": "১৪০০ টাকা", "7": "১৬০০ টাকা", "8": "১৮০০ টাকা",
-  "9": "২০০০ টাকা", "10": "২২০০ টাকা", "11": "২৪০০ টাকা", "12": "২৬০০ টাকা",
-};
 
 const monthLabels: Record<string, string> = {
   "1": "১ মাস", "2": "২ মাস", "3": "৩ মাস", "4": "৪ মাস",
@@ -102,7 +92,8 @@ export default function SellerApplication() {
 
   const sellerType = form.watch("sellerType");
   const selectedDuration = form.watch("duration");
-  const currentPricing = sellerType === "facebook_business_page" ? businessPricing : personalPricing;
+  const discount = useDiscount();
+  const currentPrices = sellerType === "facebook_business_page" ? businessPrices : personalPrices;
 
   const [rulesOpen, setRulesOpen] = useState(false);
   const [groupRules, setGroupRules] = useState("");
@@ -336,7 +327,15 @@ export default function SellerApplication() {
                       data-testid={`pricing-${monthLabels[key]}`}
                     >
                       <div className={`text-xs font-semibold uppercase tracking-wide mb-1 ${isSelected ? "text-blue-600 dark:text-blue-300" : "text-muted-foreground"}`}>{monthLabels[key]}</div>
-                      <div className={`text-xl font-bold ${isSelected ? "text-blue-700 dark:text-blue-200" : "text-blue-700 dark:text-blue-400"}`}>{currentPricing[key]}</div>
+                      {discount > 0 ? (
+                        <>
+                          <div className="text-xs line-through text-muted-foreground leading-tight">{formatPrice(currentPrices[key])}</div>
+                          <div className={`text-xl font-bold ${isSelected ? "text-blue-700 dark:text-blue-200" : "text-blue-700 dark:text-blue-400"}`}>{formatPrice(discountedAmount(currentPrices[key], discount))}</div>
+                          <div className="mt-1 inline-block text-[9px] font-bold bg-red-500 text-white rounded-full px-1.5 py-0.5">{discount}% OFF</div>
+                        </>
+                      ) : (
+                        <div className={`text-xl font-bold ${isSelected ? "text-blue-700 dark:text-blue-200" : "text-blue-700 dark:text-blue-400"}`}>{formatPrice(currentPrices[key])}</div>
+                      )}
                       {isSelected && (
                         <div className="mt-1.5 inline-flex items-center gap-1 rounded-full bg-blue-500 px-2 py-0.5">
                           <CheckCircle2 className="h-2.5 w-2.5 text-white" />
@@ -511,7 +510,12 @@ export default function SellerApplication() {
                           </FormControl>
                           <SelectContent>
                             {Object.keys(monthLabels).map((key) => (
-                              <SelectItem key={key} value={key}>{monthLabels[key]} - {currentPricing[key]}</SelectItem>
+                              <SelectItem key={key} value={key}>
+                                {monthLabels[key]} -{" "}
+                                {discount > 0
+                                  ? `${formatPrice(discountedAmount(currentPrices[key], discount))} (${discount}% ছাড়)`
+                                  : formatPrice(currentPrices[key])}
+                              </SelectItem>
                             ))}
                           </SelectContent>
                         </Select>

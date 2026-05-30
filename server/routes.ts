@@ -909,5 +909,27 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/settings/discount", async (_req, res) => {
+    try {
+      const val = await storage.getSetting("GLOBAL_DISCOUNT");
+      res.json({ discount: parseInt(val || "0", 10) });
+    } catch {
+      res.status(500).json({ message: "Failed to fetch discount settings" });
+    }
+  });
+
+  app.post("/api/settings/discount", requireAuth, async (req, res) => {
+    try {
+      const { discount } = req.body;
+      if (![0, 20, 30, 40, 50].includes(Number(discount))) {
+        return res.status(400).json({ message: "Invalid discount value" });
+      }
+      await storage.setSetting("GLOBAL_DISCOUNT", String(discount));
+      res.json({ message: "Discount settings saved" });
+    } catch {
+      res.status(500).json({ message: "Failed to save discount settings" });
+    }
+  });
+
   return httpServer;
 }

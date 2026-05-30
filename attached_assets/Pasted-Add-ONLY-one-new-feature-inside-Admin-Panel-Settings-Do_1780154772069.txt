@@ -1,0 +1,110 @@
+Add ONLY one new feature inside Admin Panel → Settings.
+
+Do NOT modify any existing functionality, UI, database logic, seller logic, email system, payment system, or registration workflow.
+
+==================================================
+GLOBAL DISCOUNT SETTINGS
+==================================================
+
+Create a new section:
+
+Settings → Global Discount
+
+Title:
+Global Discount
+
+Dropdown Options:
+
+- No Discount (0%)
+- 20% Discount
+- 30% Discount
+- 40% Discount
+- 50% Discount
+
+Save Button:
+Save Discount Settings
+
+==================================================
+FUNCTIONALITY
+==================================================
+
+When the admin selects a discount percentage and saves:
+
+Apply that discount automatically to ALL package prices across the entire website.
+
+This includes:
+
+- Registration page
+- Package cards
+- Pricing sections
+- Upgrade/Renewal pages
+- Any place where package prices are displayed
+
+==================================================
+PRICE DISPLAY
+==================================================
+
+Example:
+
+Original Price: ৳1000
+Discount: 20%
+
+Display:
+
+৳1000 (strikethrough)
+৳800
+
+Badge:
+
+20% OFF
+
+Or:
+
+Discount Price
+
+==================================================
+MOBILE DESIGN
+==================================================
+
+Requirements:
+
+- Clean mobile-friendly design
+- Simple and professional
+- No large banners
+- No flashy animations
+- No clutter
+- Small discount badge
+- Old price crossed out
+- New discounted price clearly visible
+
+Example:
+
+20% OFF
+
+~~৳1000~~
+৳800
+
+==================================================
+ADMIN CONTROL
+==================================================
+
+Only one global discount can be active at a time.
+
+Changing the percentage instantly updates all displayed prices.
+
+Selecting "No Discount (0%)" removes all discount badges and shows normal prices.
+
+==================================================
+IMPORTANT
+==================================================
+
+Do NOT change:
+
+- Existing package prices in database
+- Seller data
+- Registration process
+- Email system
+- Payment system
+- Any existing UI
+
+Only calculate and display discounted prices dynamically based on the Global Discount setting.

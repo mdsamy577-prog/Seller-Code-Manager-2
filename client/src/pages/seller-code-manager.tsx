@@ -32,6 +32,7 @@ import {
   CalendarPlus,
   Archive,
   RotateCcw,
+  Tag,
 } from "lucide-react";
 import { SiMeta } from "react-icons/si";
 import { useLocation } from "wouter";
@@ -676,6 +677,68 @@ function EmailSettings() {
   );
 }
 
+function GlobalDiscount() {
+  const { toast } = useToast();
+  const [discount, setDiscount] = useState("0");
+  const [initialized, setInitialized] = useState(false);
+
+  const { data: discountData } = useQuery<{ discount: number }>({
+    queryKey: ["/api/settings/discount"],
+  });
+
+  useEffect(() => {
+    if (discountData !== undefined && !initialized) {
+      setDiscount(String(discountData.discount));
+      setInitialized(true);
+    }
+  }, [discountData, initialized]);
+
+  const saveMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/settings/discount", { discount: Number(discount) });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/settings/discount"] });
+      toast({ title: "Discount settings saved" });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
+
+  return (
+    <div className="space-y-4">
+      <p className="text-sm text-muted-foreground">
+        Select a discount to apply to all package prices across the registration and renewal pages.
+      </p>
+      <div className="space-y-2">
+        <label className="text-sm font-medium">Discount Percentage</label>
+        <Select value={discount} onValueChange={setDiscount}>
+          <SelectTrigger data-testid="select-discount">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="0">No Discount (0%)</SelectItem>
+            <SelectItem value="20">20% Discount</SelectItem>
+            <SelectItem value="30">30% Discount</SelectItem>
+            <SelectItem value="40">40% Discount</SelectItem>
+            <SelectItem value="50">50% Discount</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+      <Button
+        className="w-full"
+        onClick={() => saveMutation.mutate()}
+        disabled={saveMutation.isPending}
+        data-testid="button-save-discount"
+      >
+        {saveMutation.isPending ? "Saving..." : "Save Discount Settings"}
+      </Button>
+    </div>
+  );
+}
+
 function SellerForm({
   seller,
   onClose,
@@ -907,7 +970,7 @@ export default function SellerCodeManager() {
   const [editingCodeValue, setEditingCodeValue] = useState("");
   const [emailDialogSeller, setEmailDialogSeller] = useState<Seller | undefined>();
   const [emailDialogInput, setEmailDialogInput] = useState("");
-  const [settingsPanel, setSettingsPanel] = useState<"registration" | "email" | "group-rules" | null>(null);
+  const [settingsPanel, setSettingsPanel] = useState<"registration" | "email" | "group-rules" | "discount" | null>(null);
   const [extendSeller, setExtendSeller] = useState<Seller | undefined>();
   const [extendMonths, setExtendMonths] = useState<number>(1);
   const [archivedOpen, setArchivedOpen] = useState(false);
@@ -1343,11 +1406,12 @@ export default function SellerCodeManager() {
 
         <Card>
           <CardContent className="p-2">
-            <div className="grid grid-cols-3 divide-x">
+            <div className="grid grid-cols-4 divide-x">
               {([
                 { key: "registration", icon: Link, label: "Registration Link" },
                 { key: "email", icon: Settings, label: "Email Settings" },
                 { key: "group-rules", icon: BookOpen, label: "Group Rules" },
+                { key: "discount", icon: Tag, label: "Global Discount" },
               ] as const).map(({ key, icon: Icon, label }) => (
                 <button
                   key={key}
@@ -1425,6 +1489,15 @@ export default function SellerCodeManager() {
               <DialogTitle className="flex items-center gap-2"><BookOpen className="h-4 w-4" />Group Rules</DialogTitle>
             </DialogHeader>
             <GroupRules />
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={settingsPanel === "discount"} onOpenChange={(o) => { if (!o) setSettingsPanel(null); }}>
+          <DialogContent className="w-[calc(100vw-2rem)] max-w-sm sm:w-full rounded-xl sm:rounded-lg" aria-describedby={undefined}>
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2"><Tag className="h-4 w-4" />Global Discount</DialogTitle>
+            </DialogHeader>
+            <GlobalDiscount />
           </DialogContent>
         </Dialog>
 

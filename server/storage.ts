@@ -23,10 +23,15 @@ function parseSupabaseUrl(raw: string): pg.PoolConfig {
   return { user, password, host, port, database };
 }
 
-const rawUrl = process.env.SUPABASE_DATABASE_URL || "";
-const poolConfig: pg.PoolConfig = rawUrl
-  ? { ...parseSupabaseUrl(rawUrl), max: 10, idleTimeoutMillis: 30000, connectionTimeoutMillis: 5000, ssl: { rejectUnauthorized: false } }
-  : { connectionString: process.env.DATABASE_URL, max: 10, idleTimeoutMillis: 30000, connectionTimeoutMillis: 5000 };
+const rawUrl = process.env.SUPABASE_DATABASE_URL || process.env.DATABASE_URL || "";
+if (!rawUrl) throw new Error("No database URL configured (SUPABASE_DATABASE_URL or DATABASE_URL)");
+const poolConfig: pg.PoolConfig = {
+  ...parseSupabaseUrl(rawUrl),
+  max: 10,
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 5000,
+  ssl: { rejectUnauthorized: false },
+};
 
 const pool = new pg.Pool(poolConfig);
 

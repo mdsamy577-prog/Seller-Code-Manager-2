@@ -1,5 +1,5 @@
-import { type User, type InsertUser, type Seller, type InsertSeller, type InsertSellerApplication, type SellerApplication, type InsertSellerRenewalApplication, type SellerRenewalApplication, type EmailScheduleEntry, users, sellers, appSettings, sellerApplications, emailReminderLog, sellerRenewalApplications, emailSchedule } from "@shared/schema";
-import { eq, or, ilike, count, and, ne } from "drizzle-orm";
+import { type User, type InsertUser, type Seller, type InsertSeller, type InsertSellerApplication, type SellerApplication, type InsertSellerRenewalApplication, type SellerRenewalApplication, type EmailScheduleEntry, type EmailLog, users, sellers, appSettings, sellerApplications, emailReminderLog, sellerRenewalApplications, emailSchedule, emailLogs } from "@shared/schema";
+import { eq, or, ilike, count, and, ne, desc } from "drizzle-orm";
 import { sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import pg from "pg";
@@ -112,6 +112,10 @@ export interface IStorage {
   cancelPendingEmailsForSeller(sellerId: number): Promise<void>;
   hasPendingScheduleForSeller(sellerId: number): Promise<boolean>;
   getNextPendingEmailPerSeller(): Promise<{ sellerId: number; sendAt: string }[]>;
+  createEmailLog(data: { resendEmailId?: string; recipientEmail: string; sellerName: string; sellerCode: string; subject: string; emailType: string }): Promise<EmailLog>;
+  updateEmailLogStatus(resendEmailId: string, status: string): Promise<void>;
+  getEmailLogs(): Promise<EmailLog[]>;
+  clearEmailLogs(): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -361,6 +365,36 @@ export class DatabaseStorage implements IStorage {
       sellerId: r.seller_id as number,
       sendAt: r.send_at as string,
     }));
+  }
+
+  async createEmailLog(data: { resendEmailId?: string; recipientEmail: string; sellerName: string; sellerCode: string; subject: string; emailType: string }): Promise<EmailLog> {
+    const now = new Date().toISOString();
+    const result = await db.insert(emailLogs).values({
+      resendEmailId: data.resendEmailId ?? null,
+      recipientEmail: data.recipientEmail,
+      sellerName: data.sellerName,
+      sellerCode: data.sellerCode,
+      subject: data.subject,
+      emailType: data.emailType,
+      status: "sent",
+      sentAt: now,
+      updatedAt: now,
+    }).returning();
+    return result[0];
+  }
+
+  async updateEmailLogStatus(resendEmailId: string, status: string): Promise<void> {
+    await db.update(emailLogs)
+      .set({ status, updatedAt: new Date().toISOString() })
+      .where(eq(emailLogs.resendEmailId, resendEmailId));
+  }
+
+  async getEmailLogs(): Promise<EmailLog[]> {
+    return db.select().from(emailLogs).orderBy(desc(emailLogs.sentAt)).limit(500);
+  }
+
+  async clearEmailLogs(): Promise<void> {
+    await db.delete(emailLogs);
   }
 }
 

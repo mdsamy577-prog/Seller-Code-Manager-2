@@ -1,0 +1,52 @@
+┌─────────────────────────────────────────────────────────┐
+│                EMAIL STATUS TRACKING SYSTEM             │
+├─────────────────────────────────────────────────────────┤
+│ Currently, email delivery status can only be checked    │
+│ from the Resend dashboard. I want all email tracking    │
+│ information to be visible directly inside the website's │
+│ Admin Panel so there is no need to log in to Resend.    │
+├─────────────────────────────────────────────────────────┤
+│ New Admin Menu:                                         │
+│ Admin Panel → Email Logs                               │
+├─────────────────────────────────────────────────────────┤
+│ For every email sent, store and display:               │
+│                                                         │
+│ • Recipient Email                                      │
+│ • Seller Name                                          │
+│ • Seller Code                                          │
+│ • Email Subject                                        │
+│ • Date & Time Sent                                     │
+│ • Current Delivery Status                              │
+├─────────────────────────────────────────────────────────┤
+│ Supported Status Types:                                │
+│                                                         │
+│ • Pending                                               │
+│ • Sent                                                  │
+│ • Delivered                                             │
+│ • Opened (if tracking is enabled)                       │
+│ • Clicked (if tracking is enabled)                      │
+│ • Failed                                                │
+│ • Bounced                                               │
+│ • Complaint                                             │
+├─────────────────────────────────────────────────────────┤
+│ Status Colors:                                          │
+│                                                         │
+│ 🟢 Delivered                                             │
+│ 🔵 Opened                                                │
+│ 🟡 Pending                                               │
+│ 🔴 Failed                                                │
+│ ⛔ Bounced                                               │
+├─────────────────────────────────────────────────────────┤
+│ Technical Requirement:                                  │
+│                                                         │
+│ Use Resend Webhooks to capture email events and store   │
+│ them in the database (Supabase). The system should      │
+│ automatically update the email status whenever a new    │
+│ event is received from Resend.                          │
+├─────────────────────────────────────────────────────────┤
+│ Important:                                              │
+│                                                         │
+│ Do NOT modify any existing email templates, email       │
+│ sending logic, domain configuration, or other system    │
+│ features. Only add the Email Status Tracking feature.   │
+└─────────────────────────────────────────────────────────┘

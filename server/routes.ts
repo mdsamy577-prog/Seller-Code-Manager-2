@@ -931,5 +931,56 @@ export async function registerRoutes(
     }
   });
 
+  // Email Logs (protected)
+  app.get("/api/email-logs", requireAuth, async (_req, res) => {
+    try {
+      const logs = await storage.getEmailLogs();
+      res.json(logs);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch email logs" });
+    }
+  });
+
+  app.delete("/api/email-logs", requireAuth, async (_req, res) => {
+    try {
+      await storage.clearEmailLogs();
+      res.json({ message: "Email logs cleared" });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to clear email logs" });
+    }
+  });
+
+  // Resend webhook (public — receives delivery status events)
+  app.post("/api/webhooks/resend", async (req, res) => {
+    try {
+      const event = req.body as { type?: string; data?: { email_id?: string } };
+      const eventType = event?.type;
+      const resendEmailId = event?.data?.email_id;
+
+      if (!eventType || !resendEmailId) {
+        return res.status(400).json({ message: "Invalid webhook payload" });
+      }
+
+      const STATUS_MAP: Record<string, string> = {
+        "email.delivered":        "delivered",
+        "email.opened":           "opened",
+        "email.clicked":          "clicked",
+        "email.bounced":          "bounced",
+        "email.complained":       "complaint",
+        "email.delivery_delayed": "pending",
+      };
+
+      const newStatus = STATUS_MAP[eventType];
+      if (newStatus) {
+        await storage.updateEmailLogStatus(resendEmailId, newStatus);
+      }
+
+      res.json({ received: true });
+    } catch (error) {
+      console.error("Resend webhook error:", error);
+      res.status(500).json({ message: "Webhook processing failed" });
+    }
+  });
+
   return httpServer;
 }

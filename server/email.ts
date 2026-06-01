@@ -95,18 +95,23 @@ export async function sendSellerCodeEmail(
   const resend = getResendClient();
   if (!resend) return false;
 
+  const subject = `সেলার কোড: ${sellerCode}`;
   try {
-    await resend.emails.send({
+    const { data: emailData } = await resend.emails.send({
       from: `${senderName} <noreply@seller-code.co.uk>`,
       to: recipientEmail,
       replyTo,
-      subject: `\u09B8\u09C7\u09B2\u09BE\u09B0 \u0995\u09CB\u09A1: ${sellerCode}`,
+      subject,
       html: htmlBody,
     });
     console.log(`Seller code email sent to ${recipientEmail}`);
+    storage.createEmailLog({ resendEmailId: emailData?.id, recipientEmail, sellerName, sellerCode, subject, emailType: "seller_code" }).catch(() => {});
     return true;
   } catch (error) {
     console.error("Failed to send email:", error);
+    storage.createEmailLog({ recipientEmail, sellerName, sellerCode, subject, emailType: "seller_code" })
+      .then((log) => storage.updateEmailLogStatus(log.resendEmailId ?? String(log.id), "failed").catch(() => {}))
+      .catch(() => {});
     return false;
   }
 }
@@ -165,15 +170,17 @@ export async function sendExtensionEmail(
   const resend = getResendClient();
   if (!resend) return false;
 
+  const subject = `সাবস্ক্রিপশন বাড়ানো হয়েছে: ${sellerCode}`;
   try {
-    await resend.emails.send({
+    const { data: emailData } = await resend.emails.send({
       from: `${senderName} <noreply@seller-code.co.uk>`,
       to: recipientEmail,
       replyTo,
-      subject: `সাবস্ক্রিপশন বাড়ানো হয়েছে: ${sellerCode}`,
+      subject,
       html: htmlBody,
     });
     console.log(`Extension email sent to ${recipientEmail}`);
+    storage.createEmailLog({ resendEmailId: emailData?.id, recipientEmail, sellerName, sellerCode, subject, emailType: "extension" }).catch(() => {});
     return true;
   } catch (error) {
     console.error("Failed to send extension email:", error);
@@ -264,7 +271,7 @@ export async function sendReminderEmail(
   if (!resend) return false;
 
   try {
-    await resend.emails.send({
+    const { data: emailData } = await resend.emails.send({
       from: `${senderName} <noreply@seller-code.co.uk>`,
       to: recipientEmail,
       replyTo,
@@ -272,6 +279,7 @@ export async function sendReminderEmail(
       html: htmlBody,
     });
     console.log(`Reminder email sent to ${recipientEmail} (${reminderType})`);
+    storage.createEmailLog({ resendEmailId: emailData?.id, recipientEmail, sellerName, sellerCode, subject, emailType: "reminder" }).catch(() => {});
     return true;
   } catch (error) {
     console.error(`Failed to send reminder email to ${recipientEmail}:`, error);
@@ -325,15 +333,17 @@ export async function sendRenewalApprovalEmail(
   const resend = getResendClient();
   if (!resend) return false;
 
+  const subject = `সাবস্ক্রিপশন নবায়ন সম্পন্ন: ${sellerCode}`;
   try {
-    await resend.emails.send({
+    const { data: emailData } = await resend.emails.send({
       from: `${senderName} <noreply@seller-code.co.uk>`,
       to: recipientEmail,
       replyTo,
-      subject: `সাবস্ক্রিপশন নবায়ন সম্পন্ন: ${sellerCode}`,
+      subject,
       html: htmlBody,
     });
     console.log(`Renewal approval email sent to ${recipientEmail}`);
+    storage.createEmailLog({ resendEmailId: emailData?.id, recipientEmail, sellerName, sellerCode, subject, emailType: "renewal_approval" }).catch(() => {});
     return true;
   } catch (error) {
     console.error(`Failed to send renewal approval email to ${recipientEmail}:`, error);
@@ -382,15 +392,17 @@ export async function sendRenewalRejectionEmail(
   const resend = getResendClient();
   if (!resend) return false;
 
+  const subject = `নবায়ন আবেদন বাতিল: ${sellerCode}`;
   try {
-    await resend.emails.send({
+    const { data: emailData } = await resend.emails.send({
       from: `${senderName} <noreply@seller-code.co.uk>`,
       to: recipientEmail,
       replyTo,
-      subject: `নবায়ন আবেদন বাতিল: ${sellerCode}`,
+      subject,
       html: htmlBody,
     });
     console.log(`Renewal rejection email sent to ${recipientEmail}`);
+    storage.createEmailLog({ resendEmailId: emailData?.id, recipientEmail, sellerName, sellerCode, subject, emailType: "renewal_rejection" }).catch(() => {});
     return true;
   } catch (error) {
     console.error(`Failed to send renewal rejection email to ${recipientEmail}:`, error);

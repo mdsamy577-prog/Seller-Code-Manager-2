@@ -9,6 +9,7 @@ import SellerApplication from "@/pages/seller-application";
 import SellerApplications from "@/pages/seller-applications";
 import RenewalPage from "@/pages/renewal";
 import RenewalApplications from "@/pages/renewal-applications";
+import EmailLogsPage from "@/pages/email-logs";
 import Login from "@/pages/login";
 import AdminSetup from "@/pages/admin-setup";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -67,6 +68,7 @@ function ProtectedRouter() {
       <Route path="/admin" component={SellerCodeManager} />
       <Route path="/applications" component={SellerApplications} />
       <Route path="/renewals" component={RenewalApplications} />
+      <Route path="/email-logs" component={EmailLogsPage} />
       <Route component={NotFound} />
     </Switch>
   );

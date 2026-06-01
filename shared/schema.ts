@@ -126,3 +126,18 @@ export const emailSchedule = pgTable("email_schedule", {
 
 export type EmailScheduleEntry = typeof emailSchedule.$inferSelect;
 
+export const emailLogs = pgTable("email_logs", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  resendEmailId: text("resend_email_id"),
+  recipientEmail: text("recipient_email").notNull(),
+  sellerName: text("seller_name").notNull(),
+  sellerCode: text("seller_code").notNull().default(""),
+  subject: text("subject").notNull(),
+  emailType: text("email_type").notNull(),
+  status: text("status").notNull().default("sent"),
+  sentAt: text("sent_at").notNull(),
+  updatedAt: text("updated_at").notNull(),
+});
+
+export type EmailLog = typeof emailLogs.$inferSelect;
+

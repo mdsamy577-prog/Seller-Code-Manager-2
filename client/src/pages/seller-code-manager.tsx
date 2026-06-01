@@ -33,6 +33,7 @@ import {
   Archive,
   RotateCcw,
   Tag,
+  Inbox,
 } from "lucide-react";
 import { SiMeta } from "react-icons/si";
 import { useLocation } from "wouter";
@@ -1168,6 +1169,17 @@ export default function SellerCodeManager() {
             <p className="text-muted-foreground mt-0.5 text-sm hidden sm:block">Manage Facebook group seller codes and subscriptions</p>
           </div>
           <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigate("/email-logs")}
+              data-testid="button-email-logs"
+              className="h-9"
+            >
+              <Inbox className="w-4 h-4 sm:mr-2" />
+              <span className="hidden sm:inline">Email Logs</span>
+            </Button>
+
             <Button
               variant="outline"
               size="sm"

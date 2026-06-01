@@ -131,6 +131,46 @@ process.on("unhandledRejection", (reason) => {
 });
 
 (async () => {
+  // Ensure new tables exist (idempotent migrations)
+  try {
+    const { Pool } = await import("pg");
+    const rawUrl = process.env.SUPABASE_DATABASE_URL || process.env.DATABASE_URL || "";
+    if (rawUrl) {
+      const withoutScheme = rawUrl.replace(/^postgresql:\/\//, "");
+      const lastAt = withoutScheme.lastIndexOf("@");
+      const userInfo = withoutScheme.substring(0, lastAt);
+      const hostInfo = withoutScheme.substring(lastAt + 1);
+      const colonInUser = userInfo.indexOf(":");
+      const user = userInfo.substring(0, colonInUser);
+      const password = userInfo.substring(colonInUser + 1);
+      const slashInHost = hostInfo.indexOf("/");
+      const hostPort = slashInHost === -1 ? hostInfo : hostInfo.substring(0, slashInHost);
+      const database = slashInHost === -1 ? "postgres" : hostInfo.substring(slashInHost + 1);
+      const colonInHost = hostPort.lastIndexOf(":");
+      const host = colonInHost === -1 ? hostPort : hostPort.substring(0, colonInHost);
+      const port = colonInHost === -1 ? 5432 : parseInt(hostPort.substring(colonInHost + 1), 10);
+      const migPool = new Pool({ user, password, host, port, database, ssl: { rejectUnauthorized: false }, max: 1 });
+      await migPool.query(`
+        CREATE TABLE IF NOT EXISTS email_logs (
+          id SERIAL PRIMARY KEY,
+          resend_email_id TEXT,
+          recipient_email TEXT NOT NULL,
+          seller_name TEXT NOT NULL,
+          seller_code TEXT NOT NULL DEFAULT '',
+          subject TEXT NOT NULL,
+          email_type TEXT NOT NULL,
+          status TEXT NOT NULL DEFAULT 'sent',
+          sent_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL
+        )
+      `);
+      await migPool.end();
+      console.log("[Migration] email_logs table ready");
+    }
+  } catch (err: any) {
+    console.error("[Migration] Failed to create email_logs table:", err.message);
+  }
+
   if (process.env.NODE_ENV !== "production") {
     await seedDatabase();
   }

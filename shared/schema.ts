@@ -75,12 +75,14 @@ export const sellerApplications = pgTable("seller_applications", {
   status: text("status").notNull().default("pending"),
   createdAt: text("created_at").notNull().default(sql`now()`),
   nidFileUrl: text("nid_file_url"),
+  personalFacebookLink: text("personal_facebook_link"),
 });
 
 export const insertSellerApplicationSchema = createInsertSchema(sellerApplications).pick({
   name: true,
   phone: true,
   facebookLink: true,
+  personalFacebookLink: true,
   duration: true,
   sellerType: true,
   paymentMethod: true,

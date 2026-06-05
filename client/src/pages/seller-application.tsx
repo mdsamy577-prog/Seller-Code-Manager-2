@@ -37,6 +37,7 @@ const applicationFormSchema = z.object({
   name: z.string().min(1, "Name is required"),
   phone: z.string().min(1, "Phone number is required"),
   facebookLink: z.string().url("Must be a valid Facebook profile URL"),
+  personalFacebookLink: z.string().optional(),
   duration: z.enum(["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"]),
   sellerType: z.enum(["personal_facebook_id", "facebook_business_page"]),
   paymentMethod: z.enum(["bkash", "nagad"]),
@@ -49,6 +50,16 @@ const applicationFormSchema = z.object({
     ),
   ]).optional(),
   nidFileUrl: z.string().optional(),
+}).superRefine((data, ctx) => {
+  if (data.sellerType === "facebook_business_page") {
+    if (!data.personalFacebookLink || data.personalFacebookLink.trim() === "") {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "ব্যক্তিগত Facebook ID লিংক দেওয়া আবশ্যক", path: ["personalFacebookLink"] });
+    } else {
+      try { new URL(data.personalFacebookLink); } catch {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: "একটি সঠিক URL দিন", path: ["personalFacebookLink"] });
+      }
+    }
+  }
 });
 
 type ApplicationFormValues = z.infer<typeof applicationFormSchema>;
@@ -88,6 +99,7 @@ export default function SellerApplication() {
       name: "",
       phone: "",
       facebookLink: "",
+      personalFacebookLink: "",
       duration: "1",
       sellerType: "personal_facebook_id",
       paymentMethod: "bkash",
@@ -471,10 +483,31 @@ export default function SellerApplication() {
                             <Input placeholder="https://facebook.com/yourprofile" className="pl-10 h-11 rounded-xl border-border/60 bg-background focus-visible:ring-2 focus-visible:ring-blue-500/25 focus-visible:border-blue-400 transition-all duration-200" {...field} data-testid="input-apply-facebook" />
                           </div>
                         </FormControl>
+                        <p className="text-xs text-muted-foreground leading-relaxed mt-1">যে Facebook ID বা Page-এর জন্য সাবস্ক্রিপশন নিতে চান, তার লিংক দিন।</p>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
+
+                  {sellerType === "facebook_business_page" && (
+                    <FormField
+                      control={form.control}
+                      name="personalFacebookLink"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-sm font-semibold text-foreground/80">পার্সোনাল Facebook ID লিংক</FormLabel>
+                          <FormControl>
+                            <div className="relative">
+                              <SiMeta className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/70" />
+                              <Input placeholder="https://facebook.com/yourpersonalid" className="pl-10 h-11 rounded-xl border-border/60 bg-background focus-visible:ring-2 focus-visible:ring-blue-500/25 focus-visible:border-blue-400 transition-all duration-200" {...field} data-testid="input-apply-personal-facebook" />
+                            </div>
+                          </FormControl>
+                          <p className="text-xs text-muted-foreground leading-relaxed mt-1">যে ব্যক্তিগত Facebook ID দিয়ে এই Business Page পরিচালনা করেন, তার লিংক দিন।</p>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )}
 
                   <div className="flex items-center gap-3 pt-1">
                     <div className="flex-1 h-px bg-gradient-to-r from-transparent via-blue-200 dark:via-blue-800 to-transparent" />

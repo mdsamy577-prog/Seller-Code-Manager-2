@@ -1,0 +1,93 @@
+FACEBOOK LINK SECTION IMPROVEMENT
+
+Please keep the current design, layout, colors, styling, database structure, and all existing functionality exactly as they are. Do NOT modify, remove, or break any existing feature.
+
+Required Changes:
+
+1. Update the field label:
+
+Current:
+Facebook ID / Page Link
+
+New Bengali Label:
+ফেসবুক আইডি / পেজের লিংক
+
+Helper Text (shown below the field):
+যে Facebook ID বা Page-এর জন্য সাবস্ক্রিপশন নিতে চান, তার লিংক দিন।
+
+This helper text should be mobile-friendly, easy to read, and visually aligned with the rest of the form.
+
+---
+
+2. Conditional Field for Business Page
+
+When the user selects:
+
+"ফেসবুক বিজনেস পেজ"
+
+from the "সেলার ধরন নির্বাচন করুন" dropdown, automatically show an additional field below the Facebook Page Link field.
+
+Field Label:
+পার্সোনাল Facebook ID লিংক
+
+Helper Text:
+যে ব্যক্তিগত Facebook ID দিয়ে এই Business Page পরিচালনা করেন, তার লিংক দিন।
+
+---
+
+3. Validation Rules
+
+If "ফেসবুক বিজনেস পেজ" is selected:
+
+- Business Page Link is required.
+- Personal Facebook ID Link is required.
+- The form must NOT submit unless both links are provided.
+
+If "পার্সোনাল ফেসবুক আইডি" is selected:
+
+- Only one Facebook link is required.
+- The Personal Facebook ID Link field should remain hidden.
+- No additional link is needed.
+
+---
+
+4. Admin Panel Display
+
+In the Admin Panel, show both links separately when available.
+
+Example:
+
+Facebook Page Link:
+https://facebook.com/examplepage
+
+Personal Facebook ID Link:
+https://facebook.com/exampleprofile
+
+This allows admins to clearly identify which Business Page was submitted and which Personal Facebook ID manages that page.
+
+---
+
+5. UI & Mobile Experience
+
+- Keep all fields properly aligned.
+- Maintain consistent spacing between labels and inputs.
+- Ensure the helper texts are clearly visible on mobile devices.
+- The additional field should appear smoothly and look like a native part of the existing form.
+- Do not make the form look crowded or confusing.
+
+---
+
+IMPORTANT
+
+Do NOT change:
+
+- Existing design
+- Existing styling
+- Existing colors
+- Existing database logic
+- Existing form flow
+- Existing admin features
+- Existing email functionality
+- Existing validation (except the new Business Page requirement above)
+
+Only add the functionality described above and keep everything else exactly as it is.

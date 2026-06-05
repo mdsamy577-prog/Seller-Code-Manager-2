@@ -150,6 +150,7 @@ process.on("unhandledRejection", (reason) => {
       const host = colonInHost === -1 ? hostPort : hostPort.substring(0, colonInHost);
       const port = colonInHost === -1 ? 5432 : parseInt(hostPort.substring(colonInHost + 1), 10);
       const migPool = new Pool({ user, password, host, port, database, ssl: { rejectUnauthorized: false }, max: 1 });
+      await migPool.query(`ALTER TABLE seller_applications ADD COLUMN IF NOT EXISTS personal_facebook_link TEXT`);
       await migPool.query(`
         CREATE TABLE IF NOT EXISTS email_logs (
           id SERIAL PRIMARY KEY,

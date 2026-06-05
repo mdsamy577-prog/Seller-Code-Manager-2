@@ -630,9 +630,32 @@ export default function SellerApplications() {
                               <TableCell className="font-medium text-xs py-1.5" data-testid={`text-app-name-${app.id}`}>{app.name}</TableCell>
                               <TableCell className="text-xs py-1.5" data-testid={`text-app-phone-${app.id}`}>{app.phone}</TableCell>
                               <TableCell className="py-1.5 w-10 text-center">
-                                <a href={app.facebookLink} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center text-[#1877F2] hover:text-[#0e5bbf] transition-colors" data-testid={`link-app-facebook-${app.id}`}>
-                                  <SiMeta className="h-4 w-4" />
-                                </a>
+                                <div className="flex items-center justify-center gap-1">
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <a href={app.facebookLink} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center text-[#1877F2] hover:text-[#0e5bbf] transition-colors" data-testid={`link-app-facebook-${app.id}`}>
+                                        <SiMeta className="h-4 w-4" />
+                                      </a>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                      <p className="text-xs font-medium">Facebook Page Link</p>
+                                      <p className="text-xs text-muted-foreground max-w-[200px] truncate">{app.facebookLink}</p>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                  {app.personalFacebookLink && (
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <a href={app.personalFacebookLink} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center text-violet-500 hover:text-violet-700 transition-colors" data-testid={`link-app-personal-facebook-${app.id}`}>
+                                          <SiMeta className="h-4 w-4" />
+                                        </a>
+                                      </TooltipTrigger>
+                                      <TooltipContent>
+                                        <p className="text-xs font-medium">Personal Facebook ID Link</p>
+                                        <p className="text-xs text-muted-foreground max-w-[200px] truncate">{app.personalFacebookLink}</p>
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  )}
+                                </div>
                               </TableCell>
                               <TableCell className="py-1.5" data-testid={`text-app-seller-type-${app.id}`}>
                                 <Tooltip>
@@ -713,8 +736,14 @@ export default function SellerApplications() {
                           <div className="flex items-center gap-4 text-xs text-muted-foreground">
                             <a href={app.facebookLink} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-[#1877F2] hover:text-[#0e5bbf]" data-testid={`link-app-facebook-${app.id}`}>
                               <SiMeta className="h-3.5 w-3.5" />
-                              <span>Profile</span>
+                              <span>{app.sellerType === "facebook_business_page" ? "Page Link" : "Profile"}</span>
                             </a>
+                            {app.personalFacebookLink && (
+                              <a href={app.personalFacebookLink} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-violet-500 hover:text-violet-700" data-testid={`link-app-personal-facebook-mobile-${app.id}`}>
+                                <SiMeta className="h-3.5 w-3.5" />
+                                <span>Personal ID</span>
+                              </a>
+                            )}
                             <span data-testid={`text-app-sender-number-${app.id}`}>Sender: {app.senderNumber}</span>
                           </div>
                           {app.nidFileUrl && (

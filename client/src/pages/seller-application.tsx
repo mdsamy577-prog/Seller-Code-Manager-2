@@ -471,6 +471,13 @@ export default function SellerApplication() {
                       </FormItem>
                     )}
                   />
+
+                  <div className="flex items-center gap-3 pt-1">
+                    <div className="flex-1 h-px bg-gradient-to-r from-transparent via-blue-200 dark:via-blue-800 to-transparent" />
+                    <span className="text-[11px] font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-widest px-1">সাবস্ক্রিপশন তথ্য</span>
+                    <div className="flex-1 h-px bg-gradient-to-r from-transparent via-blue-200 dark:via-blue-800 to-transparent" />
+                  </div>
+
                   <FormField
                     control={form.control}
                     name="facebookLink"
@@ -502,18 +509,12 @@ export default function SellerApplication() {
                               <Input placeholder="https://facebook.com/yourpersonalid" className="pl-10 h-11 rounded-xl border-border/60 bg-background focus-visible:ring-2 focus-visible:ring-blue-500/25 focus-visible:border-blue-400 transition-all duration-200" {...field} data-testid="input-apply-personal-facebook" />
                             </div>
                           </FormControl>
-                          <p className="text-xs text-muted-foreground leading-relaxed mt-1">যে ব্যক্তিগত Facebook ID দিয়ে এই Business Page পরিচালনা করেন, তার লিংক দিন।</p>
+                          <p className="text-xs text-muted-foreground leading-relaxed mt-1">যে ব্যক্তিগত Facebook ID দিয়ে এই Page পরিচালনা করেন, তার লিংক দিন।</p>
                           <FormMessage />
                         </FormItem>
                       )}
                     />
                   )}
-
-                  <div className="flex items-center gap-3 pt-1">
-                    <div className="flex-1 h-px bg-gradient-to-r from-transparent via-blue-200 dark:via-blue-800 to-transparent" />
-                    <span className="text-[11px] font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-widest px-1">সাবস্ক্রিপশন তথ্য</span>
-                    <div className="flex-1 h-px bg-gradient-to-r from-transparent via-blue-200 dark:via-blue-800 to-transparent" />
-                  </div>
 
                   <FormField
                     control={form.control}
@@ -600,7 +601,7 @@ export default function SellerApplication() {
                         <FormControl>
                           <div className="relative">
                             <CreditCard className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/70" />
-                            <Input placeholder="যে নাম্বার থেকে টাকা পাঠিয়েছেন সেই নাম্বার লিখুন" className="pl-10 h-11 rounded-xl border-border/60 bg-background focus-visible:ring-2 focus-visible:ring-blue-500/25 focus-visible:border-blue-400 transition-all duration-200" {...field} data-testid="input-apply-sender-number" />
+                            <Input placeholder="পেমেন্ট করা মোবাইল নাম্বার" className="pl-10 h-11 rounded-xl border-border/60 bg-background focus-visible:ring-2 focus-visible:ring-blue-500/25 focus-visible:border-blue-400 transition-all duration-200" {...field} data-testid="input-apply-sender-number" />
                           </div>
                         </FormControl>
                         <FormMessage />

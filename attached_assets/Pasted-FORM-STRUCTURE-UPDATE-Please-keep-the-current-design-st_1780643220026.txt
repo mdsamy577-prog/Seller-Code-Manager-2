@@ -1,0 +1,100 @@
+FORM STRUCTURE UPDATE
+
+Please keep the current design, styling, colors, spacing, validation system, database structure, and all existing functionality exactly as they are.
+
+Do NOT modify anything else except the following changes.
+
+━━━━━━━━━━━━━━━━━━━━━━
+
+1. PERSONAL INFORMATION SECTION
+
+The "ব্যক্তিগত তথ্য" section should contain ONLY:
+
+• NID অনুযায়ী পূর্ণ নাম
+• মোবাইল নাম্বার
+
+Nothing else should remain inside this section.
+
+━━━━━━━━━━━━━━━━━━━━━━
+
+2. SUBSCRIPTION INFORMATION SECTION
+
+Immediately after "ব্যক্তিগত তথ্য", start the "সাবস্ক্রিপশন তথ্য" section.
+
+Move the following field into this section:
+
+• ফেসবুক আইডি / পেজের লিংক
+
+Field Label:
+ফেসবুক আইডি / পেজের লিংক
+
+Helper Text:
+যে Facebook ID বা Page-এর জন্য সাবস্ক্রিপশন নিতে চান, তার লিংক দিন।
+
+━━━━━━━━━━━━━━━━━━━━━━
+
+3. BUSINESS PAGE CONDITIONAL FIELD
+
+If the user selects:
+
+"ফেসবুক বিজনেস পেজ"
+
+Then automatically display an additional field below the Page Link field.
+
+Field Label:
+পার্সোনাল Facebook ID লিংক
+
+Helper Text:
+যে ব্যক্তিগত Facebook ID দিয়ে এই Page পরিচালনা করেন, তার লিংক দিন।
+
+Requirements:
+
+• This field must be mandatory.
+• Form submission must be blocked if this field is empty.
+• This field should only appear when "ফেসবুক বিজনেস পেজ" is selected.
+• If "পার্সোনাল ফেসবুক আইডি" is selected, this field should remain hidden.
+
+━━━━━━━━━━━━━━━━━━━━━━
+
+4. ADMIN PANEL
+
+When Business Page is selected, show both links separately in the Admin Panel:
+
+• Facebook Page Link
+• Personal Facebook ID Link
+
+Admins should clearly see both submitted links.
+
+━━━━━━━━━━━━━━━━━━━━━━
+
+5. PAYMENT NUMBER FIELD TEXT
+
+Current text is too long and gets cut off on mobile devices.
+
+Replace it with:
+
+Label:
+যে নাম্বার থেকে টাকা পাঠানো হয়েছে
+
+Placeholder:
+টাকা পাঠানোর নাম্বার লিখুন
+
+OR
+
+পেমেন্ট করা মোবাইল নাম্বার
+
+Use whichever fits better on mobile without truncation.
+
+━━━━━━━━━━━━━━━━━━━━━━
+
+IMPORTANT
+
+• Do NOT change any other field.
+• Do NOT change any styling.
+• Do NOT change any colors.
+• Do NOT change any spacing outside these sections.
+• Do NOT change any database logic.
+• Do NOT modify existing functionality.
+• Do NOT remove any current feature.
+
+Only perform the updates described above and keep everything else exactly as it is.

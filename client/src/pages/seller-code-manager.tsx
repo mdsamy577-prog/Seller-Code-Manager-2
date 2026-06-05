@@ -558,6 +558,88 @@ function RegistrationLink() {
   );
 }
 
+function PaymentSettings() {
+  const { toast } = useToast();
+  const [bkashNumber, setBkashNumber] = useState("");
+  const [nagadNumber, setNagadNumber] = useState("");
+  const [initialized, setInitialized] = useState(false);
+
+  const { data: paymentSettings, isLoading } = useQuery<{
+    bkashNumber: string;
+    nagadNumber: string;
+  }>({
+    queryKey: ["/api/settings/payment"],
+  });
+
+  useEffect(() => {
+    if (paymentSettings && !initialized) {
+      setBkashNumber(paymentSettings.bkashNumber);
+      setNagadNumber(paymentSettings.nagadNumber);
+      setInitialized(true);
+    }
+  }, [paymentSettings, initialized]);
+
+  const saveMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/settings/payment", { bkashNumber, nagadNumber });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/settings/payment"] });
+      toast({ title: "Payment settings saved" });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
+
+  if (isLoading) return null;
+
+  return (
+    <div className="space-y-3">
+      <p className="text-sm font-semibold">Payment Settings</p>
+      <div className="space-y-2">
+        <label className="text-sm font-medium">bKash Number</label>
+        <div className="flex items-center gap-2">
+          <div className="rounded-full bg-pink-600 px-2 py-0.5 shrink-0">
+            <span className="text-xs font-bold text-white">bKash</span>
+          </div>
+          <Input
+            placeholder="01XXXXXXXXX"
+            value={bkashNumber}
+            onChange={(e) => setBkashNumber(e.target.value)}
+            className="font-mono"
+            data-testid="input-bkash-number"
+          />
+        </div>
+      </div>
+      <div className="space-y-2">
+        <label className="text-sm font-medium">Nagad Number</label>
+        <div className="flex items-center gap-2">
+          <div className="rounded-full bg-orange-600 px-2 py-0.5 shrink-0">
+            <span className="text-xs font-bold text-white">Nagad</span>
+          </div>
+          <Input
+            placeholder="01XXXXXXXXX"
+            value={nagadNumber}
+            onChange={(e) => setNagadNumber(e.target.value)}
+            className="font-mono"
+            data-testid="input-nagad-number"
+          />
+        </div>
+      </div>
+      <Button
+        className="w-full"
+        onClick={() => saveMutation.mutate()}
+        disabled={saveMutation.isPending}
+        data-testid="button-save-payment-settings"
+      >
+        {saveMutation.isPending ? "Saving..." : "Save Payment Settings"}
+      </Button>
+    </div>
+  );
+}
+
 function EmailSettings() {
   const { toast } = useToast();
   const [senderName, setSenderName] = useState("");
@@ -1421,7 +1503,7 @@ export default function SellerCodeManager() {
             <div className="grid grid-cols-4 divide-x">
               {([
                 { key: "registration", icon: Link, label: "Registration Link" },
-                { key: "email", icon: Settings, label: "Email Settings" },
+                { key: "email", icon: Settings, label: "Settings" },
                 { key: "group-rules", icon: BookOpen, label: "Group Rules" },
                 { key: "discount", icon: Tag, label: "Global Discount" },
               ] as const).map(({ key, icon: Icon, label }) => (
@@ -1489,9 +1571,15 @@ export default function SellerCodeManager() {
         <Dialog open={settingsPanel === "email"} onOpenChange={(o) => { if (!o) setSettingsPanel(null); }}>
           <DialogContent className="w-[calc(100vw-2rem)] max-w-sm sm:w-full rounded-xl sm:rounded-lg" aria-describedby={undefined}>
             <DialogHeader>
-              <DialogTitle className="flex items-center gap-2"><Settings className="h-4 w-4" />Email Settings</DialogTitle>
+              <DialogTitle className="flex items-center gap-2"><Settings className="h-4 w-4" />Settings</DialogTitle>
             </DialogHeader>
-            <EmailSettings />
+            <div className="space-y-6 max-h-[70vh] overflow-y-auto pr-1">
+              <PaymentSettings />
+              <div className="border-t pt-4">
+                <p className="text-sm font-semibold mb-3">Email Settings</p>
+                <EmailSettings />
+              </div>
+            </div>
           </DialogContent>
         </Dialog>
 

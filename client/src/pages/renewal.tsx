@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { useDiscount, personalPrices, formatPrice, discountedAmount } from "@/lib/pricing";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -31,9 +31,9 @@ const MONTH_LABELS: Record<string, string> = {
   "9": "৯ মাস", "10": "১০ মাস", "11": "১১ মাস", "12": "১২ মাস",
 };
 
-const PAYMENT_METHODS = [
-  { value: "bkash", label: "বিকাশ", number: "01827259372", color: "pink" },
-  { value: "nagad", label: "নগদ", number: "01972002118", color: "orange" },
+const PAYMENT_METHODS_BASE = [
+  { value: "bkash", label: "বিকাশ", color: "pink" },
+  { value: "nagad", label: "নগদ", color: "orange" },
 ] as const;
 
 function formatDate(dateStr: string): string {
@@ -66,6 +66,17 @@ export default function RenewalPage() {
   const [senderNumber, setSenderNumber] = useState("");
   const [senderError, setSenderError] = useState("");
   const [submitted, setSubmitted] = useState(false);
+
+  const { data: paymentSettings } = useQuery<{ bkashNumber: string; nagadNumber: string }>({
+    queryKey: ["/api/settings/payment"],
+    staleTime: 60_000,
+  });
+  const bkashNumber = paymentSettings?.bkashNumber ?? "01827259372";
+  const nagadNumber = paymentSettings?.nagadNumber ?? "01972002118";
+  const PAYMENT_METHODS = [
+    { value: "bkash" as const, label: "বিকাশ", number: bkashNumber, color: "pink" },
+    { value: "nagad" as const, label: "নগদ", number: nagadNumber, color: "orange" },
+  ];
 
   const discount = useDiscount();
   const selectedPayment = PAYMENT_METHODS.find((p) => p.value === paymentMethod)!;

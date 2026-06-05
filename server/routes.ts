@@ -931,6 +931,31 @@ export async function registerRoutes(
     }
   });
 
+  // Payment Settings (public GET, protected POST)
+  app.get("/api/settings/payment", async (_req, res) => {
+    try {
+      const bkash = await storage.getSetting("BKASH_NUMBER");
+      const nagad = await storage.getSetting("NAGAD_NUMBER");
+      res.json({
+        bkashNumber: bkash || "01827259372",
+        nagadNumber: nagad || "01972002118",
+      });
+    } catch {
+      res.status(500).json({ message: "Failed to fetch payment settings" });
+    }
+  });
+
+  app.post("/api/settings/payment", requireAuth, async (req, res) => {
+    try {
+      const { bkashNumber, nagadNumber } = req.body;
+      if (bkashNumber !== undefined) await storage.setSetting("BKASH_NUMBER", String(bkashNumber).trim());
+      if (nagadNumber !== undefined) await storage.setSetting("NAGAD_NUMBER", String(nagadNumber).trim());
+      res.json({ message: "Payment settings saved" });
+    } catch {
+      res.status(500).json({ message: "Failed to save payment settings" });
+    }
+  });
+
   // Email Logs (protected)
   app.get("/api/email-logs", requireAuth, async (_req, res) => {
     try {

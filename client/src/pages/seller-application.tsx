@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { useDiscount, personalPrices, businessPrices, formatPrice, discountedAmount } from "@/lib/pricing";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -68,6 +68,13 @@ export default function SellerApplication() {
   }, []);
 
   const { toast } = useToast();
+
+  const { data: paymentSettings } = useQuery<{ bkashNumber: string; nagadNumber: string }>({
+    queryKey: ["/api/settings/payment"],
+    staleTime: 60_000,
+  });
+  const bkashNumber = paymentSettings?.bkashNumber ?? "01827259372";
+  const nagadNumber = paymentSettings?.nagadNumber ?? "01972002118";
   const [submitted, setSubmitted] = useState(false);
   const [emailErrorOpen, setEmailErrorOpen] = useState(false);
   const [nidFile, setNidFile] = useState<File | null>(null);
@@ -255,14 +262,14 @@ export default function SellerApplication() {
                     <span className="font-medium">বিকাশ</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="font-mono font-bold text-pink-700 dark:text-pink-400" data-testid="text-bkash-number">01827259372</span>
+                    <span className="font-mono font-bold text-pink-700 dark:text-pink-400" data-testid="text-bkash-number">{bkashNumber}</span>
                     <Button
                       type="button"
                       variant="outline"
                       size="sm"
                       className="h-7 px-2 text-xs border-pink-300 dark:border-pink-800 hover:bg-pink-100 dark:hover:bg-pink-900/30"
                       onClick={() => {
-                        navigator.clipboard.writeText("01827259372");
+                        navigator.clipboard.writeText(bkashNumber);
                         toast({ title: "নাম্বার কপি হয়েছে" });
                       }}
                     >
@@ -279,14 +286,14 @@ export default function SellerApplication() {
                     <span className="font-medium">নগদ</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="font-mono font-bold text-orange-700 dark:text-orange-400" data-testid="text-nagad-number">01972002118</span>
+                    <span className="font-mono font-bold text-orange-700 dark:text-orange-400" data-testid="text-nagad-number">{nagadNumber}</span>
                     <Button
                       type="button"
                       variant="outline"
                       size="sm"
                       className="h-7 px-2 text-xs border-orange-300 dark:border-orange-800 hover:bg-orange-100 dark:hover:bg-orange-900/30"
                       onClick={() => {
-                        navigator.clipboard.writeText("01972002118");
+                        navigator.clipboard.writeText(nagadNumber);
                         toast({ title: "নাম্বার কপি হয়েছে" });
                       }}
                     >

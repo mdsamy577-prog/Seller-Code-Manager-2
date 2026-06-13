@@ -8,7 +8,12 @@ function getResendClient(): Resend | null {
 
 async function getSenderName(): Promise<string> {
   const name = await storage.getSetting("SENDER_NAME");
-  return name || "CPS&S Seller Code";
+  return name || "Seller Code Manager";
+}
+
+async function getSenderEmail(): Promise<string> {
+  const email = await storage.getSetting("SENDER_EMAIL");
+  return email || "noreply@seller-code.co.uk";
 }
 
 async function getReplyEmail(): Promise<string | undefined> {
@@ -55,6 +60,7 @@ export async function sendSellerCodeEmail(
   }
 
   const senderName = await getSenderName();
+  const senderEmail = await getSenderEmail();
   const replyTo = await getReplyEmail();
   const fbUrl = await getFacebookPageUrl();
   const formattedStart = formatDateBangla(startDate);
@@ -98,7 +104,7 @@ export async function sendSellerCodeEmail(
   const subject = `সেলার কোড: ${sellerCode}`;
   try {
     const { data: emailData } = await resend.emails.send({
-      from: `${senderName} <noreply@seller-code.co.uk>`,
+      from: `${senderName} <${senderEmail}>`,
       to: recipientEmail,
       replyTo,
       subject,
@@ -130,6 +136,7 @@ export async function sendExtensionEmail(
   }
 
   const senderName = await getSenderName();
+  const senderEmail = await getSenderEmail();
   const replyTo = await getReplyEmail();
   const fbUrl = await getFacebookPageUrl();
   const formattedOld = formatDateBangla(oldExpiryDate);
@@ -173,7 +180,7 @@ export async function sendExtensionEmail(
   const subject = `সাবস্ক্রিপশন বাড়ানো হয়েছে: ${sellerCode}`;
   try {
     const { data: emailData } = await resend.emails.send({
-      from: `${senderName} <noreply@seller-code.co.uk>`,
+      from: `${senderName} <${senderEmail}>`,
       to: recipientEmail,
       replyTo,
       subject,
@@ -201,6 +208,7 @@ export async function sendReminderEmail(
   }
 
   const senderName = await getSenderName();
+  const senderEmail = await getSenderEmail();
   const replyTo = await getReplyEmail();
   const fbUrl = await getFacebookPageUrl();
   const formattedExpiry = formatDateBangla(expiryDate);
@@ -272,7 +280,7 @@ export async function sendReminderEmail(
 
   try {
     const { data: emailData } = await resend.emails.send({
-      from: `${senderName} <noreply@seller-code.co.uk>`,
+      from: `${senderName} <${senderEmail}>`,
       to: recipientEmail,
       replyTo,
       subject,
@@ -299,6 +307,7 @@ export async function sendRenewalApprovalEmail(
   }
 
   const senderName = await getSenderName();
+  const senderEmail = await getSenderEmail();
   const replyTo = await getReplyEmail();
   const fbUrl = await getFacebookPageUrl();
   const formattedExpiry = formatDateBangla(newExpiryDate);
@@ -336,7 +345,7 @@ export async function sendRenewalApprovalEmail(
   const subject = `সাবস্ক্রিপশন নবায়ন সম্পন্ন: ${sellerCode}`;
   try {
     const { data: emailData } = await resend.emails.send({
-      from: `${senderName} <noreply@seller-code.co.uk>`,
+      from: `${senderName} <${senderEmail}>`,
       to: recipientEmail,
       replyTo,
       subject,
@@ -362,6 +371,7 @@ export async function sendRenewalRejectionEmail(
   }
 
   const senderName = await getSenderName();
+  const senderEmail = await getSenderEmail();
   const replyTo = await getReplyEmail();
   const fbUrl = await getFacebookPageUrl();
 
@@ -395,7 +405,7 @@ export async function sendRenewalRejectionEmail(
   const subject = `নবায়ন আবেদন বাতিল: ${sellerCode}`;
   try {
     const { data: emailData } = await resend.emails.send({
-      from: `${senderName} <noreply@seller-code.co.uk>`,
+      from: `${senderName} <${senderEmail}>`,
       to: recipientEmail,
       replyTo,
       subject,

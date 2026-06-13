@@ -836,10 +836,12 @@ export async function registerRoutes(
   app.get("/api/settings/email", requireAuth, async (_req, res) => {
     try {
       const senderName = await storage.getSetting("SENDER_NAME");
+      const senderEmail = await storage.getSetting("SENDER_EMAIL");
       const replyEmail = await storage.getSetting("REPLY_EMAIL");
       const facebookPageUrl = await storage.getSetting("FACEBOOK_PAGE_URL");
       res.json({
         senderName: senderName || "",
+        senderEmail: senderEmail || "",
         replyEmail: replyEmail || "",
         facebookPageUrl: facebookPageUrl || "",
         hasApiKey: !!process.env.RESEND_API_KEY,
@@ -851,8 +853,9 @@ export async function registerRoutes(
 
   app.post("/api/settings/email", requireAuth, async (req, res) => {
     try {
-      const { senderName, replyEmail, facebookPageUrl } = req.body;
+      const { senderName, senderEmail, replyEmail, facebookPageUrl } = req.body;
       await storage.setSetting("SENDER_NAME", (senderName || "").trim());
+      await storage.setSetting("SENDER_EMAIL", (senderEmail || "").trim());
       await storage.setSetting("REPLY_EMAIL", (replyEmail || "").trim());
       const fbUrl = (facebookPageUrl || "").trim();
       if (fbUrl) {

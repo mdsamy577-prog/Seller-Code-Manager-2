@@ -643,12 +643,16 @@ function PaymentSettings() {
 function EmailSettings() {
   const { toast } = useToast();
   const [senderName, setSenderName] = useState("");
+  const [senderEmail, setSenderEmail] = useState("");
+  const [replyEmail, setReplyEmail] = useState("");
   const [facebookPageUrl, setFacebookPageUrl] = useState("");
   const [testEmail, setTestEmail] = useState("");
   const [initialized, setInitialized] = useState(false);
 
   const { data: emailSettings, isLoading } = useQuery<{
     senderName: string;
+    senderEmail: string;
+    replyEmail: string;
     facebookPageUrl: string;
     hasApiKey: boolean;
   }>({
@@ -658,6 +662,8 @@ function EmailSettings() {
   useEffect(() => {
     if (emailSettings && !initialized) {
       setSenderName(emailSettings.senderName);
+      setSenderEmail(emailSettings.senderEmail || "");
+      setReplyEmail(emailSettings.replyEmail || "");
       setFacebookPageUrl(emailSettings.facebookPageUrl || "");
       setInitialized(true);
     }
@@ -667,6 +673,8 @@ function EmailSettings() {
     mutationFn: async () => {
       const res = await apiRequest("POST", "/api/settings/email", {
         senderName,
+        senderEmail,
+        replyEmail,
         facebookPageUrl,
       });
       return res.json();
@@ -708,14 +716,43 @@ function EmailSettings() {
           )}
         </div>
       </div>
-      <div className="space-y-2">
-        <label className="text-sm font-medium">Sender Name (Optional)</label>
-        <Input
-          placeholder="CPS&S Seller Code"
-          value={senderName}
-          onChange={(e) => setSenderName(e.target.value)}
-        />
+
+      <div className="border rounded-lg p-4 space-y-4 bg-muted/30">
+        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Email Configuration</p>
+        <div className="space-y-2">
+          <label className="text-sm font-medium">Sender Name</label>
+          <Input
+            placeholder="Seller Code Manager"
+            value={senderName}
+            onChange={(e) => setSenderName(e.target.value)}
+            data-testid="input-email-sender-name"
+          />
+          <p className="text-xs text-muted-foreground">Appears as the display name in the recipient's inbox.</p>
+        </div>
+        <div className="space-y-2">
+          <label className="text-sm font-medium">Sender Email</label>
+          <Input
+            placeholder="noreply@yourdomain.com"
+            value={senderEmail}
+            onChange={(e) => setSenderEmail(e.target.value)}
+            type="email"
+            data-testid="input-email-sender-email"
+          />
+          <p className="text-xs text-muted-foreground">Must be from a domain verified in your Resend account.</p>
+        </div>
+        <div className="space-y-2">
+          <label className="text-sm font-medium">Reply-To Email <span className="text-muted-foreground font-normal">(optional)</span></label>
+          <Input
+            placeholder="support@yourdomain.com"
+            value={replyEmail}
+            onChange={(e) => setReplyEmail(e.target.value)}
+            type="email"
+            data-testid="input-email-reply-to"
+          />
+          <p className="text-xs text-muted-foreground">Where replies from recipients will be directed.</p>
+        </div>
       </div>
+
       <div className="space-y-2">
         <label className="text-sm font-medium">Facebook Page URL</label>
         <Input

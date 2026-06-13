@@ -80,6 +80,7 @@ export default function RenewalApplications() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/renewals"] });
       queryClient.invalidateQueries({ queryKey: ["/api/sellers"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/sellers/archived"] });
       toast({ title: "Renewal approved", description: "Seller subscription has been extended." });
     },
     onError: (error: Error) => {

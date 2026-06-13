@@ -38,6 +38,11 @@ async function processEmailSchedule(): Promise<void> {
 
       await storage.markScheduledEmailStatus(entry.id, success ? "sent" : "failed");
 
+      if (success && entry.emailType === "expiry_day") {
+        await storage.softDeleteSeller(seller.id);
+        console.log(`[Scheduler] Auto-archived seller after expiry-day email: ${seller.name} (ID: ${seller.id})`);
+      }
+
       console.log(
         `[Scheduler] ${success ? "✓ Sent" : "✗ Failed"}: ${entry.reminderType} → ${seller.name} (${seller.email})`
       );

@@ -536,17 +536,16 @@ export async function registerRoutes(
       const newExpiryDate = calculateExpiryDate(baseDate, application.duration);
       const oldExpiryDate = seller.expiryDate;
 
-      const updates: { expiryDate: string; renewalStartDate: string; status?: string } = {
+      const updates = {
         expiryDate: newExpiryDate,
         renewalStartDate: oldExpiryDate,
+        status: "active",
       };
-      if (seller.status === "deleted") {
-        updates.status = "active";
-      }
       const updatedSeller = await storage.updateSeller(seller.id, updates);
       const updated = await storage.updateRenewalApplicationStatus(id, "approved");
 
-      console.log(`[renewals] Approved renewal for ${seller.phone}: ${oldExpiryDate} → ${newExpiryDate}${seller.status === "deleted" ? " (restored from archived)" : ""}`);
+      const wasArchived = seller.status === "deleted";
+      console.log(`[renewals] Approved renewal for ${seller.phone}: ${oldExpiryDate} → ${newExpiryDate}${wasArchived ? " (restored from archived)" : ""}`);
 
       if (seller.email) {
         await sendRenewalApprovalEmail(

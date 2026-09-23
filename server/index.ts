@@ -66,11 +66,6 @@ app.use(async (req, _res, next) => {
   const token = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : authHeader;
 
   if (token) {
-    if (token === "preview_bypass_token" || token.startsWith("preview_")) {
-      (req as any).user = { id: "preview-admin", username: "Admin" };
-      (req as any).isAuthenticated = () => true;
-      return next();
-    }
     const verified = verifyAuthToken(token);
     if (verified) {
       (req as any).user = { id: verified.userId, username: verified.username };

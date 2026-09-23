@@ -125,9 +125,10 @@ async function generateSellerCode(joinDate: string, duration: string): Promise<s
   return `${dd}${mm}-${serialStr}${durationCode}`;
 }
 
-function requireAuth(req: Request, _res: Response, next: NextFunction) {
-  if (!req.user) {
-    (req as any).user = { id: "dev-admin", username: "Admin" };
+function requireAuth(req: Request, res: Response, next: NextFunction) {
+  const isAuthenticated = !!(req.isAuthenticated && req.isAuthenticated()) || !!req.user;
+  if (!isAuthenticated) {
+    return res.status(401).json({ message: "Authentication required" });
   }
   return next();
 }
@@ -140,13 +141,24 @@ export async function registerRoutes(
     res.status(200).json({ status: "ok", timestamp: new Date().toISOString() });
   });
 
-  app.get("/api/auth/status", async (_req, res) => {
+  app.get("/api/auth/status", async (req, res) => {
     res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate");
-    res.json({
-      setupRequired: false,
-      authenticated: true,
-      user: { username: "Admin" },
-    });
+    try {
+      const userCount = await storage.getUserCount();
+      const setupRequired = userCount === 0;
+      const isAuthenticated = !!(req.isAuthenticated && req.isAuthenticated()) || !!req.user;
+      res.json({
+        setupRequired,
+        authenticated: isAuthenticated,
+        user: isAuthenticated ? { username: (req.user as any)?.username || "Admin" } : null,
+      });
+    } catch {
+      res.json({
+        setupRequired: false,
+        authenticated: false,
+        user: null,
+      });
+    }
   });
 
   app.post("/api/auth/setup", async (req, res) => {
@@ -187,15 +199,6 @@ export async function registerRoutes(
         return res.json({ message: "Login successful", token, user: { username: user.username } });
       });
     })(req, res, next);
-  });
-
-  app.post("/api/auth/preview-login", (_req, res) => {
-    const token = "preview_bypass_token";
-    return res.json({
-      message: "Preview mode enabled",
-      token,
-      user: { username: "Admin (Preview)" }
-    });
   });
 
   app.post("/api/auth/logout", (req, res) => {
@@ -1163,6 +1166,11 @@ export async function registerRoutes(
       console.error("Resend webhook error:", error);
       res.status(500).json({ message: "Webhook processing failed" });
     }
+  });
+
+  // 404 handler for any unmatched /api routes
+  app.all("/api/{*path}", (_req, res) => {
+    res.status(404).json({ message: "API endpoint not found" });
   });
 
   return httpServer;

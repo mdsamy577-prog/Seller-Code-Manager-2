@@ -17,7 +17,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { LogIn, KeyRound, Eye, EyeOff, LayoutDashboard } from "lucide-react";
+import { LogIn, KeyRound, Eye, EyeOff } from "lucide-react";
 
 const loginSchema = z.object({
   username: z.string().min(1, "Username is required"),
@@ -75,26 +75,6 @@ export default function Login() {
       toast({ title: "Login failed", description: error.message, variant: "destructive" });
     },
   });
-
-  const handlePreviewBypass = async () => {
-    try {
-      const res = await apiRequest("POST", "/api/auth/preview-login");
-      const data = await res.json();
-      if (data?.token) {
-        setAuthToken(data.token);
-      }
-    } catch {
-      setAuthToken("preview_bypass_token");
-    }
-    queryClient.setQueryData(["/api/auth/status"], {
-      setupRequired: false,
-      authenticated: true,
-      user: { username: "Admin (Preview)" },
-    });
-    queryClient.invalidateQueries({ queryKey: ["/api/auth/status"] });
-    toast({ title: "Direct Preview Access", description: "Bypassed sign-in to preview dashboard" });
-    window.location.href = "/admin/dashboard";
-  };
 
   const recoveryMutation = useMutation({
     mutationFn: async (data: RecoveryValues) => {
@@ -185,27 +165,7 @@ export default function Login() {
                   {loginMutation.isPending ? "Signing in..." : "Sign In"}
                 </Button>
 
-                <div className="relative my-3">
-                  <div className="absolute inset-0 flex items-center">
-                    <span className="w-full border-t border-border" />
-                  </div>
-                  <div className="relative flex justify-center text-xs uppercase">
-                    <span className="bg-card px-2 text-muted-foreground text-[10px] tracking-wider font-semibold">Iframe Preview</span>
-                  </div>
-                </div>
-
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="w-full gap-2 border-primary/40 hover:bg-primary/5 hover:border-primary font-medium"
-                  onClick={handlePreviewBypass}
-                  data-testid="button-preview-dashboard"
-                >
-                  <LayoutDashboard className="h-4 w-4 text-primary" />
-                  Preview Dashboard Directly
-                </Button>
-
-                <div className="text-center pt-1">
+                <div className="text-center pt-2">
                   <button
                     type="button"
                     onClick={() => setShowRecovery(true)}

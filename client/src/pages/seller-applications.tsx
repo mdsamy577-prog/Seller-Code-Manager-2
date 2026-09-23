@@ -21,11 +21,6 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import {
   Table,
   TableBody,
   TableCell,
@@ -33,16 +28,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 
 type Tab = "applications" | "renewals";
@@ -647,41 +632,38 @@ export default function SellerApplications() {
                               <TableCell className="text-xs py-1.5" data-testid={`text-app-phone-${app.id}`}>{app.phone}</TableCell>
                               <TableCell className="py-1.5 w-10 text-center">
                                 <div className="flex items-center justify-center gap-1">
-                                  <Tooltip>
-                                    <TooltipTrigger asChild>
-                                      <a href={app.facebookLink} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center text-[#1877F2] hover:text-[#0e5bbf] transition-colors" data-testid={`link-app-facebook-${app.id}`}>
-                                        <SiMeta className="h-4 w-4" />
-                                      </a>
-                                    </TooltipTrigger>
-                                    <TooltipContent>
-                                      <p className="text-xs font-medium">Facebook Page Link</p>
-                                      <p className="text-xs text-muted-foreground max-w-[200px] truncate">{app.facebookLink}</p>
-                                    </TooltipContent>
-                                  </Tooltip>
+                                  <a
+                                    href={app.facebookLink}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center justify-center text-[#1877F2] hover:text-[#0e5bbf] transition-colors"
+                                    title={`Facebook Page Link: ${app.facebookLink}`}
+                                    data-testid={`link-app-facebook-${app.id}`}
+                                  >
+                                    <SiMeta className="h-4 w-4" />
+                                  </a>
                                   {app.personalFacebookLink && (
-                                    <Tooltip>
-                                      <TooltipTrigger asChild>
-                                        <a href={app.personalFacebookLink} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center text-violet-500 hover:text-violet-700 transition-colors" data-testid={`link-app-personal-facebook-${app.id}`}>
-                                          <SiMeta className="h-4 w-4" />
-                                        </a>
-                                      </TooltipTrigger>
-                                      <TooltipContent>
-                                        <p className="text-xs font-medium">Personal Facebook ID Link</p>
-                                        <p className="text-xs text-muted-foreground max-w-[200px] truncate">{app.personalFacebookLink}</p>
-                                      </TooltipContent>
-                                    </Tooltip>
+                                    <a
+                                      href={app.personalFacebookLink}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="inline-flex items-center justify-center text-violet-500 hover:text-violet-700 transition-colors"
+                                      title={`Personal Facebook ID Link: ${app.personalFacebookLink}`}
+                                      data-testid={`link-app-personal-facebook-${app.id}`}
+                                    >
+                                      <SiMeta className="h-4 w-4" />
+                                    </a>
                                   )}
                                 </div>
                               </TableCell>
                               <TableCell className="py-1.5" data-testid={`text-app-seller-type-${app.id}`}>
-                                <Tooltip>
-                                  <TooltipTrigger>
-                                    <Badge variant="secondary" className="no-default-active-elevate text-xs cursor-default">
-                                      {sellerTypeShortLabels[app.sellerType] || app.sellerType}
-                                    </Badge>
-                                  </TooltipTrigger>
-                                  <TooltipContent><p>{sellerTypeLabels[app.sellerType] || app.sellerType}</p></TooltipContent>
-                                </Tooltip>
+                                <Badge
+                                  variant="secondary"
+                                  className="no-default-active-elevate text-xs cursor-default"
+                                  title={sellerTypeLabels[app.sellerType] || app.sellerType}
+                                >
+                                  {sellerTypeShortLabels[app.sellerType] || app.sellerType}
+                                </Badge>
                               </TableCell>
                               <TableCell className="py-1.5 w-16" data-testid={`text-app-duration-${app.id}`}>
                                 <Badge variant="secondary" className="no-default-active-elevate text-xs">{durationLabels[app.duration] || app.duration}</Badge>
@@ -797,26 +779,46 @@ export default function SellerApplications() {
         {/* Renewals Tab */}
         {activeTab === "renewals" && <RenewalsTab />}
 
-        <AlertDialog open={deleteId !== null} onOpenChange={() => setDeleteId(null)}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Are you sure you want to delete this seller application?</AlertDialogTitle>
-              <AlertDialogDescription>
-                This action cannot be undone.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction
-                onClick={() => deleteId !== null && deleteMutation.mutate(deleteId)}
-                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                data-testid="button-confirm-delete"
-              >
-                Delete
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+        {deleteId !== null && (
+          <div
+            className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
+            onClick={() => setDeleteId(null)}
+            data-testid="overlay-delete-modal"
+          >
+            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+            <div
+              className="relative z-10 w-full max-w-md bg-card text-card-foreground border border-border rounded-xl shadow-2xl p-6 space-y-4"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="space-y-2">
+                <h3 className="text-lg font-semibold text-foreground">
+                  Are you sure you want to delete this seller application?
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                  This action cannot be undone.
+                </p>
+              </div>
+              <div className="flex items-center justify-end gap-3 pt-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setDeleteId(null)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  variant="destructive"
+                  onClick={() => {
+                    if (deleteId !== null) deleteMutation.mutate(deleteId);
+                  }}
+                  disabled={deleteMutation.isPending}
+                  data-testid="button-confirm-delete"
+                >
+                  Delete
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

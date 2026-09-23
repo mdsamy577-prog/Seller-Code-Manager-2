@@ -491,10 +491,6 @@ export default function SellerApplication() {
                           {/* Option 1: Personal Facebook ID */}
                           <label
                             htmlFor="seller-type-personal"
-                            onClick={() => {
-                              field.onChange("personal_facebook_id");
-                              form.setValue("personalFacebookLink", "");
-                            }}
                             className={`relative flex items-center gap-3 p-3.5 sm:p-4 rounded-xl border-2 cursor-pointer transition-all duration-200 select-none ${
                               field.value === "personal_facebook_id"
                                 ? "border-blue-600 bg-blue-50/80 dark:bg-blue-950/40 text-blue-950 dark:text-blue-100 shadow-sm ring-2 ring-blue-500/20"
@@ -514,7 +510,7 @@ export default function SellerApplication() {
                               }}
                               className="h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500 accent-blue-600 cursor-pointer shrink-0"
                             />
-                            <span className="cursor-pointer text-sm font-semibold flex-1 leading-snug">
+                            <span className="text-sm font-semibold flex-1 leading-snug">
                               পার্সোনাল ফেসবুক আইডি
                             </span>
                           </label>
@@ -522,9 +518,6 @@ export default function SellerApplication() {
                           {/* Option 2: Facebook Business Page */}
                           <label
                             htmlFor="seller-type-business"
-                            onClick={() => {
-                              field.onChange("facebook_business_page");
-                            }}
                             className={`relative flex items-center gap-3 p-3.5 sm:p-4 rounded-xl border-2 cursor-pointer transition-all duration-200 select-none ${
                               field.value === "facebook_business_page"
                                 ? "border-blue-600 bg-blue-50/80 dark:bg-blue-950/40 text-blue-950 dark:text-blue-100 shadow-sm ring-2 ring-blue-500/20"
@@ -543,7 +536,7 @@ export default function SellerApplication() {
                               }}
                               className="h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500 accent-blue-600 cursor-pointer shrink-0"
                             />
-                            <span className="cursor-pointer text-sm font-semibold flex-1 leading-snug">
+                            <span className="text-sm font-semibold flex-1 leading-snug">
                               ফেসবুক বিজনেস পেজ
                             </span>
                           </label>

@@ -15,7 +15,6 @@ import {
   ArrowRight,
   FileCheck,
   AlertTriangle,
-  LogIn,
   Sparkles,
   Calendar,
   X,
@@ -207,20 +206,8 @@ export default function PublicDirectory() {
           {/* Action Buttons */}
           <div className="flex items-center gap-2">
             <Link href="/apply">
-              <Button size="sm" className="hidden sm:inline-flex text-xs h-9 font-semibold rounded-lg">
+              <Button size="sm" className="text-xs h-9 font-semibold rounded-lg shadow-xs">
                 আবেদন করুন
-              </Button>
-            </Link>
-            <Link href="/admin/login">
-              <Button
-                variant="outline"
-                size="sm"
-                className="text-xs h-9 gap-1.5 font-medium rounded-lg"
-                data-testid="button-admin-portal-link"
-              >
-                <LogIn className="w-3.5 h-3.5" />
-                <span className="hidden xs:inline">অ্যাডমিন</span>
-                <span>লগইন</span>
               </Button>
             </Link>
 
@@ -764,11 +751,17 @@ export default function PublicDirectory() {
             </div>
           </div>
 
-          <div className="mt-10 sm:mt-12 text-center">
-            <Link href="/apply">
-              <Button size="lg" className="rounded-xl px-8 h-12 text-sm sm:text-base font-semibold gap-2 shadow-md">
-                <FileCheck className="w-4 h-4" />
-                <span>সেলার হিসেবে আবেদন করুন</span>
+          <div className="mt-10 sm:mt-12 flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 max-w-md mx-auto sm:max-w-none px-2">
+            <Link href="/apply" className="w-full sm:w-auto">
+              <Button size="lg" className="w-full sm:w-auto rounded-xl px-7 h-12 text-sm sm:text-base font-semibold gap-2.5 shadow-md bg-primary hover:bg-primary/90 transition-all duration-200" data-testid="button-join-as-seller">
+                <FileCheck className="w-5 h-5 shrink-0" />
+                <span>সেলার হিসেবে জয়েন করুন</span>
+              </Button>
+            </Link>
+            <Link href="/renew" className="w-full sm:w-auto">
+              <Button size="lg" variant="outline" className="w-full sm:w-auto rounded-xl px-7 h-12 text-sm sm:text-base font-semibold gap-2.5 border-2 border-primary/30 text-primary hover:bg-primary/10 hover:border-primary transition-all duration-200" data-testid="button-renew-seller-code">
+                <RotateCw className="w-4 h-4 shrink-0" />
+                <span>কোড নবায়ন করুন</span>
               </Button>
             </Link>
           </div>
@@ -788,9 +781,6 @@ export default function PublicDirectory() {
             <a href="#directory" className="hover:text-white transition-colors">সেলার তালিকা</a>
             <Link href="/apply" className="hover:text-white transition-colors">নতুন আবেদন</Link>
             <Link href="/renew" className="hover:text-white transition-colors">নবায়ন পোর্টাল</Link>
-            <Link href="/admin/login" className="hover:text-white transition-colors text-slate-500 hover:text-slate-300">
-              অ্যাডমিন পোর্টাল
-            </Link>
           </div>
 
           <p className="text-slate-500 text-center sm:text-right">

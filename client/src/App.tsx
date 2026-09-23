@@ -1,7 +1,7 @@
-import React, { Component, type ErrorInfo, type ReactNode } from "react";
-import { Switch, Route } from "wouter";
+import React, { Component, useEffect, type ErrorInfo, type ReactNode } from "react";
+import { Switch, Route, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
-import { QueryClientProvider } from "@tanstack/react-query";
+import { QueryClientProvider, useQuery } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/not-found";
@@ -65,6 +65,37 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
   }
 }
 
+function ProtectedRoute({ component: Component }: { component: React.ComponentType }) {
+  const [, navigate] = useLocation();
+  const { data: authStatus, isLoading } = useQuery<{ authenticated: boolean; setupRequired: boolean }>({
+    queryKey: ["/api/auth/status"],
+  });
+
+  useEffect(() => {
+    if (!isLoading && authStatus) {
+      if (authStatus.setupRequired) {
+        navigate("/admin/setup");
+      } else if (!authStatus.authenticated) {
+        navigate("/admin/login");
+      }
+    }
+  }, [authStatus, isLoading, navigate]);
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+      </div>
+    );
+  }
+
+  if (!authStatus?.authenticated) {
+    return null;
+  }
+
+  return <Component />;
+}
+
 function AppRoutes() {
   usePWA();
 
@@ -77,21 +108,20 @@ function AppRoutes() {
       <Route path="/apply" component={SellerApplication} />
       <Route path="/renew" component={RenewalPage} />
 
-      {/* Admin Dedicated Routes */}
+      {/* Admin Dedicated Routes (Direct entry by typing URL) */}
       <Route path="/admin/login" component={Login} />
-      <Route path="/admin/dashboard" component={SellerCodeManager} />
-      <Route path="/admin/applications" component={SellerApplications} />
-      <Route path="/admin/renewals" component={RenewalApplications} />
-      <Route path="/admin/email-logs" component={EmailLogsPage} />
       <Route path="/admin/setup" component={AdminSetup} />
-      <Route path="/admin" component={SellerCodeManager} />
+      <Route path="/admin/dashboard">{() => <ProtectedRoute component={SellerCodeManager} />}</Route>
+      <Route path="/admin/applications">{() => <ProtectedRoute component={SellerApplications} />}</Route>
+      <Route path="/admin/renewals">{() => <ProtectedRoute component={RenewalApplications} />}</Route>
+      <Route path="/admin/email-logs">{() => <ProtectedRoute component={EmailLogsPage} />}</Route>
+      <Route path="/admin">{() => <ProtectedRoute component={SellerCodeManager} />}</Route>
 
-      {/* Legacy / Direct Aliases */}
-      <Route path="/dashboard" component={SellerCodeManager} />
-      <Route path="/preview" component={SellerCodeManager} />
-      <Route path="/applications" component={SellerApplications} />
-      <Route path="/renewals" component={RenewalApplications} />
-      <Route path="/email-logs" component={EmailLogsPage} />
+      {/* Direct Aliases - strictly authenticated */}
+      <Route path="/dashboard">{() => <ProtectedRoute component={SellerCodeManager} />}</Route>
+      <Route path="/applications">{() => <ProtectedRoute component={SellerApplications} />}</Route>
+      <Route path="/renewals">{() => <ProtectedRoute component={RenewalApplications} />}</Route>
+      <Route path="/email-logs">{() => <ProtectedRoute component={EmailLogsPage} />}</Route>
       <Route path="/login" component={Login} />
       <Route path="/setup" component={AdminSetup} />
 

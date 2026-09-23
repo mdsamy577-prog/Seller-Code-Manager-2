@@ -34,14 +34,14 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
 const applicationFormSchema = z.object({
-  name: z.string().min(1, "Name is required"),
-  phone: z.string().min(1, "Phone number is required"),
-  facebookLink: z.string().url("Must be a valid Facebook profile URL"),
+  name: z.string().min(1, "নাম দেওয়া আবশ্যক"),
+  phone: z.string().min(1, "মোবাইল নাম্বার দেওয়া আবশ্যক"),
+  facebookLink: z.string().min(1, "ফেসবুক লিংক দেওয়া আবশ্যক").url("একটি সঠিক Facebook URL দিন (যেমন: https://facebook.com/...)"),
   personalFacebookLink: z.string().optional(),
   duration: z.enum(["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"]),
   sellerType: z.enum(["personal_facebook_id", "facebook_business_page"]),
   paymentMethod: z.enum(["bkash", "nagad"]),
-  senderNumber: z.string().min(1, "Sender number is required"),
+  senderNumber: z.string().min(1, "যে নাম্বার থেকে টাকা পাঠিয়েছেন তা লিখুন"),
   email: z.union([
     z.literal(""),
     z.string().regex(
@@ -53,10 +53,10 @@ const applicationFormSchema = z.object({
 }).superRefine((data, ctx) => {
   if (data.sellerType === "facebook_business_page") {
     if (!data.personalFacebookLink || data.personalFacebookLink.trim() === "") {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "ব্যক্তিগত Facebook ID লিংক দেওয়া আবশ্যক", path: ["personalFacebookLink"] });
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "আপনার পার্সোনাল ফেসবুক আইডি লিংক দেওয়া আবশ্যক", path: ["personalFacebookLink"] });
     } else {
       try { new URL(data.personalFacebookLink); } catch {
-        ctx.addIssue({ code: z.ZodIssueCode.custom, message: "একটি সঠিক URL দিন", path: ["personalFacebookLink"] });
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: "একটি সঠিক URL দিন (যেমন: https://facebook.com/...)", path: ["personalFacebookLink"] });
       }
     }
   }
@@ -478,65 +478,166 @@ export default function SellerApplication() {
                     <div className="flex-1 h-px bg-gradient-to-r from-transparent via-blue-200 dark:via-blue-800 to-transparent" />
                   </div>
 
-                  <FormField
-                    control={form.control}
-                    name="facebookLink"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-sm font-semibold text-foreground/80">ফেসবুক আইডি / পেজের লিংক</FormLabel>
-                        <FormControl>
-                          <div className="relative">
-                            <SiMeta className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/70" />
-                            <Input placeholder="https://facebook.com/yourprofile" className="pl-10 h-11 rounded-xl border-border/60 bg-background focus-visible:ring-2 focus-visible:ring-blue-500/25 focus-visible:border-blue-400 transition-all duration-200" {...field} data-testid="input-apply-facebook" />
-                          </div>
-                        </FormControl>
-                        <p className="text-xs text-muted-foreground leading-relaxed mt-1">যে Facebook ID বা Page-এর জন্য সাবস্ক্রিপশন নিতে চান, তার লিংক দিন।</p>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  {sellerType === "facebook_business_page" && (
-                    <FormField
-                      control={form.control}
-                      name="personalFacebookLink"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-sm font-semibold text-foreground/80">পার্সোনাল Facebook ID লিংক</FormLabel>
-                          <FormControl>
-                            <div className="relative">
-                              <SiMeta className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/70" />
-                              <Input placeholder="https://facebook.com/yourpersonalid" className="pl-10 h-11 rounded-xl border-border/60 bg-background focus-visible:ring-2 focus-visible:ring-blue-500/25 focus-visible:border-blue-400 transition-all duration-200" {...field} data-testid="input-apply-personal-facebook" />
-                            </div>
-                          </FormControl>
-                          <p className="text-xs text-muted-foreground leading-relaxed mt-1">যে ব্যক্তিগত Facebook ID দিয়ে এই Page পরিচালনা করেন, তার লিংক দিন।</p>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  )}
-
+                  {/* 1. Seller Type Selection (Standard Native Radio Cards) */}
                   <FormField
                     control={form.control}
                     name="sellerType"
                     render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-sm font-semibold text-foreground/80">সেলার ধরন নির্বাচন করুন</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                          <FormControl>
-                            <SelectTrigger className="h-11 rounded-xl border-border/60 focus:ring-2 focus:ring-blue-500/25 focus:border-blue-400 transition-all duration-200" data-testid="select-apply-seller-type">
-                              <SelectValue placeholder="সেলার ধরন নির্বাচন করুন" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="personal_facebook_id">পার্সোনাল ফেসবুক আইডি</SelectItem>
-                            <SelectItem value="facebook_business_page">ফেসবুক বিজনেস পেজ</SelectItem>
-                          </SelectContent>
-                        </Select>
+                      <FormItem className="space-y-2">
+                        <FormLabel className="text-sm font-semibold text-foreground/80">
+                          সেলারের ধরন নির্বাচন করুন
+                        </FormLabel>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3" data-testid="radio-group-seller-type">
+                          {/* Option 1: Personal Facebook ID */}
+                          <label
+                            htmlFor="seller-type-personal"
+                            onClick={() => {
+                              field.onChange("personal_facebook_id");
+                              form.setValue("personalFacebookLink", "");
+                            }}
+                            className={`relative flex items-center gap-3 p-3.5 sm:p-4 rounded-xl border-2 cursor-pointer transition-all duration-200 select-none ${
+                              field.value === "personal_facebook_id"
+                                ? "border-blue-600 bg-blue-50/80 dark:bg-blue-950/40 text-blue-950 dark:text-blue-100 shadow-sm ring-2 ring-blue-500/20"
+                                : "border-border/70 bg-card hover:border-slate-300 dark:hover:border-slate-700 hover:bg-slate-50/50 dark:hover:bg-slate-900/50 text-foreground"
+                            }`}
+                            data-testid="radio-card-personal"
+                          >
+                            <input
+                              type="radio"
+                              id="seller-type-personal"
+                              name="sellerType"
+                              value="personal_facebook_id"
+                              checked={field.value === "personal_facebook_id"}
+                              onChange={() => {
+                                field.onChange("personal_facebook_id");
+                                form.setValue("personalFacebookLink", "");
+                              }}
+                              className="h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500 accent-blue-600 cursor-pointer shrink-0"
+                            />
+                            <span className="cursor-pointer text-sm font-semibold flex-1 leading-snug">
+                              পার্সোনাল ফেসবুক আইডি
+                            </span>
+                          </label>
+
+                          {/* Option 2: Facebook Business Page */}
+                          <label
+                            htmlFor="seller-type-business"
+                            onClick={() => {
+                              field.onChange("facebook_business_page");
+                            }}
+                            className={`relative flex items-center gap-3 p-3.5 sm:p-4 rounded-xl border-2 cursor-pointer transition-all duration-200 select-none ${
+                              field.value === "facebook_business_page"
+                                ? "border-blue-600 bg-blue-50/80 dark:bg-blue-950/40 text-blue-950 dark:text-blue-100 shadow-sm ring-2 ring-blue-500/20"
+                                : "border-border/70 bg-card hover:border-slate-300 dark:hover:border-slate-700 hover:bg-slate-50/50 dark:hover:bg-slate-900/50 text-foreground"
+                            }`}
+                            data-testid="radio-card-business"
+                          >
+                            <input
+                              type="radio"
+                              id="seller-type-business"
+                              name="sellerType"
+                              value="facebook_business_page"
+                              checked={field.value === "facebook_business_page"}
+                              onChange={() => {
+                                field.onChange("facebook_business_page");
+                              }}
+                              className="h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500 accent-blue-600 cursor-pointer shrink-0"
+                            />
+                            <span className="cursor-pointer text-sm font-semibold flex-1 leading-snug">
+                              ফেসবুক বিজনেস পেজ
+                            </span>
+                          </label>
+                        </div>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
+
+                  {/* 2. Dynamic Link Fields Below Selection */}
+                  {sellerType === "personal_facebook_id" ? (
+                    <FormField
+                      control={form.control}
+                      name="facebookLink"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-sm font-semibold text-foreground/80">
+                            পার্সোনাল ফেসবুক প্রোফাইল লিংক
+                          </FormLabel>
+                          <FormControl>
+                            <div className="relative">
+                              <SiMeta className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/70" />
+                              <Input
+                                placeholder="https://facebook.com/yourprofile"
+                                className="pl-10 h-11 rounded-xl border-border/60 bg-background focus-visible:ring-2 focus-visible:ring-blue-500/25 focus-visible:border-blue-400 transition-all duration-200"
+                                {...field}
+                                data-testid="input-apply-facebook"
+                              />
+                            </div>
+                          </FormControl>
+                          <p className="text-xs text-muted-foreground leading-relaxed mt-1">
+                            আপনার পার্সোনাল ফেসবুক প্রোফাইলের সঠিক লিংক দিন।
+                          </p>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  ) : (
+                    <>
+                      <FormField
+                        control={form.control}
+                        name="facebookLink"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-sm font-semibold text-foreground/80">
+                              ফেসবুক বিজনেস পেজ লিংক
+                            </FormLabel>
+                            <FormControl>
+                              <div className="relative">
+                                <SiMeta className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/70" />
+                                <Input
+                                  placeholder="https://facebook.com/yourbusinesspage"
+                                  className="pl-10 h-11 rounded-xl border-border/60 bg-background focus-visible:ring-2 focus-visible:ring-blue-500/25 focus-visible:border-blue-400 transition-all duration-200"
+                                  {...field}
+                                  data-testid="input-apply-facebook"
+                                />
+                              </div>
+                            </FormControl>
+                            <p className="text-xs text-muted-foreground leading-relaxed mt-1">
+                              যে ফেসবুক বিজনেস পেজের জন্য সাবস্ক্রিপশন নিতে চান, তার লিংক দিন।
+                            </p>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="personalFacebookLink"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-sm font-semibold text-foreground/80">
+                              আপনার পার্সোনাল ফেসবুক আইডি লিংক
+                            </FormLabel>
+                            <FormControl>
+                              <div className="relative">
+                                <SiMeta className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/70" />
+                                <Input
+                                  placeholder="https://facebook.com/yourpersonalid"
+                                  className="pl-10 h-11 rounded-xl border-border/60 bg-background focus-visible:ring-2 focus-visible:ring-blue-500/25 focus-visible:border-blue-400 transition-all duration-200"
+                                  {...field}
+                                  data-testid="input-apply-personal-facebook"
+                                />
+                              </div>
+                            </FormControl>
+                            <p className="text-xs text-muted-foreground leading-relaxed mt-1">
+                              যে ব্যক্তিগত ফেসবুক আইডি দিয়ে এই পেজ পরিচালনা করেন, তার লিংক দিন।
+                            </p>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </>
+                  )}
                   <FormField
                     control={form.control}
                     name="duration"

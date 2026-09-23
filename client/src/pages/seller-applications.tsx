@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useLocation } from "wouter";
 import type { SellerApplication, SellerRenewalApplication } from "@shared/schema";
 import {
   CheckCircle2,
@@ -13,6 +14,7 @@ import {
   Download,
   X,
   RefreshCw,
+  ArrowLeft,
 } from "lucide-react";
 import { SiMeta } from "react-icons/si";
 import { Button } from "@/components/ui/button";
@@ -424,6 +426,7 @@ function RenewalsTab() {
 
 export default function SellerApplications() {
   const { toast } = useToast();
+  const [, navigate] = useLocation();
   const initialTab = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("tab") === "renewals" ? "renewals" : "applications";
   const [activeTab, setActiveTab] = useState<Tab>(initialTab as Tab);
 
@@ -512,9 +515,21 @@ export default function SellerApplications() {
       )}
 
       <div className="w-full max-w-[1400px] mx-auto p-3 sm:p-4 space-y-4">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-bold tracking-tight" data-testid="text-applications-title">Seller Applications</h1>
-          <p className="text-muted-foreground mt-1 text-sm">Review and manage seller applications and renewals</p>
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight" data-testid="text-applications-title">Seller Applications</h1>
+            <p className="text-muted-foreground mt-1 text-sm">Review and manage seller applications and renewals</p>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => navigate("/admin/dashboard")}
+            className="h-9 shrink-0"
+            data-testid="button-back-to-dashboard"
+          >
+            <ArrowLeft className="w-4 h-4 sm:mr-2" />
+            <span className="hidden sm:inline">Dashboard</span>
+          </Button>
         </div>
 
         {/* Tab Bar */}

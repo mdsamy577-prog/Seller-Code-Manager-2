@@ -2,7 +2,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useMutation } from "@tanstack/react-query";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { apiRequest, queryClient, setAuthToken } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -46,9 +46,17 @@ export default function AdminSetup() {
       });
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      if (data?.token) {
+        setAuthToken(data.token);
+      }
+      queryClient.setQueryData(["/api/auth/status"], {
+        setupRequired: false,
+        authenticated: true,
+        user: data?.user || { username: "admin" },
+      });
       queryClient.invalidateQueries({ queryKey: ["/api/auth/status"] });
-      toast({ title: "Admin account created", description: "You can now sign in." });
+      toast({ title: "Admin account created", description: "Welcome to the dashboard!" });
     },
     onError: (error: Error) => {
       toast({ title: "Setup failed", description: error.message, variant: "destructive" });

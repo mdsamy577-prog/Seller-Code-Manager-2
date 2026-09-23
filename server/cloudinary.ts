@@ -52,6 +52,11 @@ export async function uploadNidFile(
 ): Promise<string> {
   const stampedBuffer = await stampTextOnImage(fileBuffer, sellerName, phone);
 
+  if (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) {
+    console.log("[Cloudinary] Credentials not set — using base64 data URI fallback");
+    return `data:image/jpeg;base64,${stampedBuffer.toString("base64")}`;
+  }
+
   return new Promise((resolve, reject) => {
     const uploadStream = cloudinary.uploader.upload_stream(
       {

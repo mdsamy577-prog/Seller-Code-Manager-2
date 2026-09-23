@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { queryClient, apiRequest } from "@/lib/queryClient";
+import { queryClient, apiRequest, setAuthToken } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { Seller, SellerApplication, SellerRenewalApplication } from "@shared/schema";
 import { format, differenceInDays, parseISO } from "date-fns";
@@ -1102,13 +1102,33 @@ export default function SellerCodeManager() {
       await apiRequest("POST", "/api/auth/logout");
     },
     onSuccess: () => {
-      queryClient.clear();
+      setAuthToken(null);
+      queryClient.setQueryData(["/api/auth/status"], {
+        setupRequired: false,
+        authenticated: false,
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/status"] });
       toast({ title: "Logged out successfully" });
+      navigate("/admin/login");
     },
     onError: (error: Error) => {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     },
   });
+
+  const { data: authStatus } = useQuery<{ authenticated: boolean; setupRequired: boolean }>({
+    queryKey: ["/api/auth/status"],
+  });
+
+  useEffect(() => {
+    if (authStatus) {
+      if (authStatus.setupRequired) {
+        navigate("/admin/setup");
+      } else if (!authStatus.authenticated) {
+        navigate("/admin/login");
+      }
+    }
+  }, [authStatus, navigate]);
 
   const { data: sellers = [], isLoading } = useQuery<Seller[]>({
     queryKey: ["/api/sellers"],
@@ -1291,7 +1311,19 @@ export default function SellerCodeManager() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => navigate("/email-logs")}
+              onClick={() => window.open("/", "_blank")}
+              data-testid="button-view-public-portal"
+              className="h-9 hidden md:inline-flex text-xs"
+              title="Open public seller directory"
+            >
+              <ExternalLink className="w-4 h-4 sm:mr-2 text-primary" />
+              <span className="hidden sm:inline">Public Directory</span>
+            </Button>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigate("/admin/email-logs")}
               data-testid="button-email-logs"
               className="h-9"
             >
@@ -1302,7 +1334,7 @@ export default function SellerCodeManager() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => navigate(pendingRenewalsCount > 0 ? "/applications?tab=renewals" : "/applications")}
+              onClick={() => navigate(pendingRenewalsCount > 0 ? "/admin/applications?tab=renewals" : "/admin/applications")}
               data-testid="button-seller-applications"
               className="h-9"
             >

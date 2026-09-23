@@ -9,7 +9,7 @@ interface ScheduleEntry {
 }
 
 function buildEmailSchedule(seller: Seller, referenceTime: Date): ScheduleEntry[] {
-  if (!seller.email) return [];
+  if (!seller.email || seller.status !== "active") return [];
 
   const hours = referenceTime.getUTCHours();
   const minutes = referenceTime.getUTCMinutes();
@@ -32,7 +32,7 @@ function buildEmailSchedule(seller: Seller, referenceTime: Date): ScheduleEntry[
 }
 
 export async function scheduleSellerEmails(seller: Seller, referenceTime: Date = new Date()): Promise<void> {
-  if (!seller.email) return;
+  if (!seller.email || seller.status !== "active") return;
 
   await storage.cancelPendingEmailsForSeller(seller.id);
 
@@ -40,7 +40,5 @@ export async function scheduleSellerEmails(seller: Seller, referenceTime: Date =
   if (entries.length > 0) {
     await storage.createEmailScheduleEntries(entries);
     console.log(`[Scheduler] Scheduled expiry-day email for seller: ${seller.name} (expiry: ${seller.expiryDate})`);
-  } else {
-    console.log(`[Scheduler] No future expiry-day email to schedule for seller: ${seller.name} (expiry: ${seller.expiryDate})`);
   }
 }

@@ -99,7 +99,7 @@ export default function EmailLogsPage() {
         {/* Header */}
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
-            <Button variant="outline" size="sm" onClick={() => navigate("/")} data-testid="button-back-dashboard" className="h-9 shrink-0">
+            <Button variant="outline" size="sm" onClick={() => navigate("/admin/dashboard")} data-testid="button-back-dashboard" className="h-9 shrink-0">
               <ArrowLeft className="h-4 w-4 sm:mr-2" />
               <span className="hidden sm:inline">Dashboard</span>
             </Button>

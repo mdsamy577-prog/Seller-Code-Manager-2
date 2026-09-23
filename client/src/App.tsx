@@ -1,9 +1,11 @@
-import { Switch, Route, useLocation } from "wouter";
-import { queryClient, getQueryFn } from "./lib/queryClient";
-import { QueryClientProvider, useQuery } from "@tanstack/react-query";
+import React, { Component, type ErrorInfo, type ReactNode } from "react";
+import { Switch, Route } from "wouter";
+import { queryClient } from "./lib/queryClient";
+import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/not-found";
+import PublicDirectory from "@/pages/public-directory";
 import SellerCodeManager from "@/pages/seller-code-manager";
 import SellerApplication from "@/pages/seller-application";
 import SellerApplications from "@/pages/seller-applications";
@@ -12,63 +14,88 @@ import RenewalApplications from "@/pages/renewal-applications";
 import EmailLogsPage from "@/pages/email-logs";
 import Login from "@/pages/login";
 import AdminSetup from "@/pages/admin-setup";
-import { Skeleton } from "@/components/ui/skeleton";
 import { usePWA } from "@/hooks/use-pwa";
 
-interface AuthStatus {
-  setupRequired: boolean;
-  authenticated: boolean;
-  user?: { username: string };
+interface ErrorBoundaryProps {
+  children: ReactNode;
 }
 
-function ProtectedRouter() {
-  const [location] = useLocation();
-  usePWA();
+interface ErrorBoundaryState {
+  hasError: boolean;
+  error: Error | null;
+}
 
-  const { data: authStatus, isLoading } = useQuery<AuthStatus>({
-    queryKey: ["/api/auth/status"],
-    queryFn: getQueryFn({ on401: "returnNull" }),
-    staleTime: 0,
-    retry: 2,
-    retryDelay: (attempt: number) => Math.min(1000 * 2 ** attempt, 8000),
-  });
-
-  if (location === "/apply") {
-    return <SellerApplication />;
+class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  constructor(props: ErrorBoundaryProps) {
+    super(props);
+    this.state = { hasError: false, error: null };
   }
 
-  if (location === "/renew") {
-    return <RenewalPage />;
+  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
+    return { hasError: true, error };
   }
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen w-full flex items-center justify-center bg-background">
-        <div className="space-y-4 w-full max-w-md p-6">
-          <Skeleton className="h-8 w-48 mx-auto" />
-          <Skeleton className="h-10 w-full" />
-          <Skeleton className="h-10 w-full" />
-          <Skeleton className="h-10 w-full" />
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    console.error("ErrorBoundary caught an error:", error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen flex items-center justify-center p-4 bg-background text-foreground font-sans">
+          <div className="max-w-md w-full text-center space-y-4 p-6 rounded-2xl border border-border bg-card shadow-lg">
+            <h2 className="text-xl font-bold text-red-600 dark:text-red-400">
+              একটি সমস্যা দেখা দিয়েছে
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              দয়া করে পৃষ্ঠাটি পুনরায় লোড (Reload) করুন।
+            </p>
+            <button
+              onClick={() => window.location.reload()}
+              className="inline-flex items-center justify-center px-4 py-2 text-sm font-semibold rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+            >
+              পেজ রিলোড করুন
+            </button>
+          </div>
         </div>
-      </div>
-    );
-  }
+      );
+    }
 
-  if (authStatus?.setupRequired) {
-    return <AdminSetup />;
+    return this.props.children;
   }
+}
 
-  if (!authStatus?.authenticated) {
-    return <Login />;
-  }
+function AppRoutes() {
+  usePWA();
 
   return (
     <Switch>
-      <Route path="/" component={SellerCodeManager} />
+      {/* Public Landing & Verified Directory */}
+      <Route path="/" component={PublicDirectory} />
+
+      {/* Public Applicant Routes */}
+      <Route path="/apply" component={SellerApplication} />
+      <Route path="/renew" component={RenewalPage} />
+
+      {/* Admin Dedicated Routes */}
+      <Route path="/admin/login" component={Login} />
+      <Route path="/admin/dashboard" component={SellerCodeManager} />
+      <Route path="/admin/applications" component={SellerApplications} />
+      <Route path="/admin/renewals" component={RenewalApplications} />
+      <Route path="/admin/email-logs" component={EmailLogsPage} />
+      <Route path="/admin/setup" component={AdminSetup} />
       <Route path="/admin" component={SellerCodeManager} />
+
+      {/* Legacy / Direct Aliases */}
+      <Route path="/dashboard" component={SellerCodeManager} />
+      <Route path="/preview" component={SellerCodeManager} />
       <Route path="/applications" component={SellerApplications} />
       <Route path="/renewals" component={RenewalApplications} />
       <Route path="/email-logs" component={EmailLogsPage} />
+      <Route path="/login" component={Login} />
+      <Route path="/setup" component={AdminSetup} />
+
+      {/* 404 Fallback */}
       <Route component={NotFound} />
     </Switch>
   );
@@ -76,12 +103,14 @@ function ProtectedRouter() {
 
 function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Toaster />
-        <ProtectedRouter />
-      </TooltipProvider>
-    </QueryClientProvider>
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <TooltipProvider>
+          <Toaster />
+          <AppRoutes />
+        </TooltipProvider>
+      </QueryClientProvider>
+    </ErrorBoundary>
   );
 }
 

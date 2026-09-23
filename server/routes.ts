@@ -7,20 +7,28 @@ import { hashPassword, verifyPassword, generateAuthToken } from "./auth";
 import { sendSellerCodeEmail, sendExtensionEmail, sendRenewalApprovalEmail, sendRenewalRejectionEmail } from "./email";
 import { scheduleSellerEmails } from "./scheduler";
 import multer from "multer";
-import { uploadNidFile, deleteCloudinaryFile } from "./cloudinary";
+import { uploadNidFile, uploadProfilePhoto, deleteCloudinaryFile } from "./cloudinary";
 import rateLimit from "express-rate-limit";
 
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 10 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
-    const allowed = ["image/jpeg", "image/png"];
+    const allowed = ["image/jpeg", "image/png", "image/webp"];
     if (allowed.includes(file.mimetype)) {
       cb(null, true);
     } else {
-      cb(new Error("Only JPG and PNG image files are allowed"));
+      cb(new Error("Only JPG, PNG, and WEBP image files are allowed"));
     }
   },
+});
+
+const photoUploadLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: "Too many photo uploads. Please try again later." },
 });
 
 const applicationSubmitLimiter = rateLimit({
@@ -272,6 +280,7 @@ export async function registerRoutes(
         duration: s.duration,
         startDate: s.startDate,
         expiryDate: s.expiryDate,
+        profileImage: s.profileImage || null,
       }));
       res.json(sanitized);
     } catch (error) {
@@ -349,6 +358,7 @@ export async function registerRoutes(
             startDate: seller.startDate,
             expiryDate: seller.expiryDate,
             maskedPhone,
+            profileImage: seller.profileImage || null,
           }
         });
       }
@@ -370,6 +380,7 @@ export async function registerRoutes(
           startDate: seller.startDate,
           expiryDate: seller.expiryDate,
           maskedPhone,
+          profileImage: seller.profileImage || null,
         }
       });
     } catch (error) {
@@ -413,6 +424,7 @@ export async function registerRoutes(
           isVerified: !isExpired,
           isExpired,
           maskedPhone,
+          profileImage: s.profileImage || null,
         };
       };
 
@@ -518,13 +530,23 @@ export async function registerRoutes(
 
   app.post("/api/sellers", requireAuth, async (req, res) => {
     try {
-      const { name, phone, email, facebookLink, duration, startDate } = req.body;
+      const { name, phone, email, facebookLink, duration, startDate, profileImage } = req.body;
       if (!name || !phone || !facebookLink || !duration || !startDate) {
         return res.status(400).json({ message: "Missing required fields" });
       }
       const sellerCode = await generateSellerCode(startDate, duration);
       const expiryDate = calculateExpiryDate(startDate, duration);
-      const seller = await storage.createSeller({ name, phone, facebookLink, sellerCode, duration, startDate, expiryDate, email: email || undefined });
+      const seller = await storage.createSeller({
+        name,
+        phone,
+        facebookLink,
+        sellerCode,
+        duration,
+        startDate,
+        expiryDate,
+        email: email || undefined,
+        profileImage: profileImage || undefined,
+      });
 
       if (email) {
         await sendSellerCodeEmail(email, name, sellerCode, startDate, expiryDate);
@@ -870,6 +892,11 @@ export async function registerRoutes(
         sellerCode = existingSeller.sellerCode;
         startDate = existingSeller.startDate;
         expiryDate = existingSeller.expiryDate;
+        if (application.profileImage) {
+          await storage.updateSeller(existingSeller.id, {
+            profileImage: application.profileImage,
+          });
+        }
       } else {
         const today = new Date();
         startDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
@@ -885,6 +912,7 @@ export async function registerRoutes(
           startDate,
           expiryDate,
           email: application.email || undefined,
+          profileImage: application.profileImage || undefined,
         });
         await scheduleSellerEmails(newSeller);
       }
@@ -1007,10 +1035,37 @@ export async function registerRoutes(
       if (!parsed.data.nidFileUrl) {
         return res.status(400).json({ message: "জাতীয় পরিচয়পত্রের ছবি আপলোড করা বাধ্যতামূলক" });
       }
+      if (!parsed.data.profileImage) {
+        return res.status(400).json({ message: "নিজের ছবি আপলোড করা বাধ্যতামূলক" });
+      }
       const application = await storage.createSellerApplication(parsed.data);
       res.status(201).json(application);
     } catch (error) {
       res.status(500).json({ message: "Failed to submit application" });
+    }
+  });
+
+  app.post("/api/applications/upload-photo", photoUploadLimiter, upload.single("photo"), async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ message: "No photo uploaded" });
+      }
+      const allowed = ["image/jpeg", "image/png", "image/webp"];
+      if (!allowed.includes(req.file.mimetype)) {
+        return res.status(400).json({ message: "Invalid image format. Supported formats: JPG, PNG, WEBP." });
+      }
+      const { phone } = req.body;
+      const ext = req.file.mimetype === "image/png" ? "png" : req.file.mimetype === "image/webp" ? "webp" : "jpg";
+      const timestamp = Math.floor(Date.now() / 1000);
+      const publicId = `PROFILE_${phone || "seller"}_${timestamp}.${ext}`;
+      const secureUrl = await uploadProfilePhoto(
+        req.file.buffer,
+        req.file.mimetype,
+        publicId
+      );
+      res.json({ url: secureUrl });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message || "Failed to upload photo" });
     }
   });
 

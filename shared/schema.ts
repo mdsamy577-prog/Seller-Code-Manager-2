@@ -31,6 +31,7 @@ export const sellers = pgTable("sellers", {
   email: text("email"),
   status: text("status").notNull().default("active"),
   renewalStartDate: date("renewal_start_date"),
+  profileImage: text("profile_image"),
 });
 
 export const emailReminderLog = pgTable("email_reminder_log", {
@@ -50,6 +51,7 @@ export const insertSellerSchema = createInsertSchema(sellers).pick({
   duration: true,
   startDate: true,
   email: true,
+  profileImage: true,
 });
 
 export type InsertSeller = z.infer<typeof insertSellerSchema>;
@@ -76,6 +78,7 @@ export const sellerApplications = pgTable("seller_applications", {
   createdAt: text("created_at").notNull().default(sql`now()`),
   nidFileUrl: text("nid_file_url"),
   personalFacebookLink: text("personal_facebook_link"),
+  profileImage: text("profile_image"),
 });
 
 export const insertSellerApplicationSchema = createInsertSchema(sellerApplications).pick({
@@ -89,6 +92,7 @@ export const insertSellerApplicationSchema = createInsertSchema(sellerApplicatio
   senderNumber: true,
   email: true,
   nidFileUrl: true,
+  profileImage: true,
 });
 
 export type InsertSellerApplication = z.infer<typeof insertSellerApplicationSchema>;

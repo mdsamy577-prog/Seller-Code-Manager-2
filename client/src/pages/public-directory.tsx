@@ -21,6 +21,9 @@ import {
   Menu,
   RotateCw,
   Phone,
+  ShieldAlert,
+  ChevronDown,
+  User,
 } from "lucide-react";
 import { SiMeta } from "react-icons/si";
 import { Button } from "@/components/ui/button";
@@ -42,6 +45,7 @@ interface PublicSeller {
   isValid?: boolean;
   isVerified?: boolean;
   isExpired?: boolean;
+  profileImage?: string | null;
 }
 
 interface VerificationResult {
@@ -62,6 +66,7 @@ export default function PublicDirectory() {
   const [isVerifying, setIsVerifying] = useState(false);
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [disclaimerOpen, setDisclaimerOpen] = useState(false);
 
   // Explicit, immediate public API fetch with no-cache and immediate execution
   const {
@@ -446,27 +451,56 @@ export default function PublicDirectory() {
                       </div>
                     </div>
 
-                    {/* Details Box */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 my-4 text-sm bg-white/80 dark:bg-slate-900/60 p-3.5 rounded-xl border border-red-200/70 dark:border-red-900/30">
-                      {activeVerification.seller.maskedPhone && (
-                        <div className="flex items-center gap-2">
-                          <Phone className="w-4 h-4 text-slate-400 shrink-0" />
+                    {/* Details Box with Seller Photo */}
+                    <div className="my-4 bg-white/80 dark:bg-slate-900/60 p-3.5 sm:p-4 rounded-xl border border-red-200/70 dark:border-red-900/30 flex flex-col-reverse sm:flex-row items-start sm:items-center justify-between gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 flex-1 w-full text-sm">
+                        {activeVerification.seller.maskedPhone && (
+                          <div className="flex items-center gap-2.5">
+                            <div className="w-8 h-8 rounded-lg bg-red-50 dark:bg-red-950/60 flex items-center justify-center text-red-500 shrink-0">
+                              <Phone className="w-4 h-4" />
+                            </div>
+                            <div>
+                              <span className="text-xs text-slate-500 dark:text-slate-400 block">নিবন্ধিত মোবাইল:</span>
+                              <span className="font-mono font-semibold text-slate-800 dark:text-slate-200">
+                                {activeVerification.seller.maskedPhone}
+                              </span>
+                            </div>
+                          </div>
+                        )}
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-8 h-8 rounded-lg bg-red-50 dark:bg-red-950/60 flex items-center justify-center text-red-500 shrink-0">
+                            <Calendar className="w-4 h-4" />
+                          </div>
                           <div>
-                            <span className="text-xs text-slate-500 dark:text-slate-400 block">নিবন্ধিত মোবাইল:</span>
-                            <span className="font-mono font-semibold text-slate-800 dark:text-slate-200">
-                              {activeVerification.seller.maskedPhone}
+                            <span className="text-xs text-slate-500 dark:text-slate-400 block">মেয়াদ অবস্থা:</span>
+                            <span className="text-red-600 dark:text-red-400 font-bold">
+                              মেয়াদ শেষ হয়েছে: {activeVerification.seller.expiryDate}
                             </span>
                           </div>
                         </div>
-                      )}
-                      <div className="flex items-center gap-2">
-                        <Calendar className="w-4 h-4 text-red-500 shrink-0" />
-                        <div>
-                          <span className="text-xs text-slate-500 dark:text-slate-400 block">মেয়াদ অবস্থা:</span>
-                          <span className="text-red-600 dark:text-red-400 font-bold">
-                            মেয়াদ শেষ হয়েছে: {activeVerification.seller.expiryDate}
-                          </span>
-                        </div>
+                      </div>
+
+                      {/* Seller Profile Photo Box */}
+                      <div className="flex flex-col items-center shrink-0 self-center sm:self-auto sm:pl-3 sm:border-l border-red-200/60 dark:border-red-900/40">
+                        {activeVerification.seller.profileImage ? (
+                          <img
+                            src={activeVerification.seller.profileImage}
+                            alt={activeVerification.seller.name}
+                            className="w-[72px] h-[72px] sm:w-[80px] sm:h-[80px] rounded-2xl object-cover border-2 border-red-300 dark:border-red-800 opacity-75 grayscale contrast-125 shadow-sm"
+                            data-testid="img-expired-seller-profile-photo"
+                          />
+                        ) : (
+                          <div
+                            className="w-[72px] h-[72px] sm:w-[80px] sm:h-[80px] rounded-2xl bg-red-100/60 dark:bg-red-950/40 border border-red-200 dark:border-red-900/50 flex flex-col items-center justify-center text-red-400 shadow-xs"
+                            data-testid="avatar-expired-seller-placeholder"
+                          >
+                            <User className="w-8 h-8 opacity-70" />
+                            <span className="text-[10px] font-medium tracking-tight mt-0.5">ছবি নেই</span>
+                          </div>
+                        )}
+                        <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium mt-1">
+                          সেলার ছবি
+                        </span>
                       </div>
                     </div>
 
@@ -527,30 +561,59 @@ export default function PublicDirectory() {
                       </div>
                     </div>
 
-                    {/* Details Grid */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 my-4 text-sm bg-white/70 dark:bg-slate-900/60 p-3.5 rounded-xl border border-emerald-100 dark:border-emerald-900/30">
-                      {activeVerification.seller.maskedPhone && (
-                        <div className="flex items-center gap-2">
-                          <Phone className="w-4 h-4 text-slate-400 shrink-0" />
-                          <div>
-                            <span className="text-xs text-slate-500 block">নিবন্ধিত মোবাইল:</span>
-                            <span className="font-mono font-semibold text-slate-800 dark:text-slate-200">
-                              {activeVerification.seller.maskedPhone}
-                            </span>
+                    {/* Details Box with Seller Photo */}
+                    <div className="my-4 bg-white/80 dark:bg-slate-900/60 p-3.5 sm:p-4 rounded-xl border border-emerald-100 dark:border-emerald-900/30 flex flex-col-reverse sm:flex-row items-start sm:items-center justify-between gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 flex-1 w-full text-sm">
+                        {activeVerification.seller.maskedPhone && (
+                          <div className="flex items-center gap-2.5">
+                            <div className="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 flex items-center justify-center text-emerald-600 shrink-0">
+                              <Phone className="w-4 h-4" />
+                            </div>
+                            <div>
+                              <span className="text-xs text-slate-500 block">নিবন্ধিত মোবাইল:</span>
+                              <span className="font-mono font-semibold text-slate-800 dark:text-slate-200">
+                                {activeVerification.seller.maskedPhone}
+                              </span>
+                            </div>
                           </div>
-                        </div>
-                      )}
-                      {activeVerification.seller.expiryDate && (
-                        <div className="flex items-center gap-2">
-                          <Calendar className="w-4 h-4 text-slate-400 shrink-0" />
-                          <div>
-                            <span className="text-xs text-slate-500 block">বৈধতার মেয়াদ:</span>
-                            <span className="text-slate-800 dark:text-slate-200 font-semibold">
-                              {activeVerification.seller.expiryDate} পর্যন্ত
-                            </span>
+                        )}
+                        {activeVerification.seller.expiryDate && (
+                          <div className="flex items-center gap-2.5">
+                            <div className="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 flex items-center justify-center text-emerald-600 shrink-0">
+                              <Calendar className="w-4 h-4" />
+                            </div>
+                            <div>
+                              <span className="text-xs text-slate-500 block">বৈধতার মেয়াদ:</span>
+                              <span className="text-slate-800 dark:text-slate-200 font-semibold">
+                                {activeVerification.seller.expiryDate} পর্যন্ত
+                              </span>
+                            </div>
                           </div>
-                        </div>
-                      )}
+                        )}
+                      </div>
+
+                      {/* Seller Profile Photo Box */}
+                      <div className="flex flex-col items-center shrink-0 self-center sm:self-auto sm:pl-3 sm:border-l border-emerald-200/60 dark:border-emerald-900/40">
+                        {activeVerification.seller.profileImage ? (
+                          <img
+                            src={activeVerification.seller.profileImage}
+                            alt={activeVerification.seller.name}
+                            className="w-[72px] h-[72px] sm:w-[80px] sm:h-[80px] rounded-2xl object-cover border-2 border-emerald-500/40 shadow-sm"
+                            data-testid="img-seller-profile-photo"
+                          />
+                        ) : (
+                          <div
+                            className="w-[72px] h-[72px] sm:w-[80px] sm:h-[80px] rounded-2xl bg-emerald-100/70 dark:bg-emerald-950/60 border border-emerald-300 dark:border-emerald-800/60 flex flex-col items-center justify-center text-emerald-600 dark:text-emerald-400 shadow-xs"
+                            data-testid="avatar-seller-placeholder"
+                          >
+                            <User className="w-8 h-8 opacity-80" />
+                            <span className="text-[10px] font-medium tracking-tight mt-0.5">ছবি নেই</span>
+                          </div>
+                        )}
+                        <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium mt-1">
+                          সেলার ছবি
+                        </span>
+                      </div>
                     </div>
 
                     {/* Facebook Button & Advice */}
@@ -706,23 +769,34 @@ export default function PublicDirectory() {
               >
                 <CardContent className="p-4 sm:p-5 flex flex-col justify-between h-full space-y-4">
                   <div>
-                    {/* Top Row: Seller Name & Code Badge */}
+                    {/* Top Row: Seller Avatar, Name & Code Badge */}
                     <div className="flex items-start justify-between gap-2.5">
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-1.5 flex-wrap">
+                      <div className="flex items-center gap-3 min-w-0 flex-1">
+                        {seller.profileImage ? (
+                          <img
+                            src={seller.profileImage}
+                            alt={seller.name}
+                            className="w-10 h-10 rounded-xl object-cover border border-slate-200 dark:border-slate-700 shrink-0 shadow-xs"
+                          />
+                        ) : (
+                          <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800/60 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shrink-0">
+                            <User className="w-5 h-5 opacity-80" />
+                          </div>
+                        )}
+                        <div className="min-w-0 flex-1">
                           <h3 className="font-bold text-base text-slate-900 dark:text-white truncate">
                             {seller.name}
                           </h3>
-                        </div>
-                        <div className="mt-1 flex items-center gap-2 flex-wrap">
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/70 dark:text-emerald-300">
-                            <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                            <span>ভেরিফাইড সেলার</span>
-                          </span>
-                          <span className="text-[11px] text-slate-500 flex items-center gap-1">
-                            <Calendar className="w-3 h-3 text-slate-400" />
-                            <span>মেয়াদ: {seller.expiryDate || "সক্রিয়"}</span>
-                          </span>
+                          <div className="mt-1 flex items-center gap-2 flex-wrap">
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/70 dark:text-emerald-300">
+                              <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                              <span>ভেরিফাইড সেলার</span>
+                            </span>
+                            <span className="text-[11px] text-slate-500 flex items-center gap-1">
+                              <Calendar className="w-3 h-3 text-slate-400" />
+                              <span>মেয়াদ: {seller.expiryDate || "সক্রিয়"}</span>
+                            </span>
+                          </div>
                         </div>
                       </div>
 
@@ -825,6 +899,92 @@ export default function PublicDirectory() {
               <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
                 সেলার কার্ডের ফেসবুক প্রোফাইল বাটনে ক্লিক করে মেসেজ পাঠানো অ্যাকাউন্টের সাথে মিলিয়ে নিশ্চিত হোন।
               </p>
+            </div>
+          </div>
+
+          {/* Collapsible Disclaimer & Community Liability Notice Card */}
+          <div className="mt-6 sm:mt-8 max-w-4xl mx-auto">
+            <div
+              onClick={() => setDisclaimerOpen((prev) => !prev)}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  setDisclaimerOpen((prev) => !prev);
+                }
+              }}
+              className="rounded-2xl border border-slate-200/80 dark:border-slate-700/60 bg-white dark:bg-slate-800/50 p-4 sm:p-5 shadow-sm hover:border-slate-300 dark:hover:border-slate-600 transition-all cursor-pointer group"
+              data-testid="button-toggle-disclaimer"
+            >
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-700/70 text-slate-700 dark:text-slate-300 flex items-center justify-center shrink-0 group-hover:bg-primary/10 group-hover:text-primary transition-colors">
+                    <ShieldCheck className="w-5 h-5" />
+                  </div>
+                  <div className="min-w-0">
+                    <h3 className="font-bold text-sm sm:text-base text-slate-900 dark:text-white">
+                      দায়মুক্তি ও গ্রাহক সতর্কতা নোটিশ
+                    </h3>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 truncate sm:whitespace-normal mt-0.5">
+                      লেনদেনের নিরাপত্তা ও প্রশাসনিক নীতি সম্পর্কিত বিস্তারিত জানতে ক্লিক করুন।
+                    </p>
+                  </div>
+                </div>
+
+                <div className="shrink-0 p-1 text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-200 transition-colors">
+                  <ChevronDown
+                    className={`w-5 h-5 transition-transform duration-300 ease-in-out ${
+                      disclaimerOpen ? "rotate-180 text-primary" : ""
+                    }`}
+                  />
+                </div>
+              </div>
+
+              {/* Expandable Inner Content */}
+              {disclaimerOpen && (
+                <div className="mt-4 pt-4 border-t border-slate-200/70 dark:border-slate-700/60 animate-in fade-in slide-in-from-top-2 duration-200">
+                  <div className="bg-slate-50 dark:bg-slate-900/60 rounded-xl p-4 sm:p-5 text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed space-y-4">
+                    <div className="space-y-2">
+                      <h4 className="font-bold text-slate-900 dark:text-slate-100 text-sm sm:text-base">
+                        📌 গ্রাহক সতর্কতা ও প্রশাসনিক দায়মুক্তি নোটিশ:
+                      </h4>
+                      <p>
+                        আমাদের প্ল্যাটফর্মটি গ্রুপের সম্মানিত সদস্যদের লেনদেনকে আরও স্বচ্ছ ও নিরাপদ করতে একটি ভেরিফিকেশন ব্যবস্থা পরিচালনা করে। প্রতিটি সেলারকে জাতীয় পরিচয়পত্র (NID) এবং ফেসবুক প্রোফাইল পর্যবেক্ষণের মাধ্যমে সর্বোচ্চ সতর্কতা অবলম্বন করে অনুমোদন দেওয়া হয়।
+                      </p>
+                      <p>
+                        তবে মানুষ পরিবর্তনশীল। একজন ব্যক্তি অতীতে শতভাগ সৎ ও বিশ্বস্ত থাকা সত্ত্বেও ভবিষ্যতে কখন তার মানসিকতা পরিবর্তন হবে বা সে কোনো অনাকাঙ্ক্ষিত প্রতারণামূলক কাজে জড়াবে—তা পূর্বানুমান করা কোনো তৃতীয় পক্ষের পক্ষেই সম্ভব নয়।
+                      </p>
+                      <p className="font-medium text-slate-800 dark:text-slate-200 bg-amber-500/10 dark:bg-amber-500/15 p-3 sm:p-3.5 rounded-lg border border-amber-500/20">
+                        অতএব, কোনো সেলারের ব্যক্তিগত অনিয়ম, আর্থিক অসততা বা প্রতারণার জন্য প্ল্যাটফর্ম বা গ্রুপ অ্যাডমিন প্যানেল কোনোভাবেই প্রত্যক্ষ বা পরোক্ষ দায়ভার (আর্থিক বা আইনগত) গ্রহণ করবে না। ক্রেতাদের নিজ দায়িত্বে ও সচেতনভাবে লেনদেন করার বিনীত অনুরোধ করা হচ্ছে।
+                      </p>
+                    </div>
+
+                    <div className="pt-3 border-t border-slate-200/80 dark:border-slate-800 space-y-2">
+                      <h4 className="font-bold text-slate-900 dark:text-slate-100 text-sm sm:text-base">
+                        🤝 আমাদের প্রতিশ্রুতি ও সহযোগিতা:
+                      </h4>
+                      <p>
+                        আমরা আপনাদের সুরক্ষায় সবসময় সর্বোচ্চ আন্তরিক। কোনো সেলারের বিরুদ্ধে সুনির্দিষ্ট প্রমাণসহ প্রতারণার অভিযোগ এলে অ্যাডমিন প্যানেল তাৎক্ষণিকভাবে:
+                      </p>
+                      <ul className="space-y-1.5 pl-1">
+                        <li className="flex items-start gap-2">
+                          <span className="text-primary font-bold shrink-0">•</span>
+                          <span>সংশ্লিষ্ট সেলারের কোড বাতিল ও চিরতরে ব্ল্যাকলিস্ট করবে।</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <span className="text-primary font-bold shrink-0">•</span>
+                          <span>গ্রুপ ও প্ল্যাটফর্মে তার বিরুদ্ধে প্রকাশ্য সতর্কতা জারি করবে।</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <span className="text-primary font-bold shrink-0">•</span>
+                          <span>আইনি পদক্ষেপ গ্রহণের সুবিধার্থে ক্ষতিগ্রস্ত ক্রেতাকে প্রয়োজনীয় তথ্যাদি দিয়ে সর্বোচ্চ প্রশাসনিক সহায়তা প্রদান করবে।</span>
+                        </li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 

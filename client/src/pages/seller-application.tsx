@@ -3,7 +3,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { useDiscount, personalPrices, businessPrices, formatPrice, discountedAmount } from "@/lib/pricing";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { User, Phone, CheckCircle2, Wallet, Hash, Copy, Mail, BookOpen, ShieldCheck, Send, ClipboardList, CreditCard, Link, TriangleAlert, Upload, FileText, X, ImageIcon } from "lucide-react";
+import { User, Phone, CheckCircle2, Wallet, Hash, Copy, Mail, BookOpen, ShieldCheck, Send, ClipboardList, CreditCard, Link, TriangleAlert, Upload, FileText, X, ImageIcon, Camera } from "lucide-react";
 import { SiMeta } from "react-icons/si";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -50,6 +50,7 @@ const applicationFormSchema = z.object({
     ),
   ]).optional(),
   nidFileUrl: z.string().optional(),
+  profileImage: z.string().optional(),
 }).superRefine((data, ctx) => {
   if (data.sellerType === "facebook_business_page") {
     if (!data.personalFacebookLink || data.personalFacebookLink.trim() === "") {
@@ -91,6 +92,10 @@ export default function SellerApplication() {
   const [nidFile, setNidFile] = useState<File | null>(null);
   const [nidUploading, setNidUploading] = useState(false);
   const nidInputRef = useRef<HTMLInputElement>(null);
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [photoUploading, setPhotoUploading] = useState(false);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const photoInputRef = useRef<HTMLInputElement>(null);
 
   const form = useForm<ApplicationFormValues>({
     resolver: zodResolver(applicationFormSchema),
@@ -106,6 +111,7 @@ export default function SellerApplication() {
       senderNumber: "",
       email: "",
       nidFileUrl: "",
+      profileImage: "",
     },
   });
 
@@ -146,11 +152,21 @@ export default function SellerApplication() {
 
   const onSubmit = async (data: ApplicationFormValues) => {
     let nidFileUrl = data.nidFileUrl || "";
+    let profileImageUrl = data.profileImage || "";
 
     if (!nidFile && !nidFileUrl) {
       toast({
         title: "NID প্রয়োজন",
         description: "জাতীয় পরিচয়পত্রের ছবি আপলোড করা বাধ্যতামূলক",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!photoFile && !profileImageUrl) {
+      toast({
+        title: "নিজের ছবি প্রয়োজন",
+        description: "আপনার সাম্প্রতিক ও মুখমণ্ডল স্পষ্টভাবে বোঝা যায় এমন ছবি আপলোড করা বাধ্যতামূলক",
         variant: "destructive",
       });
       return;
@@ -182,7 +198,38 @@ export default function SellerApplication() {
       }
     }
 
-    const payload = { ...data, email: data.email?.trim() || undefined, nidFileUrl: nidFileUrl || undefined };
+    if (photoFile && !profileImageUrl) {
+      try {
+        setPhotoUploading(true);
+        const formData = new FormData();
+        formData.append("photo", photoFile);
+        formData.append("phone", data.phone);
+        formData.append("name", data.name);
+        const res = await fetch("/api/applications/upload-photo", {
+          method: "POST",
+          body: formData,
+        });
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.message || "ছবি আপলোড ব্যর্থ হয়েছে");
+        }
+        const result = await res.json();
+        profileImageUrl = result.url;
+        form.setValue("profileImage", profileImageUrl);
+      } catch (err: any) {
+        toast({ title: "ছবি আপলোড ব্যর্থ হয়েছে", description: err.message, variant: "destructive" });
+        return;
+      } finally {
+        setPhotoUploading(false);
+      }
+    }
+
+    const payload = {
+      ...data,
+      email: data.email?.trim() || undefined,
+      nidFileUrl: nidFileUrl || undefined,
+      profileImage: profileImageUrl || undefined,
+    };
     submitMutation.mutate(payload);
   };
 
@@ -811,15 +858,113 @@ export default function SellerApplication() {
                     </div>
                   </div>
 
+                  {/* Mandatory Profile Photo Field */}
+                  <div className="space-y-2">
+                    <div>
+                      <p className="text-sm font-bold text-red-600">
+                        নিজের ছবি <span className="text-sm font-medium text-red-500 ml-1">(বাধ্যতামূলক)</span>
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        আপনার একটি সাম্প্রতিক, পরিষ্কার ও মুখমণ্ডল স্পষ্টভাবে বোঝা যায় এমন ছবি আপলোড করুন।
+                      </p>
+                    </div>
+
+                    <div
+                      className={`relative rounded-xl border-2 border-dashed transition-all duration-200 cursor-pointer ${
+                        photoFile || photoPreview
+                          ? "border-violet-400 bg-violet-50 dark:bg-violet-950/20"
+                          : "border-border/60 hover:border-violet-300 dark:hover:border-violet-700 hover:bg-violet-50/50 dark:hover:bg-violet-950/10"
+                      }`}
+                      onClick={() => photoInputRef.current?.click()}
+                      data-testid="input-photo-upload-area"
+                    >
+                      <input
+                        ref={photoInputRef}
+                        type="file"
+                        accept="image/png,image/jpeg,image/webp"
+                        capture="user"
+                        className="hidden"
+                        data-testid="input-photo-file"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          const allowed = ["image/jpeg", "image/png", "image/webp"];
+                          if (!allowed.includes(file.type)) {
+                            toast({
+                              title: "ফাইল গ্রহণযোগ্য নয়",
+                              description: "শুধুমাত্র JPG, PNG বা WEBP ছবি আপলোড করা যাবে।",
+                              variant: "destructive",
+                            });
+                            if (photoInputRef.current) photoInputRef.current.value = "";
+                            return;
+                          }
+                          setPhotoFile(file);
+                          setPhotoPreview(URL.createObjectURL(file));
+                          form.setValue("profileImage", "");
+                        }}
+                      />
+                      {photoFile || photoPreview ? (
+                        <div className="flex items-center justify-between p-3.5">
+                          <div className="flex items-center gap-3">
+                            {photoPreview ? (
+                              <img
+                                src={photoPreview}
+                                alt="Profile preview"
+                                className="w-12 h-12 rounded-xl object-cover border border-violet-300 dark:border-violet-700 shadow-xs shrink-0"
+                              />
+                            ) : (
+                              <User className="h-8 w-8 text-violet-500 shrink-0" />
+                            )}
+                            <div className="min-w-0">
+                              <p className="text-sm font-medium text-violet-700 dark:text-violet-300 truncate max-w-[180px]">
+                                {photoFile ? photoFile.name : "নিজের ছবি"}
+                              </p>
+                              {photoFile && (
+                                <p className="text-xs text-muted-foreground">
+                                  {(photoFile.size / 1024).toFixed(1)} KB
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            className="p-1 rounded-full hover:bg-violet-100 dark:hover:bg-violet-900/40 transition-colors"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setPhotoFile(null);
+                              setPhotoPreview(null);
+                              form.setValue("profileImage", "");
+                              if (photoInputRef.current) photoInputRef.current.value = "";
+                            }}
+                            data-testid="button-remove-photo"
+                            title="ছবি মুছুন"
+                          >
+                            <X className="h-4 w-4 text-violet-500" />
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center justify-center gap-2.5 py-3 px-4">
+                          <Camera className="h-5 w-5 text-muted-foreground/60 shrink-0" />
+                          <div className="text-left">
+                            <p className="text-xs font-medium text-slate-700 dark:text-slate-300 leading-snug">
+                              ক্যামেরা দিয়ে তুলুন অথবা ফাইল সিলেক্ট করুন
+                            </p>
+                            <p className="text-[11px] text-muted-foreground/70">JPG, PNG বা WEBP ফরম্যাট সমর্থিত</p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
                   <div className="pt-2">
                     <Button
                       type="submit"
                       className="w-full bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:from-blue-700 hover:via-indigo-700 hover:to-purple-700 text-white font-bold py-6 text-base rounded-xl shadow-lg shadow-indigo-500/30 hover:shadow-xl hover:shadow-indigo-500/40 hover:scale-[1.01] active:scale-[0.99] transition-all duration-200"
-                      disabled={submitMutation.isPending || nidUploading}
+                      disabled={submitMutation.isPending || nidUploading || photoUploading}
                       data-testid="button-submit-application"
                     >
                       <Send className="h-4 w-4 mr-2" />
-                      {nidUploading ? "NID আপলোড হচ্ছে..." : submitMutation.isPending ? "জমা হচ্ছে..." : "আবেদন জমা দিন"}
+                      {nidUploading ? "NID আপলোড হচ্ছে..." : photoUploading ? "ছবি আপলোড হচ্ছে..." : submitMutation.isPending ? "জমা হচ্ছে..." : "আবেদন জমা দিন"}
                     </Button>
                     {submitMutation.isPending && (
                       <p className="text-center text-xs text-muted-foreground mt-2">Server is waking up, please wait...</p>

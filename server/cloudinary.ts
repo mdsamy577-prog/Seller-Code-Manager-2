@@ -77,6 +77,41 @@ export async function uploadNidFile(
   });
 }
 
+export async function uploadProfilePhoto(
+  fileBuffer: Buffer,
+  mimeType: string,
+  publicId: string
+): Promise<string> {
+  const processedBuffer = await sharp(fileBuffer)
+    .resize(500, 500, { fit: "cover", position: "center" })
+    .jpeg({ quality: 88 })
+    .toBuffer();
+
+  if (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) {
+    console.log("[Cloudinary] Credentials not set — using base64 data URI fallback for profile photo");
+    return `data:image/jpeg;base64,${processedBuffer.toString("base64")}`;
+  }
+
+  return new Promise((resolve, reject) => {
+    const uploadStream = cloudinary.uploader.upload_stream(
+      {
+        public_id: publicId,
+        folder: "seller_photos",
+        resource_type: "image",
+        type: "upload",
+        access_mode: "public",
+        overwrite: true,
+      },
+      (error, result) => {
+        if (error) return reject(error);
+        if (!result) return reject(new Error("No result from Cloudinary"));
+        resolve(result.secure_url);
+      }
+    );
+    uploadStream.end(processedBuffer);
+  });
+}
+
 export async function deleteCloudinaryFile(url: string): Promise<void> {
   try {
     const parts = url.split("/");

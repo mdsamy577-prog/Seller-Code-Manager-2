@@ -130,6 +130,7 @@ export class MemStorage implements IStorage {
       email: seller.email ?? null,
       status: "active",
       renewalStartDate: null,
+      profileImage: seller.profileImage ?? null,
     };
     this.sellers.set(id, newSeller);
     return newSeller;
@@ -146,6 +147,7 @@ export class MemStorage implements IStorage {
       ...seller,
       email: seller.email !== undefined ? seller.email : existing.email,
       renewalStartDate: seller.renewalStartDate !== undefined ? seller.renewalStartDate : existing.renewalStartDate,
+      profileImage: seller.profileImage !== undefined ? (seller.profileImage || null) : existing.profileImage,
     };
     this.sellers.set(id, updated);
     return updated;
@@ -215,6 +217,7 @@ export class MemStorage implements IStorage {
       createdAt: new Date().toISOString(),
       nidFileUrl: application.nidFileUrl ?? null,
       personalFacebookLink: application.personalFacebookLink ?? null,
+      profileImage: application.profileImage ?? null,
     };
     this.applications.set(id, app);
     return app;
@@ -747,6 +750,11 @@ function initStorage(): IStorage {
     };
 
     const pool = new pg.Pool(poolConfig);
+    pool.query(`
+      ALTER TABLE IF EXISTS sellers ADD COLUMN IF NOT EXISTS profile_image text;
+      ALTER TABLE IF EXISTS seller_applications ADD COLUMN IF NOT EXISTS profile_image text;
+    `).catch(() => {});
+
     pool.on("error", (err) => {
       console.error("[DB] Unexpected PostgreSQL pool error:", err.message);
     });

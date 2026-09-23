@@ -8,6 +8,7 @@ import { sendSellerCodeEmail, sendExtensionEmail, sendRenewalApprovalEmail, send
 import { scheduleSellerEmails } from "./scheduler";
 import multer from "multer";
 import { uploadNidFile, uploadProfilePhoto, deleteCloudinaryFile } from "./cloudinary";
+import { deleteFileFromCloudflare } from "./cloudflare";
 import rateLimit from "express-rate-limit";
 
 const upload = multer({
@@ -563,7 +564,7 @@ export async function registerRoutes(
     }
   });
 
-  app.patch("/api/sellers/:id", requireAuth, async (req, res) => {
+  const handleUpdateSeller = async (req: Request, res: Response) => {
     try {
       const id = parseInt(String(req.params.id));
       const existing = await storage.getSellerById(id);
@@ -574,6 +575,16 @@ export async function registerRoutes(
       const parsed = insertSellerSchema.safeParse(req.body);
       if (!parsed.success) {
         return res.status(400).json({ message: "Invalid seller data", errors: parsed.error.errors });
+      }
+
+      // If a seller updates their photo during a profile edit, automatically delete the old photo from Cloudflare
+      if (
+        parsed.data.profileImage !== undefined &&
+        existing.profileImage &&
+        parsed.data.profileImage !== existing.profileImage
+      ) {
+        console.log(`[Storage] Seller photo changed for ID ${id}, deleting old photo: ${existing.profileImage}`);
+        await deleteFileFromCloudflare(existing.profileImage);
       }
 
       const duration = parsed.data.duration;
@@ -594,11 +605,50 @@ export async function registerRoutes(
       }
       res.status(500).json({ message: "Failed to update seller" });
     }
-  });
+  };
+
+  app.patch("/api/sellers/:id", requireAuth, handleUpdateSeller);
+  app.patch("/api/admin/sellers/:id", requireAuth, handleUpdateSeller);
+
+  const handlePermanentDeleteSeller = async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(String(req.params.id));
+      if (isNaN(id)) return res.status(400).json({ message: "Invalid seller ID" });
+
+      const seller = await storage.getSellerById(id);
+      if (!seller) {
+        return res.status(404).json({ message: "Seller not found" });
+      }
+
+      // Retrieve all stored image URLs and purge them from Cloudflare
+      const imagesToPurge: string[] = [];
+      if (seller.profileImage) imagesToPurge.push(seller.profileImage);
+      if ((seller as any).sellerPhoto) imagesToPurge.push((seller as any).sellerPhoto);
+      if ((seller as any).nidImage) imagesToPurge.push((seller as any).nidImage);
+      if ((seller as any).nidFileUrl) imagesToPurge.push((seller as any).nidFileUrl);
+
+      for (const imgUrl of imagesToPurge) {
+        await deleteFileFromCloudflare(imgUrl);
+      }
+
+      await storage.cancelPendingEmailsForSeller(id);
+      const deleted = await storage.deleteSeller(id);
+      if (!deleted) {
+        return res.status(404).json({ message: "Seller not found" });
+      }
+      res.json({ message: "Seller permanently deleted and files purged from Cloudflare" });
+    } catch (error) {
+      console.error("[permanent delete] Error deleting seller:", error);
+      res.status(500).json({ message: "Failed to permanently delete seller" });
+    }
+  };
 
   app.delete("/api/sellers/:id", requireAuth, async (req, res) => {
     try {
       const id = parseInt(String(req.params.id));
+      if (req.query.permanent === "true") {
+        return handlePermanentDeleteSeller(req, res);
+      }
       const deleted = await storage.softDeleteSeller(id);
       if (!deleted) {
         return res.status(404).json({ message: "Seller not found" });
@@ -609,6 +659,10 @@ export async function registerRoutes(
       res.status(500).json({ message: "Failed to archive seller" });
     }
   });
+
+  app.delete("/api/admin/sellers/:id", requireAuth, handlePermanentDeleteSeller);
+  app.delete("/api/admin/sellers/:id/permanent", requireAuth, handlePermanentDeleteSeller);
+  app.delete("/api/sellers/:id/permanent", requireAuth, handlePermanentDeleteSeller);
 
   app.post("/api/sellers/:id/restore", requireAuth, async (req, res) => {
     try {
@@ -623,20 +677,6 @@ export async function registerRoutes(
       res.json(seller);
     } catch (error) {
       res.status(500).json({ message: "Failed to restore seller" });
-    }
-  });
-
-  app.delete("/api/sellers/:id/permanent", requireAuth, async (req, res) => {
-    try {
-      const id = parseInt(String(req.params.id));
-      const deleted = await storage.deleteSeller(id);
-      if (!deleted) {
-        return res.status(404).json({ message: "Seller not found" });
-      }
-      await storage.cancelPendingEmailsForSeller(id);
-      res.json({ message: "Seller permanently deleted" });
-    } catch (error) {
-      res.status(500).json({ message: "Failed to permanently delete seller" });
     }
   });
 
@@ -757,7 +797,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/renewals/:id/approve", requireAuth, async (req, res) => {
+  const handleApproveRenewal = async (req: Request, res: Response) => {
     try {
       const id = parseInt(String(req.params.id));
       if (isNaN(id)) return res.status(400).json({ message: "Invalid application ID" });
@@ -777,11 +817,23 @@ export async function registerRoutes(
       const newExpiryDate = calculateExpiryDate(baseDate, application.duration);
       const oldExpiryDate = seller.expiryDate;
 
-      const updates = {
+      const updates: any = {
         expiryDate: newExpiryDate,
         renewalStartDate: oldExpiryDate,
         status: "active",
       };
+
+      // If renewal application updated the photo, purge old photo from Cloudflare
+      if (
+        (application as any).profileImage &&
+        seller.profileImage &&
+        (application as any).profileImage !== seller.profileImage
+      ) {
+        console.log(`[Storage] Deleting old seller photo on renewal update: ${seller.profileImage}`);
+        await deleteFileFromCloudflare(seller.profileImage);
+        updates.profileImage = (application as any).profileImage;
+      }
+
       const updatedSeller = await storage.updateSeller(seller.id, updates);
       const updated = await storage.updateRenewalApplicationStatus(id, "approved");
 
@@ -805,9 +857,12 @@ export async function registerRoutes(
     } catch (error) {
       res.status(500).json({ message: "Failed to approve renewal application" });
     }
-  });
+  };
 
-  app.post("/api/renewals/:id/reject", requireAuth, async (req, res) => {
+  app.post("/api/renewals/:id/approve", requireAuth, handleApproveRenewal);
+  app.post("/api/admin/renewals/:id/approve", requireAuth, handleApproveRenewal);
+
+  const handleRejectRenewal = async (req: Request, res: Response) => {
     try {
       const id = parseInt(String(req.params.id));
       if (isNaN(id)) return res.status(400).json({ message: "Invalid application ID" });
@@ -831,7 +886,10 @@ export async function registerRoutes(
     } catch (error) {
       res.status(500).json({ message: "Failed to reject renewal application" });
     }
-  });
+  };
+
+  app.post("/api/renewals/:id/reject", requireAuth, handleRejectRenewal);
+  app.post("/api/admin/renewals/:id/reject", requireAuth, handleRejectRenewal);
 
   app.delete("/api/renewals/:id", requireAuth, async (req, res) => {
     try {
@@ -868,7 +926,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/applications/:id/approve", requireAuth, async (req, res) => {
+  const handleApproveApplication = async (req: Request, res: Response) => {
     try {
       const id = parseInt(String(req.params.id));
       if (isNaN(id)) {
@@ -893,6 +951,11 @@ export async function registerRoutes(
         startDate = existingSeller.startDate;
         expiryDate = existingSeller.expiryDate;
         if (application.profileImage) {
+          // If replacing existing seller's photo, delete the old photo from Cloudflare
+          if (existingSeller.profileImage && existingSeller.profileImage !== application.profileImage) {
+            console.log(`[Storage] Purging old seller photo on new application approval: ${existingSeller.profileImage}`);
+            await deleteFileFromCloudflare(existingSeller.profileImage);
+          }
           await storage.updateSeller(existingSeller.id, {
             profileImage: application.profileImage,
           });
@@ -935,9 +998,12 @@ export async function registerRoutes(
       console.error("[approve] Error approving application:", error);
       res.status(500).json({ message: "Failed to approve application", error: error instanceof Error ? error.message : String(error) });
     }
-  });
+  };
 
-  app.post("/api/applications/:id/reject", requireAuth, async (req, res) => {
+  app.post("/api/applications/:id/approve", requireAuth, handleApproveApplication);
+  app.post("/api/admin/applications/:id/approve", requireAuth, handleApproveApplication);
+
+  const handleRejectApplication = async (req: Request, res: Response) => {
     try {
       const id = parseInt(String(req.params.id));
       if (isNaN(id)) {
@@ -951,17 +1017,32 @@ export async function registerRoutes(
         return res.status(400).json({ message: `Application already ${application.status}` });
       }
 
-      if (application.nidFileUrl) {
-        await deleteCloudinaryFile(application.nidFileUrl);
-        await storage.clearApplicationNidFileUrl(id);
+      // Check if the application contains an uploaded sellerPhoto / profileImage and nidImage / nidFileUrl
+      const filesToPurge: string[] = [];
+      if (application.profileImage) filesToPurge.push(application.profileImage);
+      if ((application as any).sellerPhoto) filesToPurge.push((application as any).sellerPhoto);
+      if (application.nidFileUrl) filesToPurge.push(application.nidFileUrl);
+      if ((application as any).nidImage) filesToPurge.push((application as any).nidImage);
+
+      // Call deleteFileFromCloudflare for both images to purge them from the Cloudflare bucket
+      for (const fileUrl of filesToPurge) {
+        await deleteFileFromCloudflare(fileUrl);
       }
 
+      // Clear the file fields in DB so no dangling URLs remain
+      await storage.clearApplicationFiles(id);
+
+      // Update the database application record status to "rejected"
       const updated = await storage.updateSellerApplicationStatus(id, "rejected");
       res.json(updated);
     } catch (error) {
+      console.error("[reject] Error rejecting application:", error);
       res.status(500).json({ message: "Failed to reject application" });
     }
-  });
+  };
+
+  app.post("/api/applications/:id/reject", requireAuth, handleRejectApplication);
+  app.post("/api/admin/applications/:id/reject", requireAuth, handleRejectApplication);
 
   app.patch("/api/applications/:id/email", requireAuth, async (req, res) => {
     try {
@@ -1002,7 +1083,7 @@ export async function registerRoutes(
     }
   });
 
-  app.delete("/api/applications/:id", requireAuth, async (req, res) => {
+  const handleDeleteApplication = async (req: Request, res: Response) => {
     try {
       const id = parseInt(String(req.params.id));
       if (isNaN(id)) {
@@ -1012,19 +1093,32 @@ export async function registerRoutes(
       if (!application) {
         return res.status(404).json({ message: "Application not found" });
       }
-      if (application.nidFileUrl) {
-        await deleteCloudinaryFile(application.nidFileUrl);
-        await storage.clearApplicationNidFileUrl(id);
+
+      // Check if application contains profileImage or nidFileUrl and purge them from Cloudflare
+      const filesToPurge: string[] = [];
+      if (application.profileImage) filesToPurge.push(application.profileImage);
+      if ((application as any).sellerPhoto) filesToPurge.push((application as any).sellerPhoto);
+      if (application.nidFileUrl) filesToPurge.push(application.nidFileUrl);
+      if ((application as any).nidImage) filesToPurge.push((application as any).nidImage);
+
+      for (const fileUrl of filesToPurge) {
+        await deleteFileFromCloudflare(fileUrl);
       }
+
+      await storage.clearApplicationFiles(id);
       const deleted = await storage.deleteSellerApplication(id);
       if (!deleted) {
         return res.status(404).json({ message: "Application not found" });
       }
-      res.json({ message: "Application deleted" });
+      res.json({ message: "Application deleted and files purged from Cloudflare" });
     } catch (error) {
+      console.error("[delete application] Error deleting application:", error);
       res.status(500).json({ message: "Failed to delete application" });
     }
-  });
+  };
+
+  app.delete("/api/applications/:id", requireAuth, handleDeleteApplication);
+  app.delete("/api/admin/applications/:id", requireAuth, handleDeleteApplication);
 
   app.post("/api/applications", applicationSubmitLimiter, async (req, res) => {
     try {
@@ -1068,6 +1162,33 @@ export async function registerRoutes(
       res.status(500).json({ message: error.message || "Failed to upload photo" });
     }
   });
+
+  const handleSellerPhotoUpload = async (req: Request, res: Response) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ message: "No photo uploaded" });
+      }
+      const allowed = ["image/jpeg", "image/png", "image/webp"];
+      if (!allowed.includes(req.file.mimetype)) {
+        return res.status(400).json({ message: "Invalid image format. Supported formats: JPG, PNG, WEBP." });
+      }
+      const { phone } = req.body;
+      const ext = req.file.mimetype === "image/png" ? "png" : req.file.mimetype === "image/webp" ? "webp" : "jpg";
+      const timestamp = Math.floor(Date.now() / 1000);
+      const publicId = `PROFILE_${phone || "seller"}_${timestamp}.${ext}`;
+      const secureUrl = await uploadProfilePhoto(
+        req.file.buffer,
+        req.file.mimetype,
+        publicId
+      );
+      res.json({ url: secureUrl });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message || "Failed to upload photo" });
+    }
+  };
+
+  app.post("/api/sellers/upload-photo", requireAuth, upload.single("photo"), handleSellerPhotoUpload);
+  app.post("/api/admin/sellers/upload-photo", requireAuth, upload.single("photo"), handleSellerPhotoUpload);
 
   app.post("/api/applications/upload-nid", nidUploadLimiter, upload.single("nid"), async (req, res) => {
     try {

@@ -52,8 +52,29 @@ export async function uploadNidFile(
 ): Promise<string> {
   const stampedBuffer = await stampTextOnImage(fileBuffer, sellerName, phone);
 
+  // 1. Try Cloudflare R2 if configured
+  const hasR2 = !!(
+    (process.env.CLOUDFLARE_ACCOUNT_ID || process.env.R2_ACCOUNT_ID) &&
+    (process.env.CLOUDFLARE_R2_ACCESS_KEY_ID || process.env.R2_ACCESS_KEY_ID || process.env.CLOUDFLARE_ACCESS_KEY_ID) &&
+    (process.env.CLOUDFLARE_R2_SECRET_ACCESS_KEY || process.env.R2_SECRET_ACCESS_KEY || process.env.CLOUDFLARE_SECRET_ACCESS_KEY)
+  );
+
+  if (hasR2) {
+    try {
+      const { uploadToCloudflareR2 } = await import("./cloudflare");
+      const r2Key = `nid_uploads/${publicId}.jpg`;
+      const r2Url = await uploadToCloudflareR2(stampedBuffer, "image/jpeg", r2Key);
+      if (r2Url) {
+        return r2Url;
+      }
+    } catch (r2Err) {
+      console.warn("[Cloudflare R2] NID upload failed, checking fallbacks:", r2Err);
+    }
+  }
+
+  // 2. Try Cloudinary if configured
   if (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) {
-    console.log("[Cloudinary] Credentials not set — using base64 data URI fallback");
+    console.log("[Storage] Cloudinary & R2 not set — using base64 data URI fallback for NID");
     return `data:image/jpeg;base64,${stampedBuffer.toString("base64")}`;
   }
 
@@ -87,8 +108,29 @@ export async function uploadProfilePhoto(
     .jpeg({ quality: 88 })
     .toBuffer();
 
+  // 1. Try Cloudflare R2 if configured
+  const hasR2 = !!(
+    (process.env.CLOUDFLARE_ACCOUNT_ID || process.env.R2_ACCOUNT_ID) &&
+    (process.env.CLOUDFLARE_R2_ACCESS_KEY_ID || process.env.R2_ACCESS_KEY_ID || process.env.CLOUDFLARE_ACCESS_KEY_ID) &&
+    (process.env.CLOUDFLARE_R2_SECRET_ACCESS_KEY || process.env.R2_SECRET_ACCESS_KEY || process.env.CLOUDFLARE_SECRET_ACCESS_KEY)
+  );
+
+  if (hasR2) {
+    try {
+      const { uploadToCloudflareR2 } = await import("./cloudflare");
+      const r2Key = `seller_photos/${publicId}.jpg`;
+      const r2Url = await uploadToCloudflareR2(processedBuffer, "image/jpeg", r2Key);
+      if (r2Url) {
+        return r2Url;
+      }
+    } catch (r2Err) {
+      console.warn("[Cloudflare R2] Profile photo upload failed, checking fallbacks:", r2Err);
+    }
+  }
+
+  // 2. Try Cloudinary if configured
   if (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) {
-    console.log("[Cloudinary] Credentials not set — using base64 data URI fallback for profile photo");
+    console.log("[Storage] Cloudinary & R2 not set — using base64 data URI fallback for profile photo");
     return `data:image/jpeg;base64,${processedBuffer.toString("base64")}`;
   }
 

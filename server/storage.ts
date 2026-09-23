@@ -3,6 +3,7 @@ import { eq, or, ilike, count, and, ne, desc } from "drizzle-orm";
 import { sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import pg from "pg";
+export { deleteFileFromCloudflare } from "./cloudflare";
 
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
@@ -26,6 +27,7 @@ export interface IStorage {
   updateSellerApplicationStatus(id: number, status: string): Promise<SellerApplication | undefined>;
   updateSellerApplicationEmail(id: number, email: string): Promise<SellerApplication | undefined>;
   clearApplicationNidFileUrl(id: number): Promise<void>;
+  clearApplicationFiles(id: number): Promise<void>;
   getSellerByPhone(phone: string): Promise<Seller | undefined>;
   getSellerByCode(code: string): Promise<Seller | undefined>;
   deleteSellerApplication(id: number): Promise<boolean>;
@@ -251,6 +253,15 @@ export class MemStorage implements IStorage {
     const app = this.applications.get(id);
     if (app) {
       app.nidFileUrl = null;
+      this.applications.set(id, app);
+    }
+  }
+
+  async clearApplicationFiles(id: number): Promise<void> {
+    const app = this.applications.get(id);
+    if (app) {
+      app.nidFileUrl = null;
+      app.profileImage = null;
       this.applications.set(id, app);
     }
   }
@@ -581,6 +592,10 @@ export class DatabaseStorage implements IStorage {
 
   async clearApplicationNidFileUrl(id: number): Promise<void> {
     await this.db.update(sellerApplications).set({ nidFileUrl: null }).where(eq(sellerApplications.id, id));
+  }
+
+  async clearApplicationFiles(id: number): Promise<void> {
+    await this.db.update(sellerApplications).set({ nidFileUrl: null, profileImage: null }).where(eq(sellerApplications.id, id));
   }
 
   async deleteSellerApplication(id: number): Promise<boolean> {

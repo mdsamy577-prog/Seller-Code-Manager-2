@@ -612,7 +612,6 @@ export default function SellerApplications() {
                       <Table>
                         <TableHeader>
                           <TableRow>
-                            <TableHead className="whitespace-nowrap text-xs py-2 w-10">Photo</TableHead>
                             <TableHead className="whitespace-nowrap text-xs py-2">Name</TableHead>
                             <TableHead className="whitespace-nowrap text-xs py-2">Phone</TableHead>
                             <TableHead className="whitespace-nowrap text-xs py-2 w-10">FB</TableHead>
@@ -629,19 +628,6 @@ export default function SellerApplications() {
                         <TableBody>
                           {sortedApplications.map((app) => (
                             <TableRow key={app.id} data-testid={`row-application-${app.id}`}>
-                              <TableCell className="py-1 w-10">
-                                {app.profileImage ? (
-                                  <img
-                                    src={app.profileImage}
-                                    alt={app.name}
-                                    className="w-7 h-7 rounded-lg object-cover cursor-pointer hover:opacity-80 border"
-                                    onClick={() => setNidPreviewUrl(app.profileImage!)}
-                                    title="Click to view full photo"
-                                  />
-                                ) : (
-                                  <span className="text-xs text-muted-foreground/50">—</span>
-                                )}
-                              </TableCell>
                               <TableCell className="font-medium text-xs py-1.5" data-testid={`text-app-name-${app.id}`}>{app.name}</TableCell>
                               <TableCell className="text-xs py-1.5" data-testid={`text-app-phone-${app.id}`}>{app.phone}</TableCell>
                               <TableCell className="py-1.5 w-10 text-center">
@@ -727,21 +713,10 @@ export default function SellerApplications() {
                       {sortedApplications.map((app) => (
                         <div key={app.id} className="border rounded-xl p-4 space-y-3 bg-card shadow-sm" data-testid={`row-application-${app.id}`}>
                           <div className="flex items-start justify-between gap-2">
-                            <div className="flex items-center gap-2.5">
-                              {app.profileImage && (
-                                <img
-                                  src={app.profileImage}
-                                  alt={app.name}
-                                  className="w-10 h-10 rounded-xl object-cover border cursor-pointer shrink-0"
-                                  onClick={() => setNidPreviewUrl(app.profileImage!)}
-                                  title="View photo"
-                                />
-                              )}
-                              <div>
-                                <p className="font-semibold text-sm leading-tight" data-testid={`text-app-name-${app.id}`}>{app.name}</p>
-                                <p className="text-xs text-muted-foreground mt-0.5" data-testid={`text-app-phone-${app.id}`}>{app.phone}</p>
-                                <p className="text-xs text-muted-foreground/70 mt-0.5" data-testid={`text-app-submitted-${app.id}`}>Submitted: {formatSubmittedAt(app.createdAt)}</p>
-                              </div>
+                            <div>
+                              <p className="font-semibold text-sm leading-tight" data-testid={`text-app-name-${app.id}`}>{app.name}</p>
+                              <p className="text-xs text-muted-foreground mt-0.5" data-testid={`text-app-phone-${app.id}`}>{app.phone}</p>
+                              <p className="text-xs text-muted-foreground/70 mt-0.5" data-testid={`text-app-submitted-${app.id}`}>Submitted: {formatSubmittedAt(app.createdAt)}</p>
                             </div>
                             <StatusBadge status={app.status} />
                           </div>

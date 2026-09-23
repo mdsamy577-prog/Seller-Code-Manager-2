@@ -34,6 +34,10 @@ import {
   RotateCcw,
   Tag,
   Inbox,
+  Upload,
+  Camera,
+  User,
+  Image as ImageIcon,
 } from "lucide-react";
 import { SiMeta } from "react-icons/si";
 import { useLocation } from "wouter";
@@ -92,6 +96,7 @@ const sellerFormSchema = z.object({
   phone: z.string().min(1, "Phone number is required"),
   email: z.string().email("Must be a valid email").optional().or(z.literal("")),
   facebookLink: z.string().url("Must be a valid URL"),
+  profileImage: z.string().optional().or(z.literal("")),
   duration: z.enum(["15_days", "1_month", "2_months", "3_months", "4_months", "5_months", "6_months", "7_months", "8_months", "9_months", "10_months", "11_months", "12_months"]),
   startDate: z.string().min(1, "Start date is required"),
 });
@@ -868,6 +873,8 @@ function SellerForm({
 }) {
   const { toast } = useToast();
   const isEditing = !!seller;
+  const [photoUploading, setPhotoUploading] = useState(false);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(seller?.profileImage || null);
 
   const form = useForm<SellerFormValues>({
     resolver: zodResolver(sellerFormSchema),
@@ -876,10 +883,40 @@ function SellerForm({
       phone: seller?.phone || "",
       email: "",
       facebookLink: seller?.facebookLink || "",
+      profileImage: seller?.profileImage || "",
       duration: (seller?.duration as SellerFormValues["duration"]) || "1_month",
       startDate: seller?.startDate || format(new Date(), "yyyy-MM-dd"),
     },
   });
+
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+      toast({ title: "ভুল ফরম্যাট", description: "শুধুমাত্র JPG, PNG বা WEBP ইমেজ সমর্থিত", variant: "destructive" });
+      return;
+    }
+    setPhotoUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("photo", file);
+      formData.append("phone", form.getValues("phone") || "admin");
+      const res = await fetch("/api/sellers/upload-photo", {
+        method: "POST",
+        body: formData,
+        credentials: "include",
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "ছবি আপলোড ব্যর্থ হয়েছে");
+      setPhotoPreview(data.url);
+      form.setValue("profileImage", data.url);
+      toast({ title: "ছবি নির্বাচন সম্পন্ন", description: "সংরক্ষণ বাটনে ক্লিক করলে পুরনো ছবিটি মুছে নতুন ছবি প্রতিস্থাপন হবে।" });
+    } catch (err: any) {
+      toast({ title: "আপলোড ত্রুটি", description: err.message, variant: "destructive" });
+    } finally {
+      setPhotoUploading(false);
+    }
+  };
 
   const createMutation = useMutation({
     mutationFn: async (data: SellerFormValues) => {
@@ -981,6 +1018,50 @@ function SellerForm({
             </FormItem>
           )}
         />
+        <div className="space-y-2">
+          <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+            বিক্রেতার ছবি (Profile Photo)
+          </label>
+          <div className="flex items-center gap-4 p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl">
+            {photoPreview ? (
+              <div className="relative w-14 h-14 rounded-full overflow-hidden border-2 border-emerald-500 shrink-0">
+                <img src={photoPreview} alt="Preview" className="w-full h-full object-cover" />
+              </div>
+            ) : (
+              <div className="w-14 h-14 rounded-full bg-slate-200 dark:bg-slate-800 flex items-center justify-center shrink-0 text-slate-500">
+                <User className="h-7 w-7" />
+              </div>
+            )}
+            <div className="flex-1 min-w-0">
+              <label className="inline-flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-medium rounded-lg border border-slate-300 dark:border-slate-700 shadow-sm cursor-pointer transition">
+                <Upload className="h-3.5 w-3.5" />
+                <span>{photoUploading ? "আপলোড হচ্ছে..." : photoPreview ? "ছবি পরিবর্তন করুন" : "ছবি আপলোড করুন"}</span>
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  className="hidden"
+                  onChange={handlePhotoUpload}
+                  disabled={photoUploading}
+                />
+              </label>
+              {photoPreview && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPhotoPreview(null);
+                    form.setValue("profileImage", "");
+                  }}
+                  className="ml-2 text-xs text-rose-500 hover:underline"
+                >
+                  ছবি সরান
+                </button>
+              )}
+              <p className="text-[11px] text-muted-foreground mt-1">
+                ছবি পরিবর্তন করলে পুরনো ছবিটি ক্লাউডফ্লেয়ার থেকে স্বয়ংক্রিয়ভাবে মুছে যাবে।
+              </p>
+            </div>
+          </div>
+        </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <FormField
             control={form.control}
@@ -1203,6 +1284,7 @@ export default function SellerCodeManager() {
         duration: seller.duration,
         startDate: seller.startDate,
         sellerCode,
+        profileImage: seller.profileImage ?? undefined,
       });
       return res.json();
     },
@@ -1452,7 +1534,22 @@ export default function SellerCodeManager() {
                     <TableBody>
                       {filteredSellers.map((seller) => (
                         <TableRow key={seller.id} className={getRowClass(seller.expiryDate)} data-testid={`row-seller-${seller.id}`}>
-                          <TableCell className="font-medium" data-testid={`text-name-${seller.id}`}>{seller.name}</TableCell>
+                          <TableCell className="font-medium" data-testid={`text-name-${seller.id}`}>
+                            <div className="flex items-center gap-2.5">
+                              {seller.profileImage ? (
+                                <img
+                                  src={seller.profileImage}
+                                  alt={seller.name}
+                                  className="w-8 h-8 rounded-full object-cover border border-slate-200 shrink-0"
+                                />
+                              ) : (
+                                <div className="w-8 h-8 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0 text-slate-500 font-semibold text-xs">
+                                  {seller.name.slice(0, 1).toUpperCase()}
+                                </div>
+                              )}
+                              <span className="truncate max-w-[140px]">{seller.name}</span>
+                            </div>
+                          </TableCell>
                           <TableCell data-testid={`text-phone-${seller.id}`}>
                             <span className="flex items-center gap-1.5">
                               <Phone className="h-3.5 w-3.5 text-muted-foreground" />{seller.phone}
@@ -1514,11 +1611,24 @@ export default function SellerCodeManager() {
                   {filteredSellers.map((seller) => (
                     <div key={seller.id} className={`border rounded-xl p-4 space-y-3 shadow-sm ${getRowClass(seller.expiryDate) || "bg-card"}`} data-testid={`row-seller-${seller.id}`}>
                       <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0">
-                          <p className="font-semibold text-sm truncate" data-testid={`text-name-${seller.id}`}>{seller.name}</p>
-                          <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1" data-testid={`text-phone-${seller.id}`}>
-                            <Phone className="h-3 w-3 shrink-0" />{seller.phone}
-                          </p>
+                        <div className="min-w-0 flex items-center gap-2.5">
+                          {seller.profileImage ? (
+                            <img
+                              src={seller.profileImage}
+                              alt={seller.name}
+                              className="w-9 h-9 rounded-full object-cover border border-slate-200 shrink-0"
+                            />
+                          ) : (
+                            <div className="w-9 h-9 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0 text-slate-500 font-semibold text-xs">
+                              {seller.name.slice(0, 1).toUpperCase()}
+                            </div>
+                          )}
+                          <div className="min-w-0">
+                            <p className="font-semibold text-sm truncate" data-testid={`text-name-${seller.id}`}>{seller.name}</p>
+                            <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1" data-testid={`text-phone-${seller.id}`}>
+                              <Phone className="h-3 w-3 shrink-0" />{seller.phone}
+                            </p>
+                          </div>
                         </div>
                         <div className="flex items-center gap-1 shrink-0">
                           <StatusBadge expiryDate={seller.expiryDate} />

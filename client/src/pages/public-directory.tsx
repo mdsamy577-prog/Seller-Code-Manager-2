@@ -39,12 +39,16 @@ interface PublicSeller {
   startDate?: string;
   expiryDate?: string;
   maskedPhone?: string;
+  isValid?: boolean;
   isVerified?: boolean;
+  isExpired?: boolean;
 }
 
 interface VerificationResult {
   found: boolean;
-  isVerified: boolean;
+  isValid?: boolean;
+  isVerified?: boolean;
+  isExpired?: boolean;
   status?: string;
   message?: string;
   seller?: PublicSeller;
@@ -123,14 +127,18 @@ export default function PublicDirectory() {
           const first = searchData.results[0];
           setActiveVerification({
             found: true,
+            isValid: first.isValid,
             isVerified: first.isVerified,
+            isExpired: first.isExpired,
             status: first.status,
             seller: first,
           });
         } else {
           setActiveVerification({
             found: false,
+            isValid: false,
             isVerified: false,
+            isExpired: false,
             message: `"${query}" এর সাথে মিল রয়েছে এমন কোনো অনুমোদিত সেলার পাওয়া যায়নি। অনুগ্রহ করে কোডটি ঠিক আছে কি না তা যাচাই করুন।`,
           });
         }
@@ -138,7 +146,9 @@ export default function PublicDirectory() {
     } catch {
       setActiveVerification({
         found: false,
+        isValid: false,
         isVerified: false,
+        isExpired: false,
         message: "ভেরিফিকেশন সার্ভিসে সংযোগ করা যাচ্ছে না। অনুগ্রহ করে একটু পর আবার চেষ্টা করুন।",
       });
     } finally {
@@ -390,114 +400,181 @@ export default function PublicDirectory() {
           {activeVerification && (
             <div className="mt-6 sm:mt-8 max-w-2xl mx-auto text-left animate-in fade-in slide-in-from-top-4 duration-300">
               {activeVerification.found && activeVerification.seller ? (
-                <div
-                  className={`p-4 sm:p-6 rounded-2xl border-2 shadow-lg ${
-                    activeVerification.isVerified
-                      ? "bg-emerald-50/95 dark:bg-emerald-950/30 border-emerald-500/50"
-                      : "bg-amber-50/95 dark:bg-amber-950/30 border-amber-500/50"
-                  }`}
-                  data-testid="verification-result-box"
-                >
-                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b pb-4 border-emerald-200 dark:border-emerald-900/50">
-                    <div className="flex items-center gap-3">
-                      {activeVerification.isVerified ? (
+                activeVerification.isExpired || activeVerification.isValid === false || activeVerification.isVerified === false || activeVerification.seller.status !== "active" ? (
+                  /* EXPIRED SELLER - CLEAN MINIMALIST CARD */
+                  <div
+                    className="p-5 sm:p-6 rounded-2xl border-2 border-red-500/30 bg-red-50/40 dark:bg-red-950/30 dark:border-red-900/50 shadow-md text-slate-900 dark:text-slate-100"
+                    data-testid="verification-result-box-expired"
+                  >
+                    {/* Top Header / Identity & Seller Code */}
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b pb-4 border-red-200/70 dark:border-red-900/40">
+                      <div className="flex items-center gap-3">
+                        <div className="w-11 h-11 rounded-xl bg-red-600 text-white flex items-center justify-center shrink-0 shadow-sm">
+                          <XCircle className="w-6 h-6" />
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <h3 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white">
+                              {activeVerification.seller.name}
+                            </h3>
+                            <Badge className="bg-red-600 hover:bg-red-600 text-white font-bold text-xs px-2.5 py-0.5 shadow-xs">
+                              ❌ মেয়াদ উত্তীর্ণ সেলার (Expired Seller)
+                            </Badge>
+                          </div>
+                          <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5 font-medium">
+                            এই সেলার কোডটি বর্তমানে সম্পূর্ণ নিষ্ক্রিয় ও অননুমোদিত।
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 self-start sm:self-center mt-1 sm:mt-0">
+                        <div className="font-mono font-bold text-sm bg-white dark:bg-slate-900 px-3 py-1.5 rounded-lg border border-red-200 dark:border-red-900/50 shadow-xs flex items-center gap-2 text-slate-900 dark:text-slate-100">
+                          <span>{activeVerification.seller.sellerCode}</span>
+                          <button
+                            type="button"
+                            onClick={() => handleCopyCode(activeVerification.seller!.sellerCode)}
+                            className="text-slate-400 hover:text-red-600 transition-colors p-1"
+                            title="কোড কপি করুন"
+                          >
+                            {copiedCode === activeVerification.seller.sellerCode ? (
+                              <Check className="w-4 h-4 text-emerald-600" />
+                            ) : (
+                              <Copy className="w-4 h-4" />
+                            )}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Details Box */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 my-4 text-sm bg-white/80 dark:bg-slate-900/60 p-3.5 rounded-xl border border-red-200/70 dark:border-red-900/30">
+                      {activeVerification.seller.maskedPhone && (
+                        <div className="flex items-center gap-2">
+                          <Phone className="w-4 h-4 text-slate-400 shrink-0" />
+                          <div>
+                            <span className="text-xs text-slate-500 dark:text-slate-400 block">নিবন্ধিত মোবাইল:</span>
+                            <span className="font-mono font-semibold text-slate-800 dark:text-slate-200">
+                              {activeVerification.seller.maskedPhone}
+                            </span>
+                          </div>
+                        </div>
+                      )}
+                      <div className="flex items-center gap-2">
+                        <Calendar className="w-4 h-4 text-red-500 shrink-0" />
+                        <div>
+                          <span className="text-xs text-slate-500 dark:text-slate-400 block">মেয়াদ অবস্থা:</span>
+                          <span className="text-red-600 dark:text-red-400 font-bold">
+                            মেয়াদ শেষ হয়েছে: {activeVerification.seller.expiryDate}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Action Button - Single Renewal Link */}
+                    <div className="pt-1 flex flex-col sm:flex-row items-stretch sm:items-center justify-end">
+                      <Link
+                        href="/renew"
+                        className="inline-flex items-center justify-center gap-2 w-full sm:w-auto px-5 py-2.5 rounded-xl bg-primary hover:bg-primary/90 active:bg-primary/95 text-white font-semibold text-sm transition-colors shadow-sm min-h-[44px]"
+                        data-testid="link-renew-expired-code"
+                      >
+                        <RotateCw className="w-4 h-4" />
+                        <span>কোডটি নবায়ন করতে আবেদন করুন</span>
+                      </Link>
+                    </div>
+                  </div>
+                ) : (
+                  /* STRICTLY VALID & ACTIVE SELLER - GREEN CARD */
+                  <div
+                    className="p-4 sm:p-6 rounded-2xl border-2 shadow-lg bg-emerald-50/95 dark:bg-emerald-950/30 border-emerald-500/50"
+                    data-testid="verification-result-box"
+                  >
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b pb-4 border-emerald-200 dark:border-emerald-900/50">
+                      <div className="flex items-center gap-3">
                         <div className="w-12 h-12 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-md">
                           <CheckCircle2 className="w-7 h-7" />
                         </div>
-                      ) : (
-                        <div className="w-12 h-12 rounded-xl bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-md">
-                          <AlertTriangle className="w-7 h-7" />
+                        <div>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <h3 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white">
+                              {activeVerification.seller.name}
+                            </h3>
+                            <Badge className="bg-emerald-600 hover:bg-emerald-600 text-white font-semibold text-xs px-2.5 py-0.5">
+                              ভেরিফাইড অ্যাক্টিভ
+                            </Badge>
+                          </div>
+                          <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">
+                            গ্রুপের অনুমোদিত ও সক্রিয় সেলার
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 self-start sm:self-center mt-1 sm:mt-0">
+                        <div className="font-mono font-bold text-sm bg-white dark:bg-slate-900 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800 shadow-xs flex items-center gap-2">
+                          <span>{activeVerification.seller.sellerCode}</span>
+                          <button
+                            type="button"
+                            onClick={() => handleCopyCode(activeVerification.seller!.sellerCode)}
+                            className="text-slate-400 hover:text-primary transition-colors p-1"
+                            title="কোড কপি করুন"
+                          >
+                            {copiedCode === activeVerification.seller.sellerCode ? (
+                              <Check className="w-4 h-4 text-emerald-600" />
+                            ) : (
+                              <Copy className="w-4 h-4" />
+                            )}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Details Grid */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 my-4 text-sm bg-white/70 dark:bg-slate-900/60 p-3.5 rounded-xl border border-emerald-100 dark:border-emerald-900/30">
+                      {activeVerification.seller.maskedPhone && (
+                        <div className="flex items-center gap-2">
+                          <Phone className="w-4 h-4 text-slate-400 shrink-0" />
+                          <div>
+                            <span className="text-xs text-slate-500 block">নিবন্ধিত মোবাইল:</span>
+                            <span className="font-mono font-semibold text-slate-800 dark:text-slate-200">
+                              {activeVerification.seller.maskedPhone}
+                            </span>
+                          </div>
                         </div>
                       )}
-                      <div>
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <h3 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white">
-                            {activeVerification.seller.name}
-                          </h3>
-                          <Badge
-                            className={
-                              activeVerification.isVerified
-                                ? "bg-emerald-600 hover:bg-emerald-600 text-white font-semibold text-xs px-2.5 py-0.5"
-                                : "bg-amber-600 hover:bg-amber-600 text-white font-semibold text-xs px-2.5 py-0.5"
-                            }
-                          >
-                            {activeVerification.isVerified ? "ভেরিফাইড অ্যাক্টিভ" : "মেয়াদ উত্তীর্ণ"}
-                          </Badge>
+                      {activeVerification.seller.expiryDate && (
+                        <div className="flex items-center gap-2">
+                          <Calendar className="w-4 h-4 text-slate-400 shrink-0" />
+                          <div>
+                            <span className="text-xs text-slate-500 block">বৈধতার মেয়াদ:</span>
+                            <span className="text-slate-800 dark:text-slate-200 font-semibold">
+                              {activeVerification.seller.expiryDate} পর্যন্ত
+                            </span>
+                          </div>
                         </div>
-                        <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">
-                          {activeVerification.isVerified
-                            ? "গ্রুপের অনুমোদিত ও সক্রিয় সেলার"
-                            : "এই সেলার কোডটি বর্তমানে নিষ্ক্রিয় বা মেয়াদ শেষ"}
-                        </p>
-                      </div>
+                      )}
                     </div>
 
-                    <div className="flex items-center gap-2 self-start sm:self-center mt-1 sm:mt-0">
-                      <div className="font-mono font-bold text-sm bg-white dark:bg-slate-900 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800 shadow-xs flex items-center gap-2">
-                        <span>{activeVerification.seller.sellerCode}</span>
-                        <button
-                          type="button"
-                          onClick={() => handleCopyCode(activeVerification.seller!.sellerCode)}
-                          className="text-slate-400 hover:text-primary transition-colors p-1"
-                          title="কোড কপি করুন"
+                    {/* Facebook Button & Advice */}
+                    <div className="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+                      {activeVerification.seller.facebookLink && (
+                        <a
+                          href={activeVerification.seller.facebookLink}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-semibold text-sm transition-colors shadow-sm min-h-[44px]"
+                          data-testid="link-verified-facebook-profile"
                         >
-                          {copiedCode === activeVerification.seller.sellerCode ? (
-                            <Check className="w-4 h-4 text-emerald-600" />
-                          ) : (
-                            <Copy className="w-4 h-4" />
-                          )}
-                        </button>
-                      </div>
+                          <SiMeta className="w-4 h-4" />
+                          <span>ফেসবুক প্রোফাইল / পেজ দেখুন</span>
+                          <ExternalLink className="w-3.5 h-3.5" />
+                        </a>
+                      )}
+                      <span className="text-xs text-slate-600 dark:text-slate-400 flex items-center gap-1.5 italic">
+                        <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
+                        মেসেজ দেওয়া ফেসবুক আইডির সাথে এই লিংকটি মিলিয়ে নিন!
+                      </span>
                     </div>
                   </div>
-
-                  {/* Details Grid */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 my-4 text-sm bg-white/70 dark:bg-slate-900/60 p-3.5 rounded-xl border border-emerald-100 dark:border-emerald-900/30">
-                    {activeVerification.seller.maskedPhone && (
-                      <div className="flex items-center gap-2">
-                        <Phone className="w-4 h-4 text-slate-400 shrink-0" />
-                        <div>
-                          <span className="text-xs text-slate-500 block">নিবন্ধিত মোবাইল:</span>
-                          <span className="font-mono font-semibold text-slate-800 dark:text-slate-200">
-                            {activeVerification.seller.maskedPhone}
-                          </span>
-                        </div>
-                      </div>
-                    )}
-                    {activeVerification.seller.expiryDate && (
-                      <div className="flex items-center gap-2">
-                        <Calendar className="w-4 h-4 text-slate-400 shrink-0" />
-                        <div>
-                          <span className="text-xs text-slate-500 block">বৈধতার মেয়াদ:</span>
-                          <span className="text-slate-800 dark:text-slate-200 font-semibold">
-                            {activeVerification.seller.expiryDate} পর্যন্ত
-                          </span>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Facebook Button & Advice */}
-                  <div className="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-                    {activeVerification.seller.facebookLink && (
-                      <a
-                        href={activeVerification.seller.facebookLink}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-semibold text-sm transition-colors shadow-sm min-h-[44px]"
-                        data-testid="link-verified-facebook-profile"
-                      >
-                        <SiMeta className="w-4 h-4" />
-                        <span>ফেসবুক প্রোফাইল / পেজ দেখুন</span>
-                        <ExternalLink className="w-3.5 h-3.5" />
-                      </a>
-                    )}
-                    <span className="text-xs text-slate-600 dark:text-slate-400 flex items-center gap-1.5 italic">
-                      <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
-                      মেসেজ দেওয়া ফেসবুক আইডির সাথে এই লিংকটি মিলিয়ে নিন!
-                    </span>
-                  </div>
-                </div>
+                )
               ) : (
                 <div
                   className="p-5 sm:p-6 rounded-2xl border-2 border-rose-500/40 bg-rose-50/95 dark:bg-rose-950/30 text-rose-900 dark:text-rose-200 shadow-lg"
@@ -518,7 +595,7 @@ export default function PublicDirectory() {
                         </p>
                         <p>১. সঠিক ও বৈধ সেলার কোড না পাওয়া পর্যন্ত কোনো অগ্রিম টাকা পাঠাবেন না।</p>
                         <p>২. সেলারকে অফিশিয়াল পোর্টাল থেকে আবেদন বা নবায়ন করতে বলুন।</p>
-                        <p>৩. সন্দেহজনক লেনদেন বা ব্যক্তির ক্ষেত্রে ফেসবুক গ্রুপ অ্যাডমিনদের জানান।</p>
+                        <p>৩. সন্দেহজনক লেনদেন বা ব্যক্তির ক্ষেত্রে ফেসবুক গ্রুপ মডারেটরদের জানান।</p>
                       </div>
                     </div>
                   </div>

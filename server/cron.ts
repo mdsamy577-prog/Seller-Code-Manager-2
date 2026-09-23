@@ -3,6 +3,60 @@ import { storage } from "./storage";
 import { sendReminderEmail } from "./email";
 import { scheduleSellerEmails } from "./scheduler";
 
+/**
+ * Checks all active sellers and auto-archives those whose expiryDate has arrived or passed.
+ * Regardless of whether the email succeeds, fails, or if the seller has no email:
+ * ALWAYS immediately executes storage.softDeleteSeller(seller.id).
+ */
+export async function checkAndArchiveExpiredSellers(): Promise<void> {
+  try {
+    const activeSellers = await storage.getAllSellers();
+    if (!activeSellers || activeSellers.length === 0) return;
+
+    const now = new Date();
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+
+    for (const seller of activeSellers) {
+      if (seller.status !== "active") continue;
+
+      const isDateExpired = !seller.expiryDate || seller.expiryDate <= todayStr || new Date(seller.expiryDate).getTime() <= now.getTime();
+
+      if (isDateExpired) {
+        console.log(`[Auto-Archive] Found expired active seller: ${seller.name} (Code: ${seller.sellerCode}, Expiry: ${seller.expiryDate})`);
+
+        // If the seller has an email and hasn't been notified yet for expiry_day, attempt to send
+        if (seller.email) {
+          try {
+            const alreadySent = await storage.hasReminderBeenSent(seller.id, "expiry_day", todayStr);
+            if (!alreadySent) {
+              const success = await sendReminderEmail(
+                seller.email,
+                seller.name,
+                seller.sellerCode,
+                seller.expiryDate,
+                "expiry_day"
+              );
+              await storage.logReminderSent(seller.id, "expiry_day", todayStr);
+              console.log(
+                `[Auto-Archive] ${success ? "✓ Sent" : "✗ Failed"} expiry email to ${seller.name} (${seller.email})`
+              );
+            }
+          } catch (emailErr) {
+            console.error(`[Auto-Archive] Error sending expiry email to ${seller.name}:`, emailErr);
+          }
+        }
+
+        // CRITICAL: Regardless of whether the email succeeds, fails, or if the seller has no email at all:
+        // ALWAYS immediately execute storage.softDeleteSeller(seller.id)
+        await storage.softDeleteSeller(seller.id);
+        console.log(`[Auto-Archive] Automatically moved seller ${seller.name} (ID: ${seller.id}, Code: ${seller.sellerCode}) to Expired Sellers list`);
+      }
+    }
+  } catch (err) {
+    console.error("[Auto-Archive] Error in checkAndArchiveExpiredSellers:", err);
+  }
+}
+
 async function processEmailSchedule(): Promise<void> {
   console.log(`[Scheduler] Checking email queue at ${new Date().toISOString()}`);
 
@@ -38,9 +92,10 @@ async function processEmailSchedule(): Promise<void> {
 
       await storage.markScheduledEmailStatus(entry.id, success ? "sent" : "failed");
 
-      if (success && entry.emailType === "expiry_day") {
+      // Auto-archive on expiry_day regardless of email outcome
+      if (entry.emailType === "expiry_day") {
         await storage.softDeleteSeller(seller.id);
-        console.log(`[Scheduler] Auto-archived seller after expiry-day email: ${seller.name} (ID: ${seller.id})`);
+        console.log(`[Scheduler] Auto-archived seller on expiry-day: ${seller.name} (ID: ${seller.id})`);
       }
 
       console.log(
@@ -83,13 +138,18 @@ async function seedSchedulesForExistingSellers(): Promise<void> {
 }
 
 export function startCronJobs(): void {
-  cron.schedule("*/5 * * * *", () => {
-    processEmailSchedule();
+  // Immediately check and archive any expired sellers on boot
+  checkAndArchiveExpiredSellers();
+
+  cron.schedule("*/5 * * * *", async () => {
+    await checkAndArchiveExpiredSellers();
+    await processEmailSchedule();
   });
 
-  console.log("[Cron] Email schedule processor started (checks every 5 minutes)");
+  console.log("[Cron] Auto-archive and email schedule processor started (checks every 5 minutes)");
 
   setTimeout(() => {
     seedSchedulesForExistingSellers();
   }, 5000);
 }
+

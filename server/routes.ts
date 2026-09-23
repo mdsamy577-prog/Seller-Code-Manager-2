@@ -247,18 +247,32 @@ export async function registerRoutes(
   app.get("/api/public/verified-sellers", async (_req, res) => {
     try {
       const activeSellers = await storage.getAllSellers();
-      const sanitized = activeSellers
-        .filter((s) => s.status === "active")
-        .map((s) => ({
-          id: s.id,
-          name: s.name,
-          sellerCode: s.sellerCode,
-          facebookLink: s.facebookLink,
-          status: s.status,
-          duration: s.duration,
-          startDate: s.startDate,
-          expiryDate: s.expiryDate,
-        }));
+      const now = new Date();
+      const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+
+      const filtered = activeSellers.filter((s) => {
+        if (s.status !== "active") return false;
+        if (!s.expiryDate) return false;
+        // Strictly exclude sellers whose expiry date has arrived or passed
+        const isDateExpired = s.expiryDate <= todayStr || new Date(s.expiryDate).getTime() <= now.getTime();
+        if (isDateExpired) {
+          // Asynchronously move expired sellers to deleted/archived
+          storage.softDeleteSeller(s.id).catch(() => {});
+          return false;
+        }
+        return true;
+      });
+
+      const sanitized = filtered.map((s) => ({
+        id: s.id,
+        name: s.name,
+        sellerCode: s.sellerCode,
+        facebookLink: s.facebookLink,
+        status: s.status,
+        duration: s.duration,
+        startDate: s.startDate,
+        expiryDate: s.expiryDate,
+      }));
       res.json(sanitized);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch verified sellers" });
@@ -269,41 +283,103 @@ export async function registerRoutes(
     try {
       const rawCode = (req.params.code || "").trim();
       if (!rawCode) {
-        return res.status(400).json({ found: false, message: "Seller code is required" });
+        return res.status(400).json({
+          found: false,
+          isValid: false,
+          isVerified: false,
+          isExpired: false,
+          message: "Seller code is required"
+        });
       }
 
-      const seller = await storage.getSellerByCode(rawCode);
+      // Find seller by code in storage (including archived/soft-deleted records)
+      let seller = await storage.getSellerByCode(rawCode);
+      if (!seller) {
+        // Fallback for whitespace or lowercase match
+        const active = await storage.getAllSellers();
+        const deleted = await storage.getDeletedSellers();
+        seller = [...active, ...deleted].find(
+          (s) => s.sellerCode.trim().toLowerCase() === rawCode.toLowerCase()
+        );
+      }
+
       if (!seller) {
         return res.json({
           found: false,
+          isValid: false,
           isVerified: false,
+          isExpired: false,
           message: "No seller found matching this code."
         });
       }
 
-      const isVerified = seller.status === "active";
+      // Compute real-time expiration: compare seller.expiryDate with the current date
+      const now = new Date();
+      const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+      const isDateExpired = !seller.expiryDate || seller.expiryDate <= todayStr || new Date(seller.expiryDate).getTime() <= now.getTime();
+
       const phone = seller.phone || "";
       const maskedPhone = phone.length > 5
         ? `${phone.slice(0, 3)}***${phone.slice(-3)}`
         : "***";
 
+      // If seller.status !== 'active' OR isDateExpired is TRUE:
+      // The response MUST return isValid: false, isExpired: true, status: 'expired'
+      // DO NOT return isValid: true for any expired seller under any circumstances!
+      if (seller.status !== "active" || isDateExpired) {
+        // Ensure status in database is synchronized to deleted/archived
+        if (seller.status === "active") {
+          storage.softDeleteSeller(seller.id).catch(() => {});
+        }
+
+        return res.json({
+          found: true,
+          isValid: false,
+          isVerified: false,
+          isExpired: true,
+          status: "expired",
+          message: "সতর্কতা: এই সেলারের কোডের মেয়াদ উত্তীর্ণ হয়ে গেছে। এই কোডের অধীনে কোনো লেনদেন করবেন না।",
+          seller: {
+            id: seller.id,
+            name: seller.name,
+            sellerCode: seller.sellerCode,
+            facebookLink: seller.facebookLink,
+            status: "expired",
+            duration: seller.duration,
+            startDate: seller.startDate,
+            expiryDate: seller.expiryDate,
+            maskedPhone,
+          }
+        });
+      }
+
+      // Active and strictly non-expired seller
       return res.json({
         found: true,
-        isVerified,
-        status: seller.status,
+        isValid: true,
+        isVerified: true,
+        isExpired: false,
+        status: "active",
         seller: {
           id: seller.id,
           name: seller.name,
           sellerCode: seller.sellerCode,
           facebookLink: seller.facebookLink,
-          status: seller.status,
+          status: "active",
+          duration: seller.duration,
           startDate: seller.startDate,
           expiryDate: seller.expiryDate,
           maskedPhone,
         }
       });
     } catch (error) {
-      res.status(500).json({ found: false, message: "Verification check failed" });
+      res.status(500).json({
+        found: false,
+        isValid: false,
+        isVerified: false,
+        isExpired: false,
+        message: "Verification check failed"
+      });
     }
   });
 
@@ -314,72 +390,56 @@ export async function registerRoutes(
         return res.json({ results: [] });
       }
 
-      const byCode = await storage.getSellerByCode(query);
-      if (byCode) {
-        const phone = byCode.phone || "";
+      const now = new Date();
+      const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+
+      const formatPublicResult = (s: any) => {
+        const isDateExpired = !s.expiryDate || s.expiryDate <= todayStr || new Date(s.expiryDate).getTime() <= now.getTime();
+        const isExpired = s.status !== "active" || isDateExpired;
+        const phone = s.phone || "";
         const maskedPhone = phone.length > 5
           ? `${phone.slice(0, 3)}***${phone.slice(-3)}`
           : "***";
+
+        return {
+          id: s.id,
+          name: s.name,
+          sellerCode: s.sellerCode,
+          facebookLink: s.facebookLink,
+          status: isExpired ? "expired" : "active",
+          startDate: s.startDate,
+          expiryDate: s.expiryDate,
+          isValid: !isExpired,
+          isVerified: !isExpired,
+          isExpired,
+          maskedPhone,
+        };
+      };
+
+      const byCode = await storage.getSellerByCode(query);
+      if (byCode) {
         return res.json({
-          results: [{
-            id: byCode.id,
-            name: byCode.name,
-            sellerCode: byCode.sellerCode,
-            facebookLink: byCode.facebookLink,
-            status: byCode.status,
-            startDate: byCode.startDate,
-            expiryDate: byCode.expiryDate,
-            isVerified: byCode.status === "active",
-            maskedPhone,
-          }]
+          results: [formatPublicResult(byCode)]
         });
       }
 
       const byPhone = await storage.getSellerByPhone(query);
       if (byPhone) {
-        const phone = byPhone.phone || "";
-        const maskedPhone = phone.length > 5
-          ? `${phone.slice(0, 3)}***${phone.slice(-3)}`
-          : "***";
         return res.json({
-          results: [{
-            id: byPhone.id,
-            name: byPhone.name,
-            sellerCode: byPhone.sellerCode,
-            facebookLink: byPhone.facebookLink,
-            status: byPhone.status,
-            startDate: byPhone.startDate,
-            expiryDate: byPhone.expiryDate,
-            isVerified: byPhone.status === "active",
-            maskedPhone,
-          }]
+          results: [formatPublicResult(byPhone)]
         });
       }
 
       const allActive = await storage.getAllSellers();
+      const allDeleted = await storage.getDeletedSellers();
+      const allSellers = [...allActive, ...allDeleted];
       const qLower = query.toLowerCase();
-      const matched = allActive
+      const matched = allSellers
         .filter(s => s.name.toLowerCase().includes(qLower) || s.sellerCode.toLowerCase().includes(qLower))
         .slice(0, 12);
 
       return res.json({
-        results: matched.map(s => {
-          const phone = s.phone || "";
-          const maskedPhone = phone.length > 5
-            ? `${phone.slice(0, 3)}***${phone.slice(-3)}`
-            : "***";
-          return {
-            id: s.id,
-            name: s.name,
-            sellerCode: s.sellerCode,
-            facebookLink: s.facebookLink,
-            status: s.status,
-            startDate: s.startDate,
-            expiryDate: s.expiryDate,
-            isVerified: s.status === "active",
-            maskedPhone,
-          };
-        })
+        results: matched.map(formatPublicResult)
       });
     } catch (error) {
       res.status(500).json({ results: [], message: "Search failed" });

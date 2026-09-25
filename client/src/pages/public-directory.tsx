@@ -46,6 +46,7 @@ interface PublicSeller {
   isVerified?: boolean;
   isExpired?: boolean;
   profileImage?: string | null;
+  hideProfilePhoto?: boolean;
 }
 
 interface VerificationResult {
@@ -482,7 +483,7 @@ export default function PublicDirectory() {
 
                       {/* Seller Profile Photo Box */}
                       <div className="flex flex-col items-center shrink-0 self-center sm:self-auto sm:pl-3 sm:border-l border-red-200/60 dark:border-red-900/40">
-                        {activeVerification.seller.profileImage ? (
+                        {!activeVerification.seller.hideProfilePhoto && activeVerification.seller.profileImage ? (
                           <img
                             src={activeVerification.seller.profileImage}
                             alt={activeVerification.seller.name}
@@ -594,7 +595,7 @@ export default function PublicDirectory() {
 
                       {/* Seller Profile Photo Box */}
                       <div className="flex flex-col items-center shrink-0 self-center sm:self-auto sm:pl-3 sm:border-l border-emerald-200/60 dark:border-emerald-900/40">
-                        {activeVerification.seller.profileImage ? (
+                        {!activeVerification.seller.hideProfilePhoto && activeVerification.seller.profileImage ? (
                           <img
                             src={activeVerification.seller.profileImage}
                             alt={activeVerification.seller.name}
@@ -772,7 +773,7 @@ export default function PublicDirectory() {
                     {/* Top Row: Seller Avatar, Name & Code Badge */}
                     <div className="flex items-start justify-between gap-2.5">
                       <div className="flex items-center gap-3 min-w-0 flex-1">
-                        {seller.profileImage ? (
+                        {!seller.hideProfilePhoto && seller.profileImage ? (
                           <img
                             src={seller.profileImage}
                             alt={seller.name}

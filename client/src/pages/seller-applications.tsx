@@ -15,6 +15,7 @@ import {
   X,
   RefreshCw,
   ArrowLeft,
+  User,
 } from "lucide-react";
 import { SiMeta } from "react-icons/si";
 import { Button } from "@/components/ui/button";
@@ -32,7 +33,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 type Tab = "applications" | "renewals";
 
-function NidViewerModal({ url, onClose }: { url: string; onClose: () => void }) {
+function NidViewerModal({ url, onClose, title = "Document Preview" }: { url: string; onClose: () => void; title?: string }) {
   const handleDownload = async () => {
     try {
       const response = await fetch(url);
@@ -40,7 +41,7 @@ function NidViewerModal({ url, onClose }: { url: string; onClose: () => void }) 
       const blobUrl = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = blobUrl;
-      a.download = "nid-document";
+      a.download = title.toLowerCase().replace(/[^a-z0-9]+/g, "-");
       a.click();
       URL.revokeObjectURL(blobUrl);
     } catch {
@@ -63,7 +64,7 @@ function NidViewerModal({ url, onClose }: { url: string; onClose: () => void }) 
         <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700 shrink-0">
           <div className="flex items-center gap-2 text-sm font-semibold">
             <FileText className="h-4 w-4 text-violet-500 shrink-0" />
-            <span>NID Document</span>
+            <span>{title}</span>
           </div>
           <div className="flex items-center gap-1.5">
             <Button
@@ -88,7 +89,7 @@ function NidViewerModal({ url, onClose }: { url: string; onClose: () => void }) 
         <div className="overflow-auto flex-1 flex items-center justify-center p-4 bg-gray-50 dark:bg-gray-800/50">
           <img
             src={url}
-            alt="NID Document"
+            alt={title}
             style={{ maxWidth: "100%", height: "auto" }}
             className="rounded-md shadow-md"
             data-testid="img-nid-preview"
@@ -421,7 +422,7 @@ export default function SellerApplications() {
   }, []);
 
   const [deleteId, setDeleteId] = useState<number | null>(null);
-  const [nidPreviewUrl, setNidPreviewUrl] = useState<string | null>(null);
+  const [previewModal, setPreviewModal] = useState<{ url: string; title: string } | null>(null);
 
   const { data: applications = [], isLoading } = useQuery<SellerApplication[]>({
     queryKey: ["/api/applications"],
@@ -495,8 +496,12 @@ export default function SellerApplications() {
 
   return (
     <div className="min-h-screen bg-background">
-      {nidPreviewUrl && (
-        <NidViewerModal url={nidPreviewUrl} onClose={() => setNidPreviewUrl(null)} />
+      {previewModal && (
+        <NidViewerModal
+          url={previewModal.url}
+          title={previewModal.title}
+          onClose={() => setPreviewModal(null)}
+        />
       )}
 
       <div className="w-full max-w-[1400px] mx-auto p-3 sm:p-4 space-y-4">
@@ -628,7 +633,29 @@ export default function SellerApplications() {
                         <TableBody>
                           {sortedApplications.map((app) => (
                             <TableRow key={app.id} data-testid={`row-application-${app.id}`}>
-                              <TableCell className="font-medium text-xs py-1.5" data-testid={`text-app-name-${app.id}`}>{app.name}</TableCell>
+                              <TableCell className="font-medium text-xs py-1.5" data-testid={`text-app-name-${app.id}`}>
+                                <div className="flex items-center gap-2">
+                                  {app.profileImage ? (
+                                    <img
+                                      src={app.profileImage}
+                                      alt={app.name}
+                                      className="w-7 h-7 rounded-full object-cover border border-border cursor-pointer hover:opacity-80 transition shrink-0"
+                                      onClick={() => setPreviewModal({ url: app.profileImage!, title: `${app.name} - Profile Photo` })}
+                                      title="Click to view photo"
+                                    />
+                                  ) : (
+                                    <div className="w-7 h-7 rounded-full bg-muted flex items-center justify-center text-muted-foreground text-xs shrink-0">
+                                      <User className="w-3.5 h-3.5" />
+                                    </div>
+                                  )}
+                                  <span>{app.name}</span>
+                                  {app.hideProfilePhoto && (
+                                    <span className="inline-flex items-center text-[10px] font-semibold text-amber-700 bg-amber-50 dark:bg-amber-950/40 dark:text-amber-300 border border-amber-200 dark:border-amber-800 rounded px-1.5 py-0.5" title="ছবি ওয়েবসাইটে প্রদর্শিত হবে না">
+                                      ছবি গোপন
+                                    </span>
+                                  )}
+                                </div>
+                              </TableCell>
                               <TableCell className="text-xs py-1.5" data-testid={`text-app-phone-${app.id}`}>{app.phone}</TableCell>
                               <TableCell className="py-1.5 w-10 text-center">
                                 <div className="flex items-center justify-center gap-1">
@@ -678,7 +705,7 @@ export default function SellerApplications() {
                                     size="sm"
                                     variant="outline"
                                     className="h-6 text-xs px-1.5 text-violet-700 border-violet-300 hover:bg-violet-50 dark:text-violet-400 dark:border-violet-700 dark:hover:bg-violet-950"
-                                    onClick={() => setNidPreviewUrl(app.nidFileUrl!)}
+                                    onClick={() => setPreviewModal({ url: app.nidFileUrl!, title: `${app.name} - NID Document` })}
                                     data-testid={`button-view-nid-${app.id}`}
                                   >
                                     <FileText className="h-3 w-3 mr-1" />View
@@ -713,10 +740,32 @@ export default function SellerApplications() {
                       {sortedApplications.map((app) => (
                         <div key={app.id} className="border rounded-xl p-4 space-y-3 bg-card shadow-sm" data-testid={`row-application-${app.id}`}>
                           <div className="flex items-start justify-between gap-2">
-                            <div>
-                              <p className="font-semibold text-sm leading-tight" data-testid={`text-app-name-${app.id}`}>{app.name}</p>
-                              <p className="text-xs text-muted-foreground mt-0.5" data-testid={`text-app-phone-${app.id}`}>{app.phone}</p>
-                              <p className="text-xs text-muted-foreground/70 mt-0.5" data-testid={`text-app-submitted-${app.id}`}>Submitted: {formatSubmittedAt(app.createdAt)}</p>
+                            <div className="flex items-center gap-2.5">
+                              {app.profileImage ? (
+                                <img
+                                  src={app.profileImage}
+                                  alt={app.name}
+                                  className="w-10 h-10 rounded-xl object-cover border border-border cursor-pointer hover:opacity-80 transition shrink-0"
+                                  onClick={() => setPreviewModal({ url: app.profileImage!, title: `${app.name} - Profile Photo` })}
+                                  title="Click to view photo"
+                                />
+                              ) : (
+                                <div className="w-10 h-10 rounded-xl bg-muted flex items-center justify-center text-muted-foreground shrink-0">
+                                  <User className="w-5 h-5" />
+                                </div>
+                              )}
+                              <div>
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <p className="font-semibold text-sm leading-tight" data-testid={`text-app-name-${app.id}`}>{app.name}</p>
+                                  {app.hideProfilePhoto && (
+                                    <span className="inline-flex items-center text-[10px] font-semibold text-amber-700 bg-amber-50 dark:bg-amber-950/40 dark:text-amber-300 border border-amber-200 dark:border-amber-800 rounded px-1.5 py-0.5" title="ছবি ওয়েবসাইটে প্রদর্শিত হবে না">
+                                      ছবি গোপন
+                                    </span>
+                                  )}
+                                </div>
+                                <p className="text-xs text-muted-foreground mt-0.5" data-testid={`text-app-phone-${app.id}`}>{app.phone}</p>
+                                <p className="text-xs text-muted-foreground/70 mt-0.5" data-testid={`text-app-submitted-${app.id}`}>Submitted: {formatSubmittedAt(app.createdAt)}</p>
+                              </div>
                             </div>
                             <StatusBadge status={app.status} />
                           </div>
@@ -749,7 +798,7 @@ export default function SellerApplications() {
                               size="sm"
                               variant="outline"
                               className="h-8 text-xs text-violet-700 border-violet-300 hover:bg-violet-50 dark:text-violet-400 dark:border-violet-700 dark:hover:bg-violet-950"
-                              onClick={() => setNidPreviewUrl(app.nidFileUrl!)}
+                              onClick={() => setPreviewModal({ url: app.nidFileUrl!, title: `${app.name} - NID Document` })}
                               data-testid={`button-view-nid-mobile-${app.id}`}
                             >
                               <FileText className="h-3.5 w-3.5 mr-1.5" />View

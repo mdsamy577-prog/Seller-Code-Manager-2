@@ -133,6 +133,7 @@ export class MemStorage implements IStorage {
       status: "active",
       renewalStartDate: null,
       profileImage: seller.profileImage ?? null,
+      hideProfilePhoto: seller.hideProfilePhoto ?? false,
     };
     this.sellers.set(id, newSeller);
     return newSeller;
@@ -150,6 +151,7 @@ export class MemStorage implements IStorage {
       email: seller.email !== undefined ? seller.email : existing.email,
       renewalStartDate: seller.renewalStartDate !== undefined ? seller.renewalStartDate : existing.renewalStartDate,
       profileImage: seller.profileImage !== undefined ? (seller.profileImage || null) : existing.profileImage,
+      hideProfilePhoto: seller.hideProfilePhoto !== undefined ? seller.hideProfilePhoto : existing.hideProfilePhoto,
     };
     this.sellers.set(id, updated);
     return updated;
@@ -220,6 +222,7 @@ export class MemStorage implements IStorage {
       nidFileUrl: application.nidFileUrl ?? null,
       personalFacebookLink: application.personalFacebookLink ?? null,
       profileImage: application.profileImage ?? null,
+      hideProfilePhoto: application.hideProfilePhoto ?? false,
     };
     this.applications.set(id, app);
     return app;
@@ -309,6 +312,7 @@ export class MemStorage implements IStorage {
       status: "pending",
       createdAt: new Date().toISOString(),
       isDeleted: false,
+      profileImage: data.profileImage ?? null,
     };
     this.renewals.set(id, renewal);
     return renewal;
@@ -767,7 +771,10 @@ function initStorage(): IStorage {
     const pool = new pg.Pool(poolConfig);
     pool.query(`
       ALTER TABLE IF EXISTS sellers ADD COLUMN IF NOT EXISTS profile_image text;
+      ALTER TABLE IF EXISTS sellers ADD COLUMN IF NOT EXISTS hide_profile_photo boolean DEFAULT false;
       ALTER TABLE IF EXISTS seller_applications ADD COLUMN IF NOT EXISTS profile_image text;
+      ALTER TABLE IF EXISTS seller_applications ADD COLUMN IF NOT EXISTS hide_profile_photo boolean DEFAULT false;
+      ALTER TABLE IF EXISTS seller_renewal_applications ADD COLUMN IF NOT EXISTS profile_image text;
     `).catch(() => {});
 
     pool.on("error", (err) => {

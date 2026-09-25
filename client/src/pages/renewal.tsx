@@ -1,9 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useDiscount, personalPrices, formatPrice, discountedAmount } from "@/lib/pricing";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { Search, Phone, Hash, CheckCircle2, ShieldCheck, RefreshCw, CalendarCheck, Copy } from "lucide-react";
+import { Search, Phone, Hash, CheckCircle2, ShieldCheck, RefreshCw, CalendarCheck, Copy, Camera, Upload, ImageIcon, X, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -23,6 +23,7 @@ type Seller = {
   sellerCode: string;
   expiryDate: string;
   startDate: string;
+  profileImage?: string | null;
 };
 
 const MONTH_LABELS: Record<string, string> = {
@@ -67,6 +68,13 @@ export default function RenewalPage() {
   const [senderError, setSenderError] = useState("");
   const [submitted, setSubmitted] = useState(false);
 
+  // Conditional Profile Photo state when seller has no photo
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [photoUploading, setPhotoUploading] = useState(false);
+  const [photoError, setPhotoError] = useState("");
+  const photoInputRef = useRef<HTMLInputElement>(null);
+
   const { data: paymentSettings } = useQuery<{ bkashNumber: string; nagadNumber: string }>({
     queryKey: ["/api/settings/payment"],
     staleTime: 60_000,
@@ -103,6 +111,12 @@ export default function RenewalPage() {
     setSearchError("");
     setSeller(null);
     setSubmitted(false);
+    setPhotoFile(null);
+    if (photoPreview && photoPreview.startsWith("blob:")) {
+      URL.revokeObjectURL(photoPreview);
+    }
+    setPhotoPreview(null);
+    setPhotoError("");
     setSearching(true);
     try {
       const res = await fetchWithRetry(`/api/sellers/lookup?q=${encodeURIComponent(q)}`);
@@ -122,12 +136,13 @@ export default function RenewalPage() {
   }
 
   const renewMutation = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (variables?: { profileImage?: string }) => {
       const res = await apiRequest("POST", "/api/renewals", {
         phone: seller!.phone,
         duration,
         paymentMethod,
         senderNumber: senderNumber.trim(),
+        profileImage: variables?.profileImage,
       });
       return res.json();
     },
@@ -139,6 +154,7 @@ export default function RenewalPage() {
     retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 5000),
     onSuccess: () => {
       setSubmitted(true);
+      queryClient.invalidateQueries({ queryKey: ["/api/sellers"] });
       toast({ title: "আবেদন সফলভাবে জমা হয়েছে!" });
     },
     onError: () => {
@@ -146,14 +162,48 @@ export default function RenewalPage() {
     },
   });
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!senderNumber.trim()) {
       setSenderError("সেন্ডার নাম্বার লিখুন");
       return;
     }
     setSenderError("");
-    renewMutation.mutate();
+
+    const hasPhoto = Boolean(seller?.profileImage && seller.profileImage.trim());
+    if (!hasPhoto && !photoFile) {
+      setPhotoError("নিজের ছবি আপলোড করা বাধ্যতামূলক");
+      return;
+    }
+    setPhotoError("");
+
+    let uploadedPhotoUrl = "";
+    if (!hasPhoto && photoFile) {
+      try {
+        setPhotoUploading(true);
+        const formData = new FormData();
+        formData.append("photo", photoFile);
+        formData.append("phone", seller!.phone);
+        const res = await fetch("/api/applications/upload-photo", {
+          method: "POST",
+          body: formData,
+        });
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.message || "ছবি আপলোড করতে সমস্যা হয়েছে");
+        }
+        const data = await res.json();
+        uploadedPhotoUrl = data.url;
+      } catch (err: any) {
+        setPhotoUploading(false);
+        toast({ title: "ছবি আপলোড ব্যর্থ", description: err.message, variant: "destructive" });
+        return;
+      } finally {
+        setPhotoUploading(false);
+      }
+    }
+
+    renewMutation.mutate(uploadedPhotoUrl ? { profileImage: uploadedPhotoUrl } : undefined);
   }
 
   if (submitted) {
@@ -255,7 +305,20 @@ export default function RenewalPage() {
               <div className="h-1 bg-gradient-to-r from-teal-400 via-emerald-500 to-green-400" />
               <CardContent className="px-6 py-5 space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm font-semibold text-muted-foreground">সেলারের তথ্য</span>
+                  <div className="flex items-center gap-2.5">
+                    {seller.profileImage ? (
+                      <img
+                        src={seller.profileImage}
+                        alt={seller.name}
+                        className="w-9 h-9 rounded-full object-cover border border-emerald-400 shrink-0 shadow-xs"
+                      />
+                    ) : (
+                      <div className="w-9 h-9 rounded-full bg-slate-100 dark:bg-slate-800 border border-dashed border-slate-300 dark:border-slate-700 flex items-center justify-center text-slate-500 shrink-0">
+                        <User className="w-4 h-4" />
+                      </div>
+                    )}
+                    <span className="text-sm font-semibold text-muted-foreground">সেলারের তথ্য</span>
+                  </div>
                   <Badge
                     className={isExpired(seller.expiryDate)
                       ? "bg-red-100 dark:bg-red-950/40 text-red-700 dark:text-red-400 border-red-200 dark:border-red-800"
@@ -409,13 +472,131 @@ export default function RenewalPage() {
                     {senderError && <p className="text-sm text-red-600 dark:text-red-400">{senderError}</p>}
                   </div>
 
+                  {/* Conditional Profile Photo Upload Field */}
+                  {!seller.profileImage ? (
+                    <div className="space-y-2 pt-1 border-t border-dashed border-border/80">
+                      <div className="flex items-center justify-between">
+                        <label className="text-sm font-bold text-red-600 dark:text-red-400 flex items-center gap-1.5">
+                          <Camera className="h-4 w-4 text-red-500" />
+                          নিজের ছবি আপলোড করুন
+                        </label>
+                        <span className="text-xs font-bold text-red-500 bg-red-50 dark:bg-red-950/40 px-2 py-0.5 rounded-full border border-red-200 dark:border-red-800">
+                          বাধ্যতামূলক
+                        </span>
+                      </div>
+
+                      <div
+                        className={`relative rounded-xl border-2 border-dashed transition-all duration-200 cursor-pointer ${
+                          photoFile || photoPreview
+                            ? "border-emerald-400 bg-emerald-50 dark:bg-emerald-950/20"
+                            : "border-border/60 hover:border-emerald-300 dark:hover:border-emerald-700 hover:bg-emerald-50/50 dark:hover:bg-emerald-950/10"
+                        }`}
+                        onClick={() => photoInputRef.current?.click()}
+                        data-testid="input-renew-photo-upload-area"
+                      >
+                        <input
+                          ref={photoInputRef}
+                          type="file"
+                          accept=".jpg, .jpeg, image/jpeg"
+                          className="hidden"
+                          data-testid="input-renew-profile-photo-file"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (!file) return;
+                            const isJpg = file.type === "image/jpeg" || /\.(jpe?g)$/i.test(file.name);
+                            if (!isJpg) {
+                              toast({
+                                title: "ফাইল গ্রহণযোগ্য নয়",
+                                description: "শুধুমাত্র JPG বা JPEG ফরম্যাটের ছবি গ্রহণযোগ্য।",
+                                variant: "destructive",
+                              });
+                              if (photoInputRef.current) photoInputRef.current.value = "";
+                              return;
+                            }
+                            setPhotoFile(file);
+                            setPhotoPreview(URL.createObjectURL(file));
+                            setPhotoError("");
+                          }}
+                        />
+                        {photoFile || photoPreview ? (
+                          <div className="flex items-center justify-between p-3.5">
+                            <div className="flex items-center gap-3">
+                              {photoPreview ? (
+                                <img
+                                  src={photoPreview}
+                                  alt="Profile Preview"
+                                  className="w-12 h-12 rounded-xl object-cover border border-emerald-500/50 shrink-0"
+                                />
+                              ) : (
+                                <ImageIcon className="h-8 w-8 text-emerald-500 shrink-0" />
+                              )}
+                              <div>
+                                <p className="text-sm font-medium text-emerald-700 dark:text-emerald-300 truncate max-w-[180px]">
+                                  {photoFile ? photoFile.name : "নিজের ছবি"}
+                                </p>
+                                {photoFile && (
+                                  <p className="text-xs text-muted-foreground">{(photoFile.size / 1024).toFixed(1)} KB (JPG)</p>
+                                )}
+                              </div>
+                            </div>
+                            <button
+                              type="button"
+                              className="p-1 rounded-full hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition-colors"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (photoPreview && photoPreview.startsWith("blob:")) {
+                                  URL.revokeObjectURL(photoPreview);
+                                }
+                                setPhotoFile(null);
+                                setPhotoPreview(null);
+                                if (photoInputRef.current) photoInputRef.current.value = "";
+                              }}
+                              data-testid="button-remove-renew-photo"
+                            >
+                              <X className="h-4 w-4 text-emerald-600" />
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center justify-center gap-2.5 py-3.5 px-4">
+                            <Upload className="h-4 w-4 text-muted-foreground/50 shrink-0" />
+                            <div className="text-left">
+                              <p className="text-xs text-muted-foreground leading-snug">
+                                আপনার পরিষ্কার সাম্প্রতিক ছবি আপলোড করুন (শুধুমাত্র JPG ফরম্যাট গ্রহণযোগ্য)।
+                              </p>
+                              <p className="text-[11px] text-amber-600 dark:text-amber-400 font-medium mt-0.5">
+                                এনআইডির (NID) সাথে ছবির মিল থাকা আবশ্যক।
+                              </p>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                      {photoError && <p className="text-xs text-red-600 dark:text-red-400 font-medium">{photoError}</p>}
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-3 p-3 rounded-xl border border-emerald-200/70 dark:border-emerald-900/50 bg-emerald-50/50 dark:bg-emerald-950/20">
+                      <img
+                        src={seller.profileImage}
+                        alt={seller.name}
+                        className="w-10 h-10 rounded-full object-cover border border-emerald-400 shrink-0 shadow-xs"
+                      />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs font-semibold text-emerald-700 dark:text-emerald-300">প্রোফাইল ছবি সংরক্ষিত আছে</p>
+                        <p className="text-[11px] text-muted-foreground">আপনার প্রোফাইল ছবি ইতোমধ্যে সিস্টেমে সংযুক্ত রয়েছে।</p>
+                      </div>
+                    </div>
+                  )}
+
                   <Button
                     type="submit"
-                    disabled={renewMutation.isPending}
+                    disabled={renewMutation.isPending || photoUploading}
                     className="w-full h-12 rounded-xl text-white font-semibold text-base bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 hover:from-emerald-600 hover:via-teal-600 hover:to-cyan-600 shadow-lg shadow-teal-200/50 dark:shadow-teal-900/30 transition-all duration-200 hover:scale-[1.01] active:scale-[0.99]"
                     data-testid="button-submit-renew"
                   >
-                    {renewMutation.isPending ? "জমা হচ্ছে..." : "রিনিউ আবেদন জমা দিন"}
+                    {photoUploading
+                      ? "ছবি আপলোড হচ্ছে..."
+                      : renewMutation.isPending
+                      ? "জমা হচ্ছে..."
+                      : "রিনিউ আবেদন জমা দিন"}
                   </Button>
                   {renewMutation.isPending && (
                     <p className="text-center text-xs text-muted-foreground mt-1">সার্ভার চালু হচ্ছে, একটু অপেক্ষা করুন...</p>

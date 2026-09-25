@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest, setAuthToken } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -38,6 +38,7 @@ import {
   Camera,
   User,
   Image as ImageIcon,
+  Loader2,
 } from "lucide-react";
 import { SiMeta } from "react-icons/si";
 import { useLocation } from "wouter";
@@ -174,6 +175,115 @@ function NextEmailBadge({ sendAt }: { sendAt: string }) {
     >
       ⏳ Next email in: <span className="font-medium text-foreground">{display}</span>
     </span>
+  );
+}
+
+function SellerAvatarWithUpload({
+  seller,
+  size = "md",
+}: {
+  seller: Seller;
+  size?: "sm" | "md";
+}) {
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { toast } = useToast();
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const isJpg = file.type === "image/jpeg" || /\.(jpe?g)$/i.test(file.name);
+    if (!isJpg) {
+      toast({
+        title: "ফাইল গ্রহণযোগ্য নয়",
+        description: "শুধুমাত্র JPG বা JPEG ফরম্যাটের ছবি গ্রহণযোগ্য।",
+        variant: "destructive",
+      });
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      return;
+    }
+
+    try {
+      setUploading(true);
+      const formData = new FormData();
+      formData.append("photo", file);
+      const res = await fetch(`/api/sellers/${seller.id}/avatar`, {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.message || "Failed to update profile photo");
+      }
+
+      queryClient.invalidateQueries({ queryKey: ["/api/sellers"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/sellers/archived"] });
+      toast({ title: "প্রোফাইল ছবি সফলভাবে আপডেট হয়েছে!" });
+    } catch (err: any) {
+      toast({
+        title: "আপলোড ব্যর্থ",
+        description: err.message,
+        variant: "destructive",
+      });
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
+  const dimClass = size === "sm" ? "w-8 h-8" : "w-9 h-9";
+  const iconSize = size === "sm" ? "w-3 h-3" : "w-3.5 h-3.5";
+
+  return (
+    <div
+      className={`relative group cursor-pointer shrink-0 rounded-full ${dimClass}`}
+      onClick={(e) => {
+        e.stopPropagation();
+        fileInputRef.current?.click();
+      }}
+      title="ছবি পরিবর্তন করতে ক্লিক করুন (শুধুমাত্র JPG)"
+      data-testid={`avatar-clickable-${seller.id}`}
+    >
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".jpg, .jpeg, image/jpeg"
+        className="hidden"
+        onChange={handleFileChange}
+        data-testid={`input-avatar-file-${seller.id}`}
+      />
+
+      {seller.profileImage ? (
+        <img
+          src={seller.profileImage}
+          alt={seller.name}
+          className={`${dimClass} rounded-full object-cover border border-slate-200 shadow-xs`}
+        />
+      ) : (
+        <div
+          className={`${dimClass} rounded-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-500 font-semibold text-xs`}
+        >
+          {seller.name.slice(0, 1).toUpperCase()}
+        </div>
+      )}
+
+      {/* Hover Camera Overlay / Uploading Spinner */}
+      <div
+        className={`absolute inset-0 rounded-full flex items-center justify-center transition-all ${
+          uploading
+            ? "bg-black/60 opacity-100"
+            : "bg-black/50 opacity-0 group-hover:opacity-100"
+        }`}
+      >
+        {uploading ? (
+          <Loader2 className={`${iconSize} text-white animate-spin`} />
+        ) : (
+          <Camera className={`${iconSize} text-white drop-shadow`} />
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -1536,17 +1646,7 @@ export default function SellerCodeManager() {
                         <TableRow key={seller.id} className={getRowClass(seller.expiryDate)} data-testid={`row-seller-${seller.id}`}>
                           <TableCell className="font-medium" data-testid={`text-name-${seller.id}`}>
                             <div className="flex items-center gap-2.5">
-                              {seller.profileImage ? (
-                                <img
-                                  src={seller.profileImage}
-                                  alt={seller.name}
-                                  className="w-8 h-8 rounded-full object-cover border border-slate-200 shrink-0"
-                                />
-                              ) : (
-                                <div className="w-8 h-8 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0 text-slate-500 font-semibold text-xs">
-                                  {seller.name.slice(0, 1).toUpperCase()}
-                                </div>
-                              )}
+                              <SellerAvatarWithUpload seller={seller} size="sm" />
                               <span className="truncate max-w-[140px]">{seller.name}</span>
                             </div>
                           </TableCell>
@@ -1612,17 +1712,7 @@ export default function SellerCodeManager() {
                     <div key={seller.id} className={`border rounded-xl p-4 space-y-3 shadow-sm ${getRowClass(seller.expiryDate) || "bg-card"}`} data-testid={`row-seller-${seller.id}`}>
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0 flex items-center gap-2.5">
-                          {seller.profileImage ? (
-                            <img
-                              src={seller.profileImage}
-                              alt={seller.name}
-                              className="w-9 h-9 rounded-full object-cover border border-slate-200 shrink-0"
-                            />
-                          ) : (
-                            <div className="w-9 h-9 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0 text-slate-500 font-semibold text-xs">
-                              {seller.name.slice(0, 1).toUpperCase()}
-                            </div>
-                          )}
+                          <SellerAvatarWithUpload seller={seller} size="md" />
                           <div className="min-w-0">
                             <p className="font-semibold text-sm truncate" data-testid={`text-name-${seller.id}`}>{seller.name}</p>
                             <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1" data-testid={`text-phone-${seller.id}`}>

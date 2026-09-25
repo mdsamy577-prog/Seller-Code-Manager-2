@@ -23,6 +23,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -50,6 +51,8 @@ const applicationFormSchema = z.object({
     ),
   ]).optional(),
   nidFileUrl: z.string().optional(),
+  profileImage: z.string().optional(),
+  hideProfilePhoto: z.boolean().default(false),
 }).superRefine((data, ctx) => {
   if (data.sellerType === "facebook_business_page") {
     if (!data.personalFacebookLink || data.personalFacebookLink.trim() === "") {
@@ -88,6 +91,10 @@ export default function SellerApplication() {
   const nagadNumber = paymentSettings?.nagadNumber ?? "01972002118";
   const [submitted, setSubmitted] = useState(false);
   const [emailErrorOpen, setEmailErrorOpen] = useState(false);
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [photoUploading, setPhotoUploading] = useState(false);
+  const photoInputRef = useRef<HTMLInputElement>(null);
   const [nidFile, setNidFile] = useState<File | null>(null);
   const [nidUploading, setNidUploading] = useState(false);
   const nidInputRef = useRef<HTMLInputElement>(null);
@@ -106,6 +113,8 @@ export default function SellerApplication() {
       senderNumber: "",
       email: "",
       nidFileUrl: "",
+      profileImage: "",
+      hideProfilePhoto: false,
     },
   });
 
@@ -145,7 +154,17 @@ export default function SellerApplication() {
   });
 
   const onSubmit = async (data: ApplicationFormValues) => {
+    let profileImageUrl = data.profileImage || "";
     let nidFileUrl = data.nidFileUrl || "";
+
+    if (!photoFile && !profileImageUrl) {
+      toast({
+        title: "নিজের ছবি প্রয়োজন",
+        description: "নিজের ছবি আপলোড করা বাধ্যতামূলক",
+        variant: "destructive",
+      });
+      return;
+    }
 
     if (!nidFile && !nidFileUrl) {
       toast({
@@ -154,6 +173,31 @@ export default function SellerApplication() {
         variant: "destructive",
       });
       return;
+    }
+
+    if (photoFile && !profileImageUrl) {
+      try {
+        setPhotoUploading(true);
+        const formData = new FormData();
+        formData.append("photo", photoFile);
+        formData.append("phone", data.phone);
+        const res = await fetch("/api/applications/upload-photo", {
+          method: "POST",
+          body: formData,
+        });
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.message || "নিজের ছবি আপলোড করতে সমস্যা হয়েছে");
+        }
+        const result = await res.json();
+        profileImageUrl = result.url;
+        form.setValue("profileImage", profileImageUrl);
+      } catch (err: any) {
+        toast({ title: "Photo Upload Failed", description: err.message, variant: "destructive" });
+        return;
+      } finally {
+        setPhotoUploading(false);
+      }
     }
 
     if (nidFile && !nidFileUrl) {
@@ -184,8 +228,10 @@ export default function SellerApplication() {
 
     const payload = {
       ...data,
+      hideProfilePhoto: Boolean(data.hideProfilePhoto),
       email: data.email?.trim() || undefined,
       nidFileUrl: nidFileUrl || undefined,
+      profileImage: profileImageUrl || undefined,
     };
     submitMutation.mutate(payload);
   };
@@ -740,10 +786,130 @@ export default function SellerApplication() {
 
                   <div className="flex items-center gap-3 pt-1">
                     <div className="flex-1 h-px bg-gradient-to-r from-transparent via-violet-200 dark:via-violet-800 to-transparent" />
-                    <span className="text-[11px] font-semibold text-violet-600 dark:text-violet-400 uppercase tracking-widest px-1">NID / পরিচয়পত্র</span>
+                    <span className="text-[11px] font-semibold text-violet-600 dark:text-violet-400 uppercase tracking-widest px-1">ছবি ও NID / পরিচয়পত্র</span>
                     <div className="flex-1 h-px bg-gradient-to-r from-transparent via-violet-200 dark:via-violet-800 to-transparent" />
                   </div>
 
+                  {/* Profile Photo Upload */}
+                  <div className="space-y-2">
+                    <p className="text-sm font-bold text-red-600">নিজের ছবি <span className="text-sm font-medium text-red-500 ml-1">(বাধ্যতামূলক)</span></p>
+                    <div
+                      className={`relative rounded-xl border-2 border-dashed transition-all duration-200 cursor-pointer ${
+                        photoFile || photoPreview
+                          ? "border-emerald-400 bg-emerald-50 dark:bg-emerald-950/20"
+                          : "border-border/60 hover:border-emerald-300 dark:hover:border-emerald-700 hover:bg-emerald-50/50 dark:hover:bg-emerald-950/10"
+                      }`}
+                      onClick={() => photoInputRef.current?.click()}
+                      data-testid="input-photo-upload-area"
+                    >
+                      <input
+                        ref={photoInputRef}
+                        type="file"
+                        accept=".jpg, .jpeg, image/jpeg"
+                        className="hidden"
+                        data-testid="input-profile-photo-file"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          const isJpg = file.type === "image/jpeg" || /\.(jpe?g)$/i.test(file.name);
+                          if (!isJpg) {
+                            toast({
+                              title: "ফাইল গ্রহণযোগ্য নয়",
+                              description: "শুধুমাত্র JPG বা JPEG ফরম্যাটের ছবি গ্রহণযোগ্য।",
+                              variant: "destructive",
+                            });
+                            if (photoInputRef.current) photoInputRef.current.value = "";
+                            return;
+                          }
+                          setPhotoFile(file);
+                          setPhotoPreview(URL.createObjectURL(file));
+                          form.setValue("profileImage", "");
+                        }}
+                      />
+                      {photoFile || photoPreview ? (
+                        <div className="flex items-center justify-between p-3.5">
+                          <div className="flex items-center gap-3">
+                            {photoPreview ? (
+                              <img
+                                src={photoPreview}
+                                alt="Profile Preview"
+                                className="w-12 h-12 rounded-xl object-cover border border-emerald-500/50 shrink-0"
+                              />
+                            ) : (
+                              <ImageIcon className="h-8 w-8 text-emerald-500 shrink-0" />
+                            )}
+                            <div>
+                              <p className="text-sm font-medium text-emerald-700 dark:text-emerald-300 truncate max-w-[180px]">
+                                {photoFile ? photoFile.name : "নিজের ছবি"}
+                              </p>
+                              {photoFile && (
+                                <p className="text-xs text-muted-foreground">{(photoFile.size / 1024).toFixed(1)} KB (JPG)</p>
+                              )}
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            className="p-1 rounded-full hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition-colors"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (photoPreview && photoPreview.startsWith("blob:")) {
+                                URL.revokeObjectURL(photoPreview);
+                              }
+                              setPhotoFile(null);
+                              setPhotoPreview(null);
+                              form.setValue("profileImage", "");
+                              if (photoInputRef.current) photoInputRef.current.value = "";
+                            }}
+                            data-testid="button-remove-photo"
+                          >
+                            <X className="h-4 w-4 text-emerald-600" />
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center justify-center gap-2.5 py-3 px-4">
+                          <Upload className="h-4 w-4 text-muted-foreground/50 shrink-0" />
+                          <div className="text-left">
+                            <p className="text-xs text-muted-foreground leading-snug">
+                              আপনার পরিষ্কার সাম্প্রতিক ছবি আপলোড করুন (শুধুমাত্র JPG ফরম্যাট গ্রহণযোগ্য)।
+                            </p>
+                            <p className="text-[11px] text-amber-600 dark:text-amber-400 font-medium mt-0.5">
+                              এনআইডির (NID) সাথে ছবির মিল থাকা আবশ্যক।
+                            </p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Guideline Note underneath upload box */}
+                    <p className="text-[11px] text-muted-foreground flex items-center gap-1.5 px-0.5">
+                      <span className="text-amber-500 font-bold">•</span>
+                      <span>এনআইডির (NID) সাথে ছবির মিল থাকা আবশ্যক।</span>
+                    </p>
+
+                    {/* Privacy Checkbox directly underneath the profile photo upload box */}
+                    <FormField
+                      control={form.control}
+                      name="hideProfilePhoto"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-center space-x-2.5 space-y-0 p-2.5 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/60 mt-1.5">
+                          <FormControl>
+                            <Checkbox
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                              data-testid="checkbox-hide-profile-photo"
+                            />
+                          </FormControl>
+                          <div className="space-y-0.5 leading-none">
+                            <FormLabel className="text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 cursor-pointer">
+                              ছবি গোপন রাখতে চাই (ওয়েবসাইটে আপনার ছবি প্রদর্শিত হবে না)
+                            </FormLabel>
+                          </div>
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  {/* NID Upload */}
                   <div className="space-y-2">
                     <p className="text-sm font-bold text-red-600">NID / জাতীয় পরিচয়পত্র <span className="text-sm font-medium text-red-500 ml-1">(বাধ্যতামূলক)</span></p>
                     <div
@@ -819,11 +985,17 @@ export default function SellerApplication() {
                     <Button
                       type="submit"
                       className="w-full bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:from-blue-700 hover:via-indigo-700 hover:to-purple-700 text-white font-bold py-6 text-base rounded-xl shadow-lg shadow-indigo-500/30 hover:shadow-xl hover:shadow-indigo-500/40 hover:scale-[1.01] active:scale-[0.99] transition-all duration-200"
-                      disabled={submitMutation.isPending || nidUploading}
+                      disabled={submitMutation.isPending || photoUploading || nidUploading}
                       data-testid="button-submit-application"
                     >
                       <Send className="h-4 w-4 mr-2" />
-                      {nidUploading ? "NID আপলোড হচ্ছে..." : submitMutation.isPending ? "জমা হচ্ছে..." : "আবেদন জমা দিন"}
+                      {photoUploading
+                        ? "ছবি আপলোড হচ্ছে..."
+                        : nidUploading
+                        ? "NID আপলোড হচ্ছে..."
+                        : submitMutation.isPending
+                        ? "জমা হচ্ছে..."
+                        : "আবেদন জমা দিন"}
                     </Button>
                     {submitMutation.isPending && (
                       <p className="text-center text-xs text-muted-foreground mt-2">Server is waking up, please wait...</p>

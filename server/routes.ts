@@ -24,6 +24,28 @@ const upload = multer({
   },
 });
 
+const uploadJpg = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    const isJpg = file.mimetype === "image/jpeg" || /\.(jpe?g)$/i.test(file.originalname);
+    if (isJpg) {
+      cb(null, true);
+    } else {
+      cb(new Error("শুধুমাত্র JPG বা JPEG ফরম্যাটের ছবি গ্রহণযোগ্য।"));
+    }
+  },
+});
+
+function uploadJpgMiddleware(req: Request, res: Response, next: NextFunction) {
+  uploadJpg.single("photo")(req, res, (err: any) => {
+    if (err) {
+      return res.status(400).json({ message: err.message || "শুধুমাত্র JPG বা JPEG ফরম্যাটের ছবি গ্রহণযোগ্য।" });
+    }
+    next();
+  });
+}
+
 const photoUploadLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
   max: 20,
@@ -342,6 +364,8 @@ export async function registerRoutes(
           storage.softDeleteSeller(seller.id).catch(() => {});
         }
 
+        const shouldHide = Boolean(seller.hideProfilePhoto);
+
         return res.json({
           found: true,
           isValid: false,
@@ -359,12 +383,14 @@ export async function registerRoutes(
             startDate: seller.startDate,
             expiryDate: seller.expiryDate,
             maskedPhone,
-            profileImage: seller.profileImage || null,
+            profileImage: shouldHide ? null : (seller.profileImage || null),
+            hideProfilePhoto: shouldHide,
           }
         });
       }
 
       // Active and strictly non-expired seller
+      const shouldHide = Boolean(seller.hideProfilePhoto);
       return res.json({
         found: true,
         isValid: true,
@@ -381,7 +407,8 @@ export async function registerRoutes(
           startDate: seller.startDate,
           expiryDate: seller.expiryDate,
           maskedPhone,
-          profileImage: seller.profileImage || null,
+          profileImage: shouldHide ? null : (seller.profileImage || null),
+          hideProfilePhoto: shouldHide,
         }
       });
     } catch (error) {
@@ -413,6 +440,7 @@ export async function registerRoutes(
           ? `${phone.slice(0, 3)}***${phone.slice(-3)}`
           : "***";
 
+        const shouldHide = Boolean(s.hideProfilePhoto);
         return {
           id: s.id,
           name: s.name,
@@ -425,7 +453,8 @@ export async function registerRoutes(
           isVerified: !isExpired,
           isExpired,
           maskedPhone,
-          profileImage: s.profileImage || null,
+          profileImage: shouldHide ? null : (s.profileImage || null),
+          hideProfilePhoto: shouldHide,
         };
       };
 
@@ -757,7 +786,7 @@ export async function registerRoutes(
 
   app.post("/api/renewals", async (req, res) => {
     try {
-      const { phone, duration, paymentMethod, senderNumber } = req.body;
+      const { phone, duration, paymentMethod, senderNumber, profileImage } = req.body;
       if (!phone || typeof phone !== "string" || !phone.trim()) {
         return res.status(400).json({ message: "phone is required" });
       }
@@ -774,12 +803,20 @@ export async function registerRoutes(
       if (!seller) {
         return res.status(404).json({ message: "Seller not found" });
       }
+
+      // If renewal includes a profile photo, update seller record in database automatically
+      if (profileImage && typeof profileImage === "string" && profileImage.trim()) {
+        await storage.updateSeller(seller.id, { profileImage: profileImage.trim() });
+        console.log(`[renewals] Auto-updated seller photo for ${seller.phone} (seller ID: ${seller.id})`);
+      }
+
       const application = await storage.createRenewalApplication({
         sellerId: seller.id,
         phone: seller.phone,
         duration: String(Number(duration)),
         paymentMethod,
         senderNumber: senderNumber.trim(),
+        profileImage: profileImage && typeof profileImage === "string" ? profileImage.trim() : undefined,
       });
       console.log(`[renewals] New renewal application from ${seller.phone} (seller ID: ${seller.id}), duration: ${duration} months`);
       res.status(201).json({ message: "Renewal application submitted successfully", application });
@@ -950,16 +987,18 @@ export async function registerRoutes(
         sellerCode = existingSeller.sellerCode;
         startDate = existingSeller.startDate;
         expiryDate = existingSeller.expiryDate;
+        const updates: any = {
+          hideProfilePhoto: application.hideProfilePhoto ?? false,
+        };
         if (application.profileImage) {
           // If replacing existing seller's photo, delete the old photo from Cloudflare
           if (existingSeller.profileImage && existingSeller.profileImage !== application.profileImage) {
             console.log(`[Storage] Purging old seller photo on new application approval: ${existingSeller.profileImage}`);
             await deleteFileFromCloudflare(existingSeller.profileImage);
           }
-          await storage.updateSeller(existingSeller.id, {
-            profileImage: application.profileImage,
-          });
+          updates.profileImage = application.profileImage;
         }
+        await storage.updateSeller(existingSeller.id, updates);
       } else {
         const today = new Date();
         startDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
@@ -976,6 +1015,7 @@ export async function registerRoutes(
           expiryDate,
           email: application.email || undefined,
           profileImage: application.profileImage || undefined,
+          hideProfilePhoto: application.hideProfilePhoto ?? false,
         });
         await scheduleSellerEmails(newSeller);
       }
@@ -1139,22 +1179,21 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/applications/upload-photo", photoUploadLimiter, upload.single("photo"), async (req, res) => {
+  app.post("/api/applications/upload-photo", photoUploadLimiter, uploadJpgMiddleware, async (req, res) => {
     try {
       if (!req.file) {
         return res.status(400).json({ message: "No photo uploaded" });
       }
-      const allowed = ["image/jpeg", "image/png", "image/webp"];
-      if (!allowed.includes(req.file.mimetype)) {
-        return res.status(400).json({ message: "Invalid image format. Supported formats: JPG, PNG, WEBP." });
+      const isJpg = req.file.mimetype === "image/jpeg" || (req.file.originalname && /\.(jpe?g)$/i.test(req.file.originalname));
+      if (!isJpg) {
+        return res.status(400).json({ message: "শুধুমাত্র JPG বা JPEG ফরম্যাটের ছবি গ্রহণযোগ্য।" });
       }
       const { phone } = req.body;
-      const ext = req.file.mimetype === "image/png" ? "png" : req.file.mimetype === "image/webp" ? "webp" : "jpg";
       const timestamp = Math.floor(Date.now() / 1000);
-      const publicId = `PROFILE_${phone || "seller"}_${timestamp}.${ext}`;
+      const publicId = `PROFILE_${phone || "seller"}_${timestamp}.jpg`;
       const secureUrl = await uploadProfilePhoto(
         req.file.buffer,
-        req.file.mimetype,
+        "image/jpeg",
         publicId
       );
       res.json({ url: secureUrl });
@@ -1168,17 +1207,16 @@ export async function registerRoutes(
       if (!req.file) {
         return res.status(400).json({ message: "No photo uploaded" });
       }
-      const allowed = ["image/jpeg", "image/png", "image/webp"];
-      if (!allowed.includes(req.file.mimetype)) {
-        return res.status(400).json({ message: "Invalid image format. Supported formats: JPG, PNG, WEBP." });
+      const isJpg = req.file.mimetype === "image/jpeg" || (req.file.originalname && /\.(jpe?g)$/i.test(req.file.originalname));
+      if (!isJpg) {
+        return res.status(400).json({ message: "শুধুমাত্র JPG বা JPEG ফরম্যাটের ছবি গ্রহণযোগ্য।" });
       }
       const { phone } = req.body;
-      const ext = req.file.mimetype === "image/png" ? "png" : req.file.mimetype === "image/webp" ? "webp" : "jpg";
       const timestamp = Math.floor(Date.now() / 1000);
-      const publicId = `PROFILE_${phone || "seller"}_${timestamp}.${ext}`;
+      const publicId = `PROFILE_${phone || "seller"}_${timestamp}.jpg`;
       const secureUrl = await uploadProfilePhoto(
         req.file.buffer,
-        req.file.mimetype,
+        "image/jpeg",
         publicId
       );
       res.json({ url: secureUrl });
@@ -1187,8 +1225,48 @@ export async function registerRoutes(
     }
   };
 
-  app.post("/api/sellers/upload-photo", requireAuth, upload.single("photo"), handleSellerPhotoUpload);
-  app.post("/api/admin/sellers/upload-photo", requireAuth, upload.single("photo"), handleSellerPhotoUpload);
+  const handleAdminAvatarUpload = async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(String(req.params.id));
+      if (isNaN(id)) return res.status(400).json({ message: "Invalid seller ID" });
+
+      const seller = await storage.getSellerById(id);
+      if (!seller) return res.status(404).json({ message: "Seller not found" });
+
+      if (!req.file) {
+        return res.status(400).json({ message: "No photo uploaded" });
+      }
+      const isJpg = req.file.mimetype === "image/jpeg" || (req.file.originalname && /\.(jpe?g)$/i.test(req.file.originalname));
+      if (!isJpg) {
+        return res.status(400).json({ message: "শুধুমাত্র JPG বা JPEG ফরম্যাটের ছবি গ্রহণযোগ্য।" });
+      }
+
+      const timestamp = Math.floor(Date.now() / 1000);
+      const publicId = `PROFILE_${seller.phone || seller.sellerCode || id}_${timestamp}.jpg`;
+      const secureUrl = await uploadProfilePhoto(
+        req.file.buffer,
+        "image/jpeg",
+        publicId
+      );
+
+      // Clean up old photo if different
+      if (seller.profileImage && seller.profileImage !== secureUrl) {
+        deleteFileFromCloudflare(seller.profileImage).catch(() => {});
+      }
+
+      const updated = await storage.updateSeller(id, { profileImage: secureUrl });
+      res.json({ message: "Profile photo updated successfully", url: secureUrl, seller: updated });
+    } catch (error: any) {
+      console.error("[avatar-upload] Error uploading avatar:", error);
+      res.status(500).json({ message: error.message || "Failed to upload avatar" });
+    }
+  };
+
+  app.post("/api/sellers/:id/avatar", requireAuth, uploadJpgMiddleware, handleAdminAvatarUpload);
+  app.post("/api/admin/sellers/:id/avatar", requireAuth, uploadJpgMiddleware, handleAdminAvatarUpload);
+
+  app.post("/api/sellers/upload-photo", requireAuth, uploadJpgMiddleware, handleSellerPhotoUpload);
+  app.post("/api/admin/sellers/upload-photo", requireAuth, uploadJpgMiddleware, handleSellerPhotoUpload);
 
   app.post("/api/applications/upload-nid", nidUploadLimiter, upload.single("nid"), async (req, res) => {
     try {

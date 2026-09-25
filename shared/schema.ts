@@ -32,6 +32,7 @@ export const sellers = pgTable("sellers", {
   status: text("status").notNull().default("active"),
   renewalStartDate: date("renewal_start_date"),
   profileImage: text("profile_image"),
+  hideProfilePhoto: boolean("hide_profile_photo").notNull().default(false),
 });
 
 export const emailReminderLog = pgTable("email_reminder_log", {
@@ -52,6 +53,7 @@ export const insertSellerSchema = createInsertSchema(sellers).pick({
   startDate: true,
   email: true,
   profileImage: true,
+  hideProfilePhoto: true,
 });
 
 export type InsertSeller = z.infer<typeof insertSellerSchema>;
@@ -79,6 +81,7 @@ export const sellerApplications = pgTable("seller_applications", {
   nidFileUrl: text("nid_file_url"),
   personalFacebookLink: text("personal_facebook_link"),
   profileImage: text("profile_image"),
+  hideProfilePhoto: boolean("hide_profile_photo").notNull().default(false),
 });
 
 export const insertSellerApplicationSchema = createInsertSchema(sellerApplications).pick({
@@ -93,6 +96,7 @@ export const insertSellerApplicationSchema = createInsertSchema(sellerApplicatio
   email: true,
   nidFileUrl: true,
   profileImage: true,
+  hideProfilePhoto: true,
 });
 
 export type InsertSellerApplication = z.infer<typeof insertSellerApplicationSchema>;
@@ -108,6 +112,7 @@ export const sellerRenewalApplications = pgTable("seller_renewal_applications", 
   status: text("status").notNull().default("pending"),
   createdAt: text("created_at").notNull().default(sql`now()`),
   isDeleted: boolean("is_deleted").notNull().default(false),
+  profileImage: text("profile_image"),
 });
 
 export const insertSellerRenewalApplicationSchema = createInsertSchema(sellerRenewalApplications).pick({
@@ -116,6 +121,7 @@ export const insertSellerRenewalApplicationSchema = createInsertSchema(sellerRen
   duration: true,
   paymentMethod: true,
   senderNumber: true,
+  profileImage: true,
 });
 
 export type InsertSellerRenewalApplication = z.infer<typeof insertSellerRenewalApplicationSchema>;

@@ -108,7 +108,33 @@ export async function uploadProfilePhoto(
     .jpeg({ quality: 88 })
     .toBuffer();
 
-  // 1. Try Cloudflare R2 if configured
+  // 1. Try Cloudinary if configured
+  if (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET) {
+    try {
+      return await new Promise<string>((resolve, reject) => {
+        const uploadStream = cloudinary.uploader.upload_stream(
+          {
+            public_id: publicId,
+            folder: "seller_photos",
+            resource_type: "image",
+            type: "upload",
+            access_mode: "public",
+            overwrite: true,
+          },
+          (error, result) => {
+            if (error) return reject(error);
+            if (!result) return reject(new Error("No result from Cloudinary"));
+            resolve(result.secure_url);
+          }
+        );
+        uploadStream.end(processedBuffer);
+      });
+    } catch (cErr) {
+      console.warn("[Cloudinary] Profile photo upload failed, checking fallbacks:", cErr);
+    }
+  }
+
+  // 2. Try Cloudflare R2 if configured
   const hasR2 = !!(
     (process.env.CLOUDFLARE_ACCOUNT_ID || process.env.R2_ACCOUNT_ID) &&
     (process.env.CLOUDFLARE_R2_ACCESS_KEY_ID || process.env.R2_ACCESS_KEY_ID || process.env.CLOUDFLARE_ACCESS_KEY_ID) &&
@@ -128,30 +154,9 @@ export async function uploadProfilePhoto(
     }
   }
 
-  // 2. Try Cloudinary if configured
-  if (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) {
-    console.log("[Storage] Cloudinary & R2 not set — using base64 data URI fallback for profile photo");
-    return `data:image/jpeg;base64,${processedBuffer.toString("base64")}`;
-  }
-
-  return new Promise((resolve, reject) => {
-    const uploadStream = cloudinary.uploader.upload_stream(
-      {
-        public_id: publicId,
-        folder: "seller_photos",
-        resource_type: "image",
-        type: "upload",
-        access_mode: "public",
-        overwrite: true,
-      },
-      (error, result) => {
-        if (error) return reject(error);
-        if (!result) return reject(new Error("No result from Cloudinary"));
-        resolve(result.secure_url);
-      }
-    );
-    uploadStream.end(processedBuffer);
-  });
+  // 3. Fallback: Base64 data URI
+  console.log("[Storage] Cloudinary & R2 not set — using base64 data URI fallback for profile photo");
+  return `data:image/jpeg;base64,${processedBuffer.toString("base64")}`;
 }
 
 export async function deleteCloudinaryFile(url: string): Promise<void> {

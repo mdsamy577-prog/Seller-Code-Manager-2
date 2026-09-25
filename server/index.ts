@@ -63,9 +63,14 @@ app.use(passport.session());
 // Token-based authentication fallback for cross-origin iframes
 app.use(async (req, _res, next) => {
   const authHeader = req.headers.authorization || (req.headers["x-auth-token"] as string);
-  const token = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : authHeader;
+  let token = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : authHeader;
+
+  if (!token && typeof req.query?.token === "string") {
+    token = req.query.token;
+  }
 
   if (token) {
+    token = token.trim().replace(/^["']|["']$/g, "");
     const verified = verifyAuthToken(token);
     if (verified) {
       (req as any).user = { id: verified.userId, username: verified.username };

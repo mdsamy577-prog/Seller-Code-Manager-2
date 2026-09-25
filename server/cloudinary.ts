@@ -1,11 +1,15 @@
 import { v2 as cloudinary } from "cloudinary";
 import sharp from "sharp";
 
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
-});
+if (process.env.CLOUDINARY_URL) {
+  cloudinary.config();
+} else {
+  cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET,
+  });
+}
 
 function escapeXml(str: string): string {
   return str
@@ -52,45 +56,36 @@ export async function uploadNidFile(
 ): Promise<string> {
   const stampedBuffer = await stampTextOnImage(fileBuffer, sellerName, phone);
 
-  // 1. Try Cloudflare R2 if configured
-  const hasR2 = !!(
-    (process.env.CLOUDFLARE_ACCOUNT_ID || process.env.R2_ACCOUNT_ID) &&
-    (process.env.CLOUDFLARE_R2_ACCESS_KEY_ID || process.env.R2_ACCESS_KEY_ID || process.env.CLOUDFLARE_ACCESS_KEY_ID) &&
-    (process.env.CLOUDFLARE_R2_SECRET_ACCESS_KEY || process.env.R2_SECRET_ACCESS_KEY || process.env.CLOUDFLARE_SECRET_ACCESS_KEY)
+  const isConfigured = !!(
+    process.env.CLOUDINARY_URL ||
+    (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET)
   );
 
-  if (hasR2) {
-    try {
-      const { uploadToCloudflareR2 } = await import("./cloudflare");
-      const r2Key = `nid_uploads/${publicId}.jpg`;
-      const r2Url = await uploadToCloudflareR2(stampedBuffer, "image/jpeg", r2Key);
-      if (r2Url) {
-        return r2Url;
-      }
-    } catch (r2Err) {
-      console.warn("[Cloudflare R2] NID upload failed, checking fallbacks:", r2Err);
-    }
-  }
-
-  // 2. Try Cloudinary if configured
-  if (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) {
-    console.log("[Storage] Cloudinary & R2 not set — using base64 data URI fallback for NID");
+  if (!isConfigured) {
+    console.warn("[Storage] Cloudinary not configured — using base64 data URI fallback for NID");
     return `data:image/jpeg;base64,${stampedBuffer.toString("base64")}`;
   }
+
+  const cleanPublicId = publicId ? publicId.replace(/\.[^/.]+$/, "") : `nid_${Date.now()}`;
 
   return new Promise((resolve, reject) => {
     const uploadStream = cloudinary.uploader.upload_stream(
       {
-        public_id: publicId,
-        folder: "nid_uploads",
+        folder: "nid_documents",
+        public_id: cleanPublicId,
         resource_type: "image",
-        type: "upload",
-        access_mode: "public",
+        format: "jpg",
         overwrite: true,
+        access_mode: "public",
       },
       (error, result) => {
-        if (error) return reject(error);
-        if (!result) return reject(new Error("No result from Cloudinary"));
+        if (error) {
+          console.error("[Cloudinary] NID upload stream error:", error);
+          return reject(error);
+        }
+        if (!result?.secure_url) {
+          return reject(new Error("No secure_url returned from Cloudinary"));
+        }
         resolve(result.secure_url);
       }
     );
@@ -101,73 +96,66 @@ export async function uploadNidFile(
 export async function uploadProfilePhoto(
   fileBuffer: Buffer,
   mimeType: string,
-  publicId: string
+  publicId?: string
 ): Promise<string> {
   const processedBuffer = await sharp(fileBuffer)
     .resize(500, 500, { fit: "cover", position: "center" })
-    .jpeg({ quality: 88 })
+    .jpeg({ quality: 90 })
     .toBuffer();
 
-  // 1. Try Cloudinary if configured
-  if (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET) {
-    try {
-      return await new Promise<string>((resolve, reject) => {
-        const uploadStream = cloudinary.uploader.upload_stream(
-          {
-            public_id: publicId,
-            folder: "seller_photos",
-            resource_type: "image",
-            type: "upload",
-            access_mode: "public",
-            overwrite: true,
-          },
-          (error, result) => {
-            if (error) return reject(error);
-            if (!result) return reject(new Error("No result from Cloudinary"));
-            resolve(result.secure_url);
-          }
-        );
-        uploadStream.end(processedBuffer);
-      });
-    } catch (cErr) {
-      console.warn("[Cloudinary] Profile photo upload failed, checking fallbacks:", cErr);
-    }
-  }
-
-  // 2. Try Cloudflare R2 if configured
-  const hasR2 = !!(
-    (process.env.CLOUDFLARE_ACCOUNT_ID || process.env.R2_ACCOUNT_ID) &&
-    (process.env.CLOUDFLARE_R2_ACCESS_KEY_ID || process.env.R2_ACCESS_KEY_ID || process.env.CLOUDFLARE_ACCESS_KEY_ID) &&
-    (process.env.CLOUDFLARE_R2_SECRET_ACCESS_KEY || process.env.R2_SECRET_ACCESS_KEY || process.env.CLOUDFLARE_SECRET_ACCESS_KEY)
+  const isConfigured = !!(
+    process.env.CLOUDINARY_URL ||
+    (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET)
   );
 
-  if (hasR2) {
-    try {
-      const { uploadToCloudflareR2 } = await import("./cloudflare");
-      const r2Key = `seller_photos/${publicId}.jpg`;
-      const r2Url = await uploadToCloudflareR2(processedBuffer, "image/jpeg", r2Key);
-      if (r2Url) {
-        return r2Url;
-      }
-    } catch (r2Err) {
-      console.warn("[Cloudflare R2] Profile photo upload failed, checking fallbacks:", r2Err);
-    }
+  if (!isConfigured) {
+    console.warn("[Storage] Cloudinary not configured — using base64 data URI fallback for profile photo");
+    return `data:image/jpeg;base64,${processedBuffer.toString("base64")}`;
   }
 
-  // 3. Fallback: Base64 data URI
-  console.log("[Storage] Cloudinary & R2 not set — using base64 data URI fallback for profile photo");
-  return `data:image/jpeg;base64,${processedBuffer.toString("base64")}`;
+  const cleanPublicId = publicId ? publicId.replace(/\.[^/.]+$/, "") : `profile_${Date.now()}`;
+
+  return new Promise<string>((resolve, reject) => {
+    const uploadStream = cloudinary.uploader.upload_stream(
+      {
+        folder: "seller_profiles",
+        public_id: cleanPublicId,
+        resource_type: "image",
+        format: "jpg",
+        overwrite: true,
+        access_mode: "public",
+      },
+      (error, result) => {
+        if (error) {
+          console.error("[Cloudinary] Profile photo upload error:", error);
+          return reject(error);
+        }
+        if (!result?.secure_url) {
+          return reject(new Error("No result from Cloudinary"));
+        }
+        resolve(result.secure_url);
+      }
+    );
+    uploadStream.end(processedBuffer);
+  });
 }
 
 export async function deleteCloudinaryFile(url: string): Promise<void> {
+  if (!url || typeof url !== "string") return;
+  if (!url.includes("cloudinary.com")) return;
   try {
-    const parts = url.split("/");
-    const vIdx = parts.findIndex((p) => /^v\d+$/.test(p));
-    if (vIdx === -1) return;
-    const withExt = parts.slice(vIdx + 1).join("/");
-    const publicId = withExt.replace(/\.[^.]+$/, "");
-    await cloudinary.uploader.destroy(publicId, { resource_type: "image" });
-  } catch (e) {
-    console.error("Failed to delete Cloudinary file:", e);
+    const parts = url.split("/upload/");
+    if (parts.length < 2) return;
+    let pathAfterUpload = parts[1];
+    // remove version prefix if present, e.g. "v1234567890/"
+    pathAfterUpload = pathAfterUpload.replace(/^v\d+\//, "");
+    // remove file extension, e.g. ".jpg"
+    const publicId = pathAfterUpload.replace(/\.[^/.]+$/, "");
+    if (publicId) {
+      await cloudinary.uploader.destroy(publicId, { resource_type: "image" });
+      console.log(`[Cloudinary] Successfully deleted file: ${publicId}`);
+    }
+  } catch (e: any) {
+    console.error("[Cloudinary] Failed to delete file:", e?.message || e);
   }
 }

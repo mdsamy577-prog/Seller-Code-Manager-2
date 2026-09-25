@@ -3,7 +3,7 @@ import { eq, or, ilike, count, and, ne, desc } from "drizzle-orm";
 import { sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import pg from "pg";
-export { deleteFileFromCloudflare } from "./cloudflare";
+export { deleteCloudinaryFile, deleteCloudinaryFile as deleteFileFromCloudflare } from "./cloudinary";
 
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;

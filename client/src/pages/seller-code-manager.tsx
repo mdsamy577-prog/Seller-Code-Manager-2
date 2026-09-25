@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { queryClient, apiRequest, setAuthToken } from "@/lib/queryClient";
+import { queryClient, apiRequest, setAuthToken, getAuthToken } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { Seller, SellerApplication, SellerRenewalApplication } from "@shared/schema";
 import { format, differenceInDays, parseISO } from "date-fns";
@@ -208,18 +208,35 @@ function SellerAvatarWithUpload({
       setUploading(true);
       const formData = new FormData();
       formData.append("photo", file);
+
+      const token = getAuthToken();
+      const headers: Record<string, string> = {};
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
+
       const res = await fetch(`/api/sellers/${seller.id}/avatar`, {
         method: "POST",
+        headers,
         body: formData,
+        credentials: "include",
       });
 
       if (!res.ok) {
-        const err = await res.json();
+        if (res.status === 401 || res.status === 403) {
+          throw new Error("অনুমোদন নেই বা সেশন শেষ হয়ে গেছে। অনুগ্রহ করে পুনরায় লগইন করুন।");
+        }
+        const err = await res.json().catch(() => ({}));
         throw new Error(err.message || "Failed to update profile photo");
       }
 
-      queryClient.invalidateQueries({ queryKey: ["/api/sellers"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/sellers/archived"] });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["/api/sellers"] }),
+        queryClient.invalidateQueries({ queryKey: ["/api/admin/sellers"] }),
+        queryClient.invalidateQueries({ queryKey: ["/api/sellers/archived"] }),
+        queryClient.refetchQueries({ queryKey: ["/api/sellers"] }),
+        queryClient.refetchQueries({ queryKey: ["/api/admin/sellers"] }),
+      ]);
       toast({ title: "প্রোফাইল ছবি সফলভাবে আপডেট হয়েছে!" });
     } catch (err: any) {
       toast({
@@ -1011,13 +1028,26 @@ function SellerForm({
       const formData = new FormData();
       formData.append("photo", file);
       formData.append("phone", form.getValues("phone") || "admin");
+
+      const token = getAuthToken();
+      const headers: Record<string, string> = {};
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
+
       const res = await fetch("/api/sellers/upload-photo", {
         method: "POST",
+        headers,
         body: formData,
         credentials: "include",
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || "ছবি আপলোড ব্যর্থ হয়েছে");
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        if (res.status === 401 || res.status === 403) {
+          throw new Error("অনুমোদন নেই বা সেশন শেষ হয়ে গেছে। অনুগ্রহ করে পুনরায় লগইন করুন।");
+        }
+        throw new Error(data.message || "ছবি আপলোড ব্যর্থ হয়েছে");
+      }
       setPhotoPreview(data.url);
       form.setValue("profileImage", data.url);
       toast({ title: "ছবি নির্বাচন সম্পন্ন", description: "সংরক্ষণ বাটনে ক্লিক করলে পুরনো ছবিটি মুছে নতুন ছবি প্রতিস্থাপন হবে।" });
@@ -1035,6 +1065,9 @@ function SellerForm({
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/sellers"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/sellers"] });
+      queryClient.refetchQueries({ queryKey: ["/api/sellers"] });
+      queryClient.refetchQueries({ queryKey: ["/api/admin/sellers"] });
       toast({ title: "Seller added successfully" });
       onClose();
     },
@@ -1053,6 +1086,9 @@ function SellerForm({
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/sellers"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/sellers"] });
+      queryClient.refetchQueries({ queryKey: ["/api/sellers"] });
+      queryClient.refetchQueries({ queryKey: ["/api/admin/sellers"] });
       toast({ title: "Seller updated successfully" });
       onClose();
     },

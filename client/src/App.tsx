@@ -112,6 +112,7 @@ function AppRoutes() {
       <Route path="/admin/login" component={Login} />
       <Route path="/admin/setup" component={AdminSetup} />
       <Route path="/admin/dashboard">{() => <ProtectedRoute component={SellerCodeManager} />}</Route>
+      <Route path="/admin/sellers">{() => <ProtectedRoute component={SellerCodeManager} />}</Route>
       <Route path="/admin/applications">{() => <ProtectedRoute component={SellerApplications} />}</Route>
       <Route path="/admin/renewals">{() => <ProtectedRoute component={RenewalApplications} />}</Route>
       <Route path="/admin/email-logs">{() => <ProtectedRoute component={EmailLogsPage} />}</Route>

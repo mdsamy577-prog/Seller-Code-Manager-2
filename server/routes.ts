@@ -8,7 +8,6 @@ import { sendSellerCodeEmail, sendExtensionEmail, sendRenewalApprovalEmail, send
 import { scheduleSellerEmails } from "./scheduler";
 import multer from "multer";
 import { uploadNidFile, uploadProfilePhoto, deleteCloudinaryFile } from "./cloudinary";
-import { deleteFileFromCloudflare } from "./cloudflare";
 import rateLimit from "express-rate-limit";
 
 const upload = multer({
@@ -504,14 +503,17 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/sellers", requireAuth, async (_req, res) => {
+  const handleGetSellers = async (_req: Request, res: Response) => {
     try {
       const sellers = await storage.getAllSellers();
       res.json(sellers);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch sellers" });
     }
-  });
+  };
+
+  app.get("/api/sellers", requireAuth, handleGetSellers);
+  app.get("/api/admin/sellers", requireAuth, handleGetSellers);
 
   app.get("/api/sellers/search", requireAuth, async (req, res) => {
     try {
@@ -606,14 +608,14 @@ export async function registerRoutes(
         return res.status(400).json({ message: "Invalid seller data", errors: parsed.error.errors });
       }
 
-      // If a seller updates their photo during a profile edit, automatically delete the old photo from Cloudflare
+      // If a seller updates their photo during a profile edit, automatically delete the old photo from Cloudinary
       if (
         parsed.data.profileImage !== undefined &&
         existing.profileImage &&
         parsed.data.profileImage !== existing.profileImage
       ) {
         console.log(`[Storage] Seller photo changed for ID ${id}, deleting old photo: ${existing.profileImage}`);
-        await deleteFileFromCloudflare(existing.profileImage);
+        await deleteCloudinaryFile(existing.profileImage);
       }
 
       const duration = parsed.data.duration;
@@ -649,7 +651,7 @@ export async function registerRoutes(
         return res.status(404).json({ message: "Seller not found" });
       }
 
-      // Retrieve all stored image URLs and purge them from Cloudflare
+      // Retrieve all stored image URLs and purge them from Cloudinary
       const imagesToPurge: string[] = [];
       if (seller.profileImage) imagesToPurge.push(seller.profileImage);
       if ((seller as any).sellerPhoto) imagesToPurge.push((seller as any).sellerPhoto);
@@ -657,7 +659,7 @@ export async function registerRoutes(
       if ((seller as any).nidFileUrl) imagesToPurge.push((seller as any).nidFileUrl);
 
       for (const imgUrl of imagesToPurge) {
-        await deleteFileFromCloudflare(imgUrl);
+        await deleteCloudinaryFile(imgUrl);
       }
 
       await storage.cancelPendingEmailsForSeller(id);
@@ -665,7 +667,7 @@ export async function registerRoutes(
       if (!deleted) {
         return res.status(404).json({ message: "Seller not found" });
       }
-      res.json({ message: "Seller permanently deleted and files purged from Cloudflare" });
+      res.json({ message: "Seller permanently deleted" });
     } catch (error) {
       console.error("[permanent delete] Error deleting seller:", error);
       res.status(500).json({ message: "Failed to permanently delete seller" });
@@ -860,14 +862,14 @@ export async function registerRoutes(
         status: "active",
       };
 
-      // If renewal application updated the photo, purge old photo from Cloudflare
+      // If renewal application updated the photo, purge old photo from Cloudinary
       if (
         (application as any).profileImage &&
         seller.profileImage &&
         (application as any).profileImage !== seller.profileImage
       ) {
         console.log(`[Storage] Deleting old seller photo on renewal update: ${seller.profileImage}`);
-        await deleteFileFromCloudflare(seller.profileImage);
+        await deleteCloudinaryFile(seller.profileImage);
         updates.profileImage = (application as any).profileImage;
       }
 
@@ -991,10 +993,10 @@ export async function registerRoutes(
           hideProfilePhoto: application.hideProfilePhoto ?? false,
         };
         if (application.profileImage) {
-          // If replacing existing seller's photo, delete the old photo from Cloudflare
+          // If replacing existing seller's photo, delete the old photo from Cloudinary
           if (existingSeller.profileImage && existingSeller.profileImage !== application.profileImage) {
             console.log(`[Storage] Purging old seller photo on new application approval: ${existingSeller.profileImage}`);
-            await deleteFileFromCloudflare(existingSeller.profileImage);
+            await deleteCloudinaryFile(existingSeller.profileImage);
           }
           updates.profileImage = application.profileImage;
         }
@@ -1064,9 +1066,9 @@ export async function registerRoutes(
       if (application.nidFileUrl) filesToPurge.push(application.nidFileUrl);
       if ((application as any).nidImage) filesToPurge.push((application as any).nidImage);
 
-      // Call deleteFileFromCloudflare for both images to purge them from the Cloudflare bucket
+      // Call deleteCloudinaryFile for images to purge them
       for (const fileUrl of filesToPurge) {
-        await deleteFileFromCloudflare(fileUrl);
+        await deleteCloudinaryFile(fileUrl);
       }
 
       // Clear the file fields in DB so no dangling URLs remain
@@ -1134,7 +1136,7 @@ export async function registerRoutes(
         return res.status(404).json({ message: "Application not found" });
       }
 
-      // Check if application contains profileImage or nidFileUrl and purge them from Cloudflare
+      // Check if application contains profileImage or nidFileUrl and purge them from Cloudinary
       const filesToPurge: string[] = [];
       if (application.profileImage) filesToPurge.push(application.profileImage);
       if ((application as any).sellerPhoto) filesToPurge.push((application as any).sellerPhoto);
@@ -1142,7 +1144,7 @@ export async function registerRoutes(
       if ((application as any).nidImage) filesToPurge.push((application as any).nidImage);
 
       for (const fileUrl of filesToPurge) {
-        await deleteFileFromCloudflare(fileUrl);
+        await deleteCloudinaryFile(fileUrl);
       }
 
       await storage.clearApplicationFiles(id);
@@ -1150,7 +1152,7 @@ export async function registerRoutes(
       if (!deleted) {
         return res.status(404).json({ message: "Application not found" });
       }
-      res.json({ message: "Application deleted and files purged from Cloudflare" });
+      res.json({ message: "Application deleted successfully" });
     } catch (error) {
       console.error("[delete application] Error deleting application:", error);
       res.status(500).json({ message: "Failed to delete application" });
@@ -1251,7 +1253,7 @@ export async function registerRoutes(
 
       // Clean up old photo if different
       if (seller.profileImage && seller.profileImage !== secureUrl) {
-        deleteFileFromCloudflare(seller.profileImage).catch(() => {});
+        deleteCloudinaryFile(seller.profileImage).catch(() => {});
       }
 
       const updated = await storage.updateSeller(id, { profileImage: secureUrl });

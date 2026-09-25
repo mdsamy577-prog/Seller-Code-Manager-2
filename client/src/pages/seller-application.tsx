@@ -3,11 +3,14 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { useDiscount, personalPrices, businessPrices, formatPrice, discountedAmount } from "@/lib/pricing";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { User, Phone, CheckCircle2, Wallet, Hash, Copy, Mail, BookOpen, ShieldCheck, Send, ClipboardList, CreditCard, Link, TriangleAlert, Upload, FileText, X, ImageIcon } from "lucide-react";
+import { Link } from "wouter";
+import { User, Phone, CheckCircle2, Wallet, Hash, Copy, Mail, BookOpen, ShieldCheck, Send, ClipboardList, CreditCard, TriangleAlert, Upload, FileText, X, ImageIcon, Loader2 } from "lucide-react";
+import { compressImage, isCompressibleImage } from "@/lib/image-compressor";
 import { SiMeta } from "react-icons/si";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Footer } from "@/components/footer";
 import {
   Form,
   FormControl,
@@ -91,12 +94,20 @@ export default function SellerApplication() {
   const nagadNumber = paymentSettings?.nagadNumber ?? "01972002118";
   const [submitted, setSubmitted] = useState(false);
   const [emailErrorOpen, setEmailErrorOpen] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+
+  // Profile Photo state
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
-  const [photoUploading, setPhotoUploading] = useState(false);
+  const [photoCompressing, setPhotoCompressing] = useState(false);
+  const [photoInfo, setPhotoInfo] = useState<string | null>(null);
   const photoInputRef = useRef<HTMLInputElement>(null);
+
+  // NID Card state
   const [nidFile, setNidFile] = useState<File | null>(null);
-  const [nidUploading, setNidUploading] = useState(false);
+  const [nidPreview, setNidPreview] = useState<string | null>(null);
+  const [nidCompressing, setNidCompressing] = useState(false);
+  const [nidInfo, setNidInfo] = useState<string | null>(null);
   const nidInputRef = useRef<HTMLInputElement>(null);
 
   const form = useForm<ApplicationFormValues>({
@@ -133,6 +144,97 @@ export default function SellerApplication() {
       .catch(() => {});
   }, []);
 
+  const handlePhotoSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!isCompressibleImage(file)) {
+      toast({
+        title: "ফাইল গ্রহণযোগ্য নয়",
+        description: "শুধুমাত্র ছবি (JPG, JPEG, PNG, WEBP) আপলোড করা যাবে।",
+        variant: "destructive",
+      });
+      if (photoInputRef.current) photoInputRef.current.value = "";
+      return;
+    }
+
+    // Instant local preview for immediate visual feedback
+    const tempUrl = URL.createObjectURL(file);
+    setPhotoPreview(tempUrl);
+    setPhotoCompressing(true);
+    setPhotoInfo("প্রস্তুত হচ্ছে...");
+    form.setValue("profileImage", "");
+
+    try {
+      const result = await compressImage(file, {
+        minSizeKB: 50,
+        maxSizeKB: 100,
+        maxWidth: 1200,
+        maxHeight: 1200,
+      });
+      setPhotoFile(result.file);
+      setPhotoPreview(result.previewUrl);
+      setPhotoInfo("ছবি প্রস্তুত হয়েছে");
+    } catch (err: any) {
+      console.error("Profile photo compression error:", err);
+      toast({
+        title: "ছবি প্রসেস ব্যর্থ",
+        description: err.message || "ছবিটি কম্প্রেস করা সম্ভব হয়নি।",
+        variant: "destructive",
+      });
+      setPhotoFile(null);
+      setPhotoPreview(null);
+      setPhotoInfo(null);
+    } finally {
+      setPhotoCompressing(false);
+    }
+  };
+
+  const handleNidSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!isCompressibleImage(file)) {
+      toast({
+        title: "ফাইল গ্রহণযোগ্য নয়",
+        description: "শুধুমাত্র NID এর ছবি আপলোড করা যাবে। PDF গ্রহণযোগ্য নয়।",
+        variant: "destructive",
+      });
+      if (nidInputRef.current) nidInputRef.current.value = "";
+      return;
+    }
+
+    const tempUrl = URL.createObjectURL(file);
+    setNidPreview(tempUrl);
+    setNidCompressing(true);
+    setNidInfo("প্রস্তুত হচ্ছে...");
+    form.setValue("nidFileUrl", "");
+
+    try {
+      const result = await compressImage(file, {
+        minSizeKB: 50,
+        maxSizeKB: 100,
+        maxWidth: 1200,
+        maxHeight: 1200,
+      });
+      setNidFile(result.file);
+      setNidPreview(result.previewUrl);
+      setNidInfo("NID প্রস্তুত হয়েছে");
+    } catch (err: any) {
+      console.error("NID compression error:", err);
+      toast({
+        title: "NID প্রসেস ব্যর্থ",
+        description: err.message || "NID ছবিটি কম্প্রেস করা সম্ভব হয়নি।",
+        variant: "destructive",
+      });
+      setNidFile(null);
+      setNidPreview(null);
+      setNidInfo(null);
+    } finally {
+      setNidCompressing(false);
+    }
+  };
+
   const submitMutation = useMutation({
     mutationFn: async (data: ApplicationFormValues) => {
       const res = await apiRequest("POST", "/api/applications", data);
@@ -145,15 +247,25 @@ export default function SellerApplication() {
     },
     retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 5000),
     onSuccess: () => {
+      setSubmitting(false);
       setSubmitted(true);
       toast({ title: "Application submitted successfully" });
     },
     onError: (error: Error) => {
+      setSubmitting(false);
       toast({ title: "Error", description: error.message, variant: "destructive" });
     },
   });
 
   const onSubmit = async (data: ApplicationFormValues) => {
+    if (photoCompressing || nidCompressing) {
+      toast({
+        title: "ছবি প্রসেস হচ্ছে",
+        description: "ছবি কম্প্রেস হওয়া সম্পন্ন হওয়া পর্যন্ত এক মুহূর্ত অপেক্ষা করুন।",
+      });
+      return;
+    }
+
     let profileImageUrl = data.profileImage || "";
     let nidFileUrl = data.nidFileUrl || "";
 
@@ -175,142 +287,174 @@ export default function SellerApplication() {
       return;
     }
 
-    if (photoFile && !profileImageUrl) {
-      try {
-        setPhotoUploading(true);
-        const formData = new FormData();
-        formData.append("photo", photoFile);
-        formData.append("phone", data.phone);
-        const res = await fetch("/api/applications/upload-photo", {
-          method: "POST",
-          body: formData,
-        });
-        if (!res.ok) {
-          const err = await res.json();
-          throw new Error(err.message || "নিজের ছবি আপলোড করতে সমস্যা হয়েছে");
-        }
-        const result = await res.json();
-        profileImageUrl = result.url;
-        form.setValue("profileImage", profileImageUrl);
-      } catch (err: any) {
-        toast({ title: "Photo Upload Failed", description: err.message, variant: "destructive" });
-        return;
-      } finally {
-        setPhotoUploading(false);
-      }
-    }
+    setSubmitting(true);
+    try {
+      // Parallel fast upload of compressed 50-100 KB files
+      const uploadTasks: Promise<void>[] = [];
 
-    if (nidFile && !nidFileUrl) {
-      try {
-        setNidUploading(true);
-        const formData = new FormData();
-        formData.append("nid", nidFile);
-        formData.append("phone", data.phone);
-        formData.append("name", data.name);
-        const res = await fetch("/api/applications/upload-nid", {
-          method: "POST",
-          body: formData,
-        });
-        if (!res.ok) {
-          const err = await res.json();
-          throw new Error(err.message || "NID upload failed");
-        }
-        const result = await res.json();
-        nidFileUrl = result.url;
-        form.setValue("nidFileUrl", nidFileUrl);
-      } catch (err: any) {
-        toast({ title: "NID Upload Failed", description: err.message, variant: "destructive" });
-        return;
-      } finally {
-        setNidUploading(false);
+      if (photoFile && !profileImageUrl) {
+        uploadTasks.push(
+          (async () => {
+            const formData = new FormData();
+            formData.append("photo", photoFile);
+            formData.append("phone", data.phone);
+            const res = await fetch("/api/applications/upload-photo", {
+              method: "POST",
+              body: formData,
+            });
+            if (!res.ok) {
+              const err = await res.json().catch(() => ({}));
+              throw new Error(err.message || "নিজের ছবি আপলোড করতে সমস্যা হয়েছে");
+            }
+            const result = await res.json();
+            profileImageUrl = result.url;
+            form.setValue("profileImage", profileImageUrl);
+          })()
+        );
       }
-    }
 
-    const payload = {
-      ...data,
-      hideProfilePhoto: Boolean(data.hideProfilePhoto),
-      email: data.email?.trim() || undefined,
-      nidFileUrl: nidFileUrl || undefined,
-      profileImage: profileImageUrl || undefined,
-    };
-    submitMutation.mutate(payload);
+      if (nidFile && !nidFileUrl) {
+        uploadTasks.push(
+          (async () => {
+            const formData = new FormData();
+            formData.append("nid", nidFile);
+            formData.append("phone", data.phone);
+            formData.append("name", data.name);
+            const res = await fetch("/api/applications/upload-nid", {
+              method: "POST",
+              body: formData,
+            });
+            if (!res.ok) {
+              const err = await res.json().catch(() => ({}));
+              throw new Error(err.message || "NID আপলোড করতে সমস্যা হয়েছে");
+            }
+            const result = await res.json();
+            nidFileUrl = result.url;
+            form.setValue("nidFileUrl", nidFileUrl);
+          })()
+        );
+      }
+
+      await Promise.all(uploadTasks);
+
+      const payload = {
+        ...data,
+        hideProfilePhoto: Boolean(data.hideProfilePhoto),
+        email: data.email?.trim() || undefined,
+        nidFileUrl: nidFileUrl || undefined,
+        profileImage: profileImageUrl || undefined,
+      };
+      submitMutation.mutate(payload);
+    } catch (err: any) {
+      setSubmitting(false);
+      toast({
+        title: "আপলোড ব্যর্থ",
+        description: err.message || "ছবি বা NID আপলোড করতে সমস্যা হয়েছে",
+        variant: "destructive",
+      });
+    }
   };
 
   if (submitted) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/40 to-indigo-50 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950 flex items-center justify-center p-6">
-        <div className="w-full max-w-sm animate-in fade-in slide-in-from-bottom-4 duration-500">
-          <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl shadow-indigo-100/60 dark:shadow-black/40 border border-slate-100 dark:border-gray-800 overflow-hidden">
-            <div className="h-1.5 w-full bg-gradient-to-r from-emerald-400 via-teal-500 to-green-400" />
-            <div className="px-8 pt-8 pb-9 flex flex-col items-center text-center space-y-5">
+      <div className="min-h-screen flex flex-col justify-between bg-[#F8FAFC] dark:bg-[#070C1B]">
+        <header className="sticky top-0 z-10 bg-[#0B132B] text-white border-b border-slate-800/80 shadow-xs">
+          <div className="max-w-md mx-auto px-4 py-3 flex items-center justify-between">
+            <Link href="/" className="flex items-center gap-2.5 font-bold text-base tracking-tight text-white hover:opacity-90 transition-opacity">
+              <div className="w-8 h-8 rounded-lg bg-orange-500/20 flex items-center justify-center text-orange-500 border border-orange-500/30">
+                <ShieldCheck className="h-4 w-4 text-orange-500" />
+              </div>
+              <span className="font-bold text-sm sm:text-base">
+                সেলার কোড <span className="text-orange-500">রেজিস্ট্রি</span>
+              </span>
+            </Link>
+            <Link href="/" className="text-xs text-slate-300 hover:text-orange-400 transition-colors font-medium">
+              হোম পেজ
+            </Link>
+          </div>
+        </header>
 
-              <div className="relative">
-                <div className="rounded-full bg-emerald-50 dark:bg-emerald-950/60 p-5 ring-8 ring-emerald-50 dark:ring-emerald-950/30">
-                  <CheckCircle2 className="h-12 w-12 text-emerald-500 dark:text-emerald-400" strokeWidth={1.75} />
+        <main className="flex-1 flex items-center justify-center p-4 sm:p-6 w-full my-auto">
+          <div className="w-full max-w-sm animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl shadow-indigo-100/60 dark:shadow-black/40 border border-slate-100 dark:border-gray-800 overflow-hidden">
+              <div className="h-1.5 w-full bg-gradient-to-r from-emerald-400 via-teal-500 to-green-400" />
+              <div className="px-8 pt-8 pb-9 flex flex-col items-center text-center space-y-5">
+
+                <div className="relative">
+                  <div className="rounded-full bg-emerald-50 dark:bg-emerald-950/60 p-5 ring-8 ring-emerald-50 dark:ring-emerald-950/30">
+                    <CheckCircle2 className="h-12 w-12 text-emerald-500 dark:text-emerald-400" strokeWidth={1.75} />
+                  </div>
                 </div>
-              </div>
 
-              <div className="space-y-1">
-                <h2 className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight" data-testid="text-success-title">
-                  ধন্যবাদ!
-                </h2>
-              </div>
-
-              <div className="space-y-3 w-full" data-testid="text-success-message">
-                <p className="text-[15px] text-gray-700 dark:text-gray-300 leading-relaxed">
-                  আপনার আবেদন সফলভাবে গ্রহণ করা হয়েছে।
-                </p>
-                <p className="text-[14px] text-gray-500 dark:text-gray-400 leading-relaxed">
-                  পেমেন্ট যাচাইয়ের পর আপনার সেলার কোড সক্রিয় করা হবে।
-                </p>
-
-                <div className="border-t border-dashed border-slate-200 dark:border-gray-700 pt-3 mt-1 space-y-2">
-                  <p className="text-[13px] text-gray-500 dark:text-gray-400 leading-relaxed">
-                    সেলার কোড আপনার দেওয়া ইমেইলে পাঠানো হবে।
-                  </p>
-                  <p className="inline-flex items-center gap-1.5 text-[13px] font-medium text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/50 px-3 py-1.5 rounded-full">
-                    <Mail className="h-3.5 w-3.5 shrink-0" />
-                    দয়া করে ইনবক্স অথবা স্প্যাম ফোল্ডার চেক করুন।
-                  </p>
+                <div className="space-y-1">
+                  <h2 className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight" data-testid="text-success-title">
+                    ধন্যবাদ!
+                  </h2>
                 </div>
+
+                <div className="space-y-3 w-full" data-testid="text-success-message">
+                  <p className="text-[15px] text-gray-700 dark:text-gray-300 leading-relaxed">
+                    আপনার আবেদন সফলভাবে গ্রহণ করা হয়েছে।
+                  </p>
+                  <p className="text-[14px] text-gray-500 dark:text-gray-400 leading-relaxed">
+                    পেমেন্ট যাচাইয়ের পর আপনার সেলার কোড সক্রিয় করা হবে।
+                  </p>
+
+                  <div className="border-t border-dashed border-slate-200 dark:border-gray-700 pt-3 mt-1 space-y-2">
+                    <p className="text-[13px] text-gray-500 dark:text-gray-400 leading-relaxed">
+                      সেলার কোড আপনার দেওয়া ইমেইলে পাঠানো হবে।
+                    </p>
+                    <p className="inline-flex items-center gap-1.5 text-[13px] font-medium text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/50 px-3 py-1.5 rounded-full">
+                      <Mail className="h-3.5 w-3.5 shrink-0" />
+                      দয়া করে ইনবক্স অথবা স্প্যাম ফোল্ডার চেক করুন।
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => window.location.href = "/apply"}
+                  data-testid="button-back-home"
+                  className="mt-1 w-full py-2.5 px-6 rounded-xl text-white text-sm font-semibold bg-orange-600 hover:bg-orange-700 shadow-md shadow-orange-600/20 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
+                >
+                  Back to Home
+                </button>
+
               </div>
-
-              <button
-                onClick={() => window.location.href = "/apply"}
-                data-testid="button-back-home"
-                className="mt-1 w-full py-2.5 px-6 rounded-xl text-white text-sm font-semibold bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:from-blue-700 hover:via-indigo-700 hover:to-purple-700 shadow-md shadow-indigo-200/50 dark:shadow-indigo-900/30 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
-              >
-                Back to Home
-              </button>
-
             </div>
           </div>
-        </div>
+        </main>
+
+        <Footer showLinks={false} />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950">
-      <div className="sticky top-0 z-10 bg-white/80 dark:bg-gray-900/80 backdrop-blur-md border-b border-blue-100 dark:border-gray-800">
-        <div className="max-w-md mx-auto px-4 py-3 flex items-center justify-center gap-3">
-          <div className="rounded-full bg-gradient-to-br from-blue-600 to-indigo-600 p-2">
-            <ShieldCheck className="h-5 w-5 text-white" />
-          </div>
-          <h1 className="text-lg font-bold bg-gradient-to-r from-blue-700 to-indigo-700 dark:from-blue-400 dark:to-indigo-400 bg-clip-text text-transparent">
-            সেলার কোড ম্যানেজার
-          </h1>
+    <div className="min-h-screen flex flex-col justify-between bg-[#F8FAFC] dark:bg-[#070C1B]">
+      <header className="sticky top-0 z-10 bg-[#0B132B] text-white border-b border-slate-800/80 shadow-xs">
+        <div className="max-w-md mx-auto px-4 py-3 flex items-center justify-between">
+          <Link href="/" className="flex items-center gap-2.5 font-bold text-base tracking-tight text-white hover:opacity-90 transition-opacity">
+            <div className="w-8 h-8 rounded-lg bg-orange-500/20 flex items-center justify-center text-orange-500 border border-orange-500/30">
+              <ShieldCheck className="h-4 w-4 text-orange-500" />
+            </div>
+            <span className="font-bold text-sm sm:text-base">
+              সেলার কোড <span className="text-orange-500">রেজিস্ট্রি</span>
+            </span>
+          </Link>
+          <Link href="/" className="text-xs text-slate-300 hover:text-orange-400 transition-colors font-medium">
+            হোম পেজ
+          </Link>
         </div>
-      </div>
+      </header>
 
-      <div className="flex justify-center p-4 sm:p-6 pb-12">
+      <main className="flex-1 flex justify-center p-4 sm:p-6 pb-12 w-full">
         <div className="w-full max-w-md space-y-5">
 
-          <Card className="shadow-lg border-0 bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm overflow-hidden" data-testid="card-payment-info">
-            <div className="h-1 bg-gradient-to-r from-pink-500 via-rose-500 to-orange-500" />
+          <Card className="shadow-lg border border-slate-200/80 dark:border-slate-800 bg-white/95 dark:bg-[#0B132B]/90 backdrop-blur-sm overflow-hidden" data-testid="card-payment-info">
+            <div className="h-1 bg-gradient-to-r from-orange-500 via-amber-500 to-orange-600" />
             <CardHeader className="text-center pb-3">
-              <div className="mx-auto rounded-full bg-rose-500/10 p-2.5 w-fit mb-2">
-                <Wallet className="h-5 w-5 text-rose-600 dark:text-rose-400" />
+              <div className="mx-auto rounded-full bg-orange-500/10 p-2.5 w-fit mb-2">
+                <Wallet className="h-5 w-5 text-orange-600 dark:text-orange-400" />
               </div>
               <CardTitle className="text-2xl font-bold" data-testid="text-payment-title">পেমেন্ট পদ্ধতি</CardTitle>
             </CardHeader>
@@ -374,8 +518,8 @@ export default function SellerApplication() {
             </CardContent>
           </Card>
 
-          <Card className="shadow-lg border-0 bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm overflow-hidden" data-testid="card-pricing">
-            <div className="h-1 bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500" />
+          <Card className="shadow-lg border border-slate-200/80 dark:border-slate-800 bg-white/95 dark:bg-[#0B132B]/90 backdrop-blur-sm overflow-hidden" data-testid="card-pricing">
+            <div className="h-1 bg-gradient-to-r from-orange-500 via-amber-500 to-orange-600" />
             <CardHeader className="text-center pb-3">
               <CardTitle className="text-xl font-bold" data-testid="text-pricing-title">সাবস্ক্রিপশন প্যাকেজ</CardTitle>
             </CardHeader>
@@ -390,23 +534,23 @@ export default function SellerApplication() {
                       onClick={() => form.setValue("duration", key as ApplicationFormValues["duration"], { shouldValidate: true })}
                       className={`rounded-2xl border-2 p-4 text-center transition-all duration-200 cursor-pointer w-full focus:outline-none ${
                         isSelected
-                          ? "border-blue-500 dark:border-blue-400 bg-gradient-to-br from-blue-100 to-indigo-100 dark:from-blue-900/40 dark:to-indigo-900/40 shadow-lg ring-2 ring-blue-500/25 dark:ring-blue-400/25 scale-[1.05]"
-                          : "border-blue-100 dark:border-blue-900/40 bg-gradient-to-br from-blue-50/60 to-indigo-50/60 dark:from-blue-950/10 dark:to-indigo-950/10 hover:border-blue-300 dark:hover:border-blue-700 hover:shadow-md hover:scale-[1.02]"
+                          ? "border-orange-500 dark:border-orange-400 bg-gradient-to-br from-orange-100/80 to-amber-100/80 dark:from-orange-950/40 dark:to-amber-950/40 shadow-lg ring-2 ring-orange-500/25 dark:ring-orange-400/25 scale-[1.05]"
+                          : "border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/40 hover:border-orange-300 dark:hover:border-orange-700 hover:shadow-md hover:scale-[1.02]"
                       }`}
                       data-testid={`pricing-${monthLabels[key]}`}
                     >
-                      <div className={`text-xs font-semibold uppercase tracking-wide mb-1 ${isSelected ? "text-blue-600 dark:text-blue-300" : "text-muted-foreground"}`}>{monthLabels[key]}</div>
+                      <div className={`text-xs font-semibold uppercase tracking-wide mb-1 ${isSelected ? "text-orange-700 dark:text-orange-300 font-bold" : "text-muted-foreground"}`}>{monthLabels[key]}</div>
                       {discount > 0 ? (
                         <>
                           <div className="text-xs line-through text-muted-foreground leading-tight">{formatPrice(currentPrices[key])}</div>
-                          <div className={`text-xl font-bold ${isSelected ? "text-blue-700 dark:text-blue-200" : "text-blue-700 dark:text-blue-400"}`}>{formatPrice(discountedAmount(currentPrices[key], discount))}</div>
+                          <div className={`text-xl font-bold ${isSelected ? "text-orange-700 dark:text-orange-200" : "text-slate-800 dark:text-slate-200"}`}>{formatPrice(discountedAmount(currentPrices[key], discount))}</div>
                           <div className="mt-1 inline-block text-[9px] font-bold bg-red-500 text-white rounded-full px-1.5 py-0.5">{discount}% OFF</div>
                         </>
                       ) : (
-                        <div className={`text-xl font-bold ${isSelected ? "text-blue-700 dark:text-blue-200" : "text-blue-700 dark:text-blue-400"}`}>{formatPrice(currentPrices[key])}</div>
+                        <div className={`text-xl font-bold ${isSelected ? "text-orange-700 dark:text-orange-200" : "text-slate-800 dark:text-slate-200"}`}>{formatPrice(currentPrices[key])}</div>
                       )}
                       {isSelected && (
-                        <div className="mt-1.5 inline-flex items-center gap-1 rounded-full bg-blue-500 px-2 py-0.5">
+                        <div className="mt-1.5 inline-flex items-center gap-1 rounded-full bg-orange-600 px-2 py-0.5">
                           <CheckCircle2 className="h-2.5 w-2.5 text-white" />
                           <span className="text-[10px] font-semibold text-white">নির্বাচিত</span>
                         </div>
@@ -805,26 +949,10 @@ export default function SellerApplication() {
                       <input
                         ref={photoInputRef}
                         type="file"
-                        accept=".jpg, .jpeg, image/jpeg"
+                        accept="image/*,.jpg,.jpeg,.png,.webp"
                         className="hidden"
                         data-testid="input-profile-photo-file"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (!file) return;
-                          const isJpg = file.type === "image/jpeg" || /\.(jpe?g)$/i.test(file.name);
-                          if (!isJpg) {
-                            toast({
-                              title: "ফাইল গ্রহণযোগ্য নয়",
-                              description: "শুধুমাত্র JPG বা JPEG ফরম্যাটের ছবি গ্রহণযোগ্য।",
-                              variant: "destructive",
-                            });
-                            if (photoInputRef.current) photoInputRef.current.value = "";
-                            return;
-                          }
-                          setPhotoFile(file);
-                          setPhotoPreview(URL.createObjectURL(file));
-                          form.setValue("profileImage", "");
-                        }}
+                        onChange={handlePhotoSelect}
                       />
                       {photoFile || photoPreview ? (
                         <div className="flex items-center justify-between p-3.5">
@@ -842,9 +970,17 @@ export default function SellerApplication() {
                               <p className="text-sm font-medium text-emerald-700 dark:text-emerald-300 truncate max-w-[180px]">
                                 {photoFile ? photoFile.name : "নিজের ছবি"}
                               </p>
-                              {photoFile && (
-                                <p className="text-xs text-muted-foreground">{(photoFile.size / 1024).toFixed(1)} KB (JPG)</p>
-                              )}
+                              {photoCompressing ? (
+                                <p className="text-xs text-amber-600 dark:text-amber-400 font-medium flex items-center gap-1">
+                                  <Loader2 className="h-3 w-3 animate-spin" />
+                                  প্রস্তুত হচ্ছে...
+                                </p>
+                              ) : photoInfo ? (
+                                <p className="text-xs text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1">
+                                  <CheckCircle2 className="h-3 w-3 text-emerald-500" />
+                                  {photoInfo}
+                                </p>
+                              ) : null}
                             </div>
                           </div>
                           <button
@@ -857,6 +993,7 @@ export default function SellerApplication() {
                               }
                               setPhotoFile(null);
                               setPhotoPreview(null);
+                              setPhotoInfo(null);
                               form.setValue("profileImage", "");
                               if (photoInputRef.current) photoInputRef.current.value = "";
                             }}
@@ -871,9 +1008,6 @@ export default function SellerApplication() {
                           <div className="text-left">
                             <p className="text-xs text-muted-foreground leading-snug">
                               আপনার পরিষ্কার সাম্প্রতিক ছবি আপলোড করুন (শুধুমাত্র JPG ফরম্যাট গ্রহণযোগ্য)।
-                            </p>
-                            <p className="text-[11px] text-amber-600 dark:text-amber-400 font-medium mt-0.5">
-                              এনআইডির (NID) সাথে ছবির মিল থাকা আবশ্যক।
                             </p>
                           </div>
                         </div>
@@ -914,7 +1048,7 @@ export default function SellerApplication() {
                     <p className="text-sm font-bold text-red-600">NID / জাতীয় পরিচয়পত্র <span className="text-sm font-medium text-red-500 ml-1">(বাধ্যতামূলক)</span></p>
                     <div
                       className={`relative rounded-xl border-2 border-dashed transition-all duration-200 cursor-pointer ${
-                        nidFile
+                        nidFile || nidPreview
                           ? "border-violet-400 bg-violet-50 dark:bg-violet-950/20"
                           : "border-border/60 hover:border-violet-300 dark:hover:border-violet-700 hover:bg-violet-50/50 dark:hover:bg-violet-950/10"
                       }`}
@@ -924,33 +1058,38 @@ export default function SellerApplication() {
                       <input
                         ref={nidInputRef}
                         type="file"
-                        accept="image/png,image/jpeg"
+                        accept="image/*,.jpg,.jpeg,.png,.webp"
                         className="hidden"
                         data-testid="input-nid-file"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (!file) return;
-                          const allowed = ["image/jpeg", "image/png"];
-                          if (!allowed.includes(file.type)) {
-                            toast({
-                              title: "ফাইল গ্রহণযোগ্য নয়",
-                              description: "শুধুমাত্র NID এর ছবি আপলোড করা যাবে। PDF গ্রহণযোগ্য নয়।",
-                              variant: "destructive",
-                            });
-                            if (nidInputRef.current) nidInputRef.current.value = "";
-                            return;
-                          }
-                          setNidFile(file);
-                          form.setValue("nidFileUrl", "");
-                        }}
+                        onChange={handleNidSelect}
                       />
-                      {nidFile ? (
+                      {nidFile || nidPreview ? (
                         <div className="flex items-center justify-between p-3.5">
                           <div className="flex items-center gap-3">
-                            <ImageIcon className="h-8 w-8 text-violet-500 shrink-0" />
+                            {nidPreview ? (
+                              <img
+                                src={nidPreview}
+                                alt="NID Preview"
+                                className="w-12 h-12 rounded-xl object-cover border border-violet-500/50 shrink-0"
+                              />
+                            ) : (
+                              <ImageIcon className="h-8 w-8 text-violet-500 shrink-0" />
+                            )}
                             <div>
-                              <p className="text-sm font-medium text-violet-700 dark:text-violet-300 truncate max-w-[180px]">{nidFile.name}</p>
-                              <p className="text-xs text-muted-foreground">{(nidFile.size / 1024).toFixed(1)} KB</p>
+                              <p className="text-sm font-medium text-violet-700 dark:text-violet-300 truncate max-w-[180px]">
+                                {nidFile ? nidFile.name : "NID ছবি"}
+                              </p>
+                              {nidCompressing ? (
+                                <p className="text-xs text-amber-600 dark:text-amber-400 font-medium flex items-center gap-1">
+                                  <Loader2 className="h-3 w-3 animate-spin" />
+                                  প্রস্তুত হচ্ছে...
+                                </p>
+                              ) : nidInfo ? (
+                                <p className="text-xs text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1">
+                                  <CheckCircle2 className="h-3 w-3 text-emerald-500" />
+                                  {nidInfo}
+                                </p>
+                              ) : null}
                             </div>
                           </div>
                           <button
@@ -958,7 +1097,12 @@ export default function SellerApplication() {
                             className="p-1 rounded-full hover:bg-violet-100 dark:hover:bg-violet-900/40 transition-colors"
                             onClick={(e) => {
                               e.stopPropagation();
+                              if (nidPreview && nidPreview.startsWith("blob:")) {
+                                URL.revokeObjectURL(nidPreview);
+                              }
                               setNidFile(null);
+                              setNidPreview(null);
+                              setNidInfo(null);
                               form.setValue("nidFileUrl", "");
                               if (nidInputRef.current) nidInputRef.current.value = "";
                             }}
@@ -972,9 +1116,9 @@ export default function SellerApplication() {
                           <Upload className="h-4 w-4 text-muted-foreground/50 shrink-0" />
                           <div className="text-left">
                             <p className="text-xs text-muted-foreground leading-snug">
-                              শুধুমাত্র ফোনে তোলা পরিষ্কার NID ছবির আপলোড করুন।
+                              শুধুমাত্র ফোনে তোলা পরিষ্কার NID ছবির JPG ফরম্যাটে আপলোড করুন।
                             </p>
-                            <p className="text-[11px] text-muted-foreground/60">PDF ফাইল গ্রহণযোগ্য নয়।</p>
+                            <p className="text-[11px] text-muted-foreground/60">PDF ফাইল গ্রহণযোগ্য নয়।</p>
                           </div>
                         </div>
                       )}
@@ -984,17 +1128,17 @@ export default function SellerApplication() {
                   <div className="pt-2">
                     <Button
                       type="submit"
-                      className="w-full bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:from-blue-700 hover:via-indigo-700 hover:to-purple-700 text-white font-bold py-6 text-base rounded-xl shadow-lg shadow-indigo-500/30 hover:shadow-xl hover:shadow-indigo-500/40 hover:scale-[1.01] active:scale-[0.99] transition-all duration-200"
-                      disabled={submitMutation.isPending || photoUploading || nidUploading}
+                      className="w-full bg-orange-600 hover:bg-orange-700 active:bg-orange-800 text-white font-bold py-6 text-base rounded-xl shadow-lg shadow-orange-600/25 hover:shadow-xl hover:shadow-orange-600/35 hover:scale-[1.01] active:scale-[0.99] transition-all duration-200"
+                      disabled={submitMutation.isPending || submitting || photoCompressing || nidCompressing}
                       data-testid="button-submit-application"
                     >
                       <Send className="h-4 w-4 mr-2" />
-                      {photoUploading
-                        ? "ছবি আপলোড হচ্ছে..."
-                        : nidUploading
-                        ? "NID আপলোড হচ্ছে..."
-                        : submitMutation.isPending
-                        ? "জমা হচ্ছে..."
+                      {submitting || submitMutation.isPending
+                        ? "আবেদন জমা হচ্ছে..."
+                        : photoCompressing
+                        ? "ছবি প্রস্তুত হচ্ছে..."
+                        : nidCompressing
+                        ? "NID প্রস্তুত হচ্ছে..."
                         : "আবেদন জমা দিন"}
                     </Button>
                     {submitMutation.isPending && (
@@ -1006,7 +1150,8 @@ export default function SellerApplication() {
             </CardContent>
           </Card>
         </div>
-      </div>
+      </main>
+      <Footer showLinks={false} />
     </div>
   );
 }

@@ -103,6 +103,7 @@ function AppRoutes() {
     <Switch>
       {/* Public Landing & Verified Directory */}
       <Route path="/" component={PublicDirectory} />
+      <Route path="/verify/:code" component={PublicDirectory} />
 
       {/* Public Applicant Routes */}
       <Route path="/apply" component={SellerApplication} />

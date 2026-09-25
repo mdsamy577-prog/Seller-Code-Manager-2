@@ -3,11 +3,14 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { useDiscount, personalPrices, formatPrice, discountedAmount } from "@/lib/pricing";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { Search, Phone, Hash, CheckCircle2, ShieldCheck, RefreshCw, CalendarCheck, Copy, Camera, Upload, ImageIcon, X, User } from "lucide-react";
+import { Link } from "wouter";
+import { Search, Phone, Hash, CheckCircle2, ShieldCheck, RefreshCw, CalendarCheck, Copy, Camera, Upload, ImageIcon, X, User, Loader2 } from "lucide-react";
+import { compressImage, isCompressibleImage } from "@/lib/image-compressor";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Footer } from "@/components/footer";
 import {
   Select,
   SelectContent,
@@ -71,6 +74,8 @@ export default function RenewalPage() {
   // Conditional Profile Photo state when seller has no photo
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [photoCompressing, setPhotoCompressing] = useState(false);
+  const [photoInfo, setPhotoInfo] = useState<string | null>(null);
   const [photoUploading, setPhotoUploading] = useState(false);
   const [photoError, setPhotoError] = useState("");
   const photoInputRef = useRef<HTMLInputElement>(null);
@@ -170,6 +175,14 @@ export default function RenewalPage() {
     }
     setSenderError("");
 
+    if (photoCompressing) {
+      toast({
+        title: "ছবি প্রসেস হচ্ছে",
+        description: "ছবি কম্প্রেস হওয়া সম্পন্ন হওয়া পর্যন্ত অনুগ্রহ করে এক মুহূর্ত অপেক্ষা করুন।",
+      });
+      return;
+    }
+
     const hasPhoto = Boolean(seller?.profileImage && seller.profileImage.trim());
     if (!hasPhoto && !photoFile) {
       setPhotoError("নিজের ছবি আপলোড করা বাধ্যতামূলক");
@@ -208,63 +221,93 @@ export default function RenewalPage() {
 
   if (submitted) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/40 to-indigo-50 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950 flex items-center justify-center p-6">
-        <div className="w-full max-w-sm animate-in fade-in slide-in-from-bottom-4 duration-500">
-          <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl shadow-indigo-100/60 dark:shadow-black/40 border border-slate-100 dark:border-gray-800 overflow-hidden">
-            <div className="h-1.5 w-full bg-gradient-to-r from-emerald-400 via-teal-500 to-green-400" />
-            <div className="px-8 pt-8 pb-9 flex flex-col items-center text-center space-y-5">
-              <div className="rounded-full bg-emerald-50 dark:bg-emerald-950/60 p-5 ring-8 ring-emerald-50 dark:ring-emerald-950/30">
-                <CheckCircle2 className="h-12 w-12 text-emerald-500 dark:text-emerald-400" strokeWidth={1.75} />
+      <div className="min-h-screen flex flex-col justify-between bg-[#F8FAFC] dark:bg-[#070C1B]">
+        {/* Navbar */}
+        <header className="sticky top-0 z-10 bg-[#0B132B] text-white border-b border-slate-800/80 shadow-xs">
+          <div className="max-w-md mx-auto px-4 py-3 flex items-center justify-between">
+            <Link href="/" className="flex items-center gap-2.5 font-bold text-base tracking-tight text-white hover:opacity-90 transition-opacity">
+              <div className="w-8 h-8 rounded-lg bg-orange-500/20 flex items-center justify-center text-orange-500 border border-orange-500/30">
+                <ShieldCheck className="h-4 w-4 text-orange-500" />
               </div>
-              <div className="space-y-1">
-                <h2 className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight" data-testid="text-renew-success-title">
-                  ধন্যবাদ!
-                </h2>
+              <span className="font-bold text-sm sm:text-base">
+                সেলার কোড <span className="text-orange-500">রেজিস্ট্রি</span>
+              </span>
+            </Link>
+            <Link href="/" className="text-xs text-slate-300 hover:text-orange-400 transition-colors font-medium">
+              হোম পেজ
+            </Link>
+          </div>
+        </header>
+
+        {/* Content */}
+        <main className="flex-1 flex items-center justify-center p-4 sm:p-6 w-full my-auto">
+          <div className="w-full max-w-sm animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl shadow-indigo-100/60 dark:shadow-black/40 border border-slate-100 dark:border-gray-800 overflow-hidden">
+              <div className="h-1.5 w-full bg-gradient-to-r from-emerald-400 via-teal-500 to-green-400" />
+              <div className="px-8 pt-8 pb-9 flex flex-col items-center text-center space-y-5">
+                <div className="rounded-full bg-emerald-50 dark:bg-emerald-950/60 p-5 ring-8 ring-emerald-50 dark:ring-emerald-950/30">
+                  <CheckCircle2 className="h-12 w-12 text-emerald-500 dark:text-emerald-400" strokeWidth={1.75} />
+                </div>
+                <div className="space-y-1">
+                  <h2 className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight" data-testid="text-renew-success-title">
+                    ধন্যবাদ!
+                  </h2>
+                </div>
+                <div className="space-y-3 w-full" data-testid="text-renew-success-message">
+                  <p className="text-[15px] text-gray-700 dark:text-gray-300 leading-relaxed">
+                    আপনার রিনিউ আবেদন সফলভাবে গ্রহণ করা হয়েছে।
+                  </p>
+                  <p className="text-[14px] text-gray-500 dark:text-gray-400 leading-relaxed">
+                    পেমেন্ট যাচাইয়ের পর আপনার সাবস্ক্রিপশন নবায়ন করা হবে।
+                  </p>
+                </div>
+                <button
+                  onClick={() => { setSeller(null); setSubmitted(false); setQuery(""); setSenderNumber(""); }}
+                  data-testid="button-renew-again"
+                  className="w-full py-2.5 px-6 rounded-xl text-white text-sm font-semibold bg-orange-600 hover:bg-orange-700 shadow-md shadow-orange-600/20 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
+                >
+                  আবার আবেদন করুন
+                </button>
               </div>
-              <div className="space-y-3 w-full" data-testid="text-renew-success-message">
-                <p className="text-[15px] text-gray-700 dark:text-gray-300 leading-relaxed">
-                  আপনার রিনিউ আবেদন সফলভাবে গ্রহণ করা হয়েছে।
-                </p>
-                <p className="text-[14px] text-gray-500 dark:text-gray-400 leading-relaxed">
-                  পেমেন্ট যাচাইয়ের পর আপনার সাবস্ক্রিপশন নবায়ন করা হবে।
-                </p>
-              </div>
-              <button
-                onClick={() => { setSeller(null); setSubmitted(false); setQuery(""); setSenderNumber(""); }}
-                data-testid="button-renew-again"
-                className="w-full py-2.5 px-6 rounded-xl text-white text-sm font-semibold bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:from-blue-700 hover:via-indigo-700 hover:to-purple-700 shadow-md shadow-indigo-200/50 dark:shadow-indigo-900/30 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
-              >
-                আবার আবেদন করুন
-              </button>
             </div>
           </div>
-        </div>
+        </main>
+
+        {/* Footer */}
+        <Footer showLinks={false} />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950">
-      <div className="sticky top-0 z-10 bg-white/80 dark:bg-gray-900/80 backdrop-blur-md border-b border-blue-100 dark:border-gray-800">
-        <div className="max-w-md mx-auto px-4 py-3 flex items-center justify-center gap-3">
-          <div className="rounded-full bg-gradient-to-br from-blue-600 to-indigo-600 p-2">
-            <ShieldCheck className="h-5 w-5 text-white" />
-          </div>
-          <h1 className="text-lg font-bold bg-gradient-to-r from-blue-700 to-indigo-700 dark:from-blue-400 dark:to-indigo-400 bg-clip-text text-transparent">
-            সেলার কোড ম্যানেজার
-          </h1>
+    <div className="min-h-screen flex flex-col justify-between bg-[#F8FAFC] dark:bg-[#070C1B]">
+      {/* Navbar */}
+      <header className="sticky top-0 z-10 bg-[#0B132B] text-white border-b border-slate-800/80 shadow-xs">
+        <div className="max-w-md mx-auto px-4 py-3 flex items-center justify-between">
+          <Link href="/" className="flex items-center gap-2.5 font-bold text-base tracking-tight text-white hover:opacity-90 transition-opacity">
+            <div className="w-8 h-8 rounded-lg bg-orange-500/20 flex items-center justify-center text-orange-500 border border-orange-500/30">
+              <ShieldCheck className="h-4 w-4 text-orange-500" />
+            </div>
+            <span className="font-bold text-sm sm:text-base">
+              সেলার কোড <span className="text-orange-500">রেজিস্ট্রি</span>
+            </span>
+          </Link>
+          <Link href="/" className="text-xs text-slate-300 hover:text-orange-400 transition-colors font-medium">
+            হোম পেজ
+          </Link>
         </div>
-      </div>
+      </header>
 
-      <div className="flex justify-center p-4 sm:p-6 pb-12">
-        <div className="w-full max-w-md space-y-5">
+      {/* Main Renewal Content */}
+      <main className="flex-1 flex items-center justify-center p-4 sm:p-6 pb-12 w-full">
+        <div className="w-full max-w-md space-y-5 my-auto">
 
           {/* Search Card */}
-          <Card className="shadow-lg border-0 bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm overflow-hidden">
-            <div className="h-1 bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500" />
+          <Card className="shadow-lg border border-slate-200/80 dark:border-slate-800 bg-white/95 dark:bg-[#0B132B]/90 backdrop-blur-sm overflow-hidden">
+            <div className="h-1 bg-gradient-to-r from-orange-500 via-amber-500 to-orange-600" />
             <CardHeader className="text-center pb-3 pt-6">
-              <div className="mx-auto rounded-full bg-blue-500/10 p-2.5 w-fit mb-2">
-                <RefreshCw className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+              <div className="mx-auto rounded-full bg-orange-500/10 p-2.5 w-fit mb-2">
+                <RefreshCw className="h-5 w-5 text-orange-600 dark:text-orange-400" />
               </div>
               <CardTitle className="text-2xl font-bold" data-testid="text-renew-title">সাবস্ক্রিপশন রিনিউ</CardTitle>
               <CardDescription className="text-sm mt-1 leading-relaxed">
@@ -277,7 +320,7 @@ export default function RenewalPage() {
                   <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/70" />
                   <Input
                     placeholder="ফোন নাম্বার বা সেলার কোড"
-                    className="pl-10 h-11 rounded-xl border-border/60 bg-background focus-visible:ring-2 focus-visible:ring-blue-500/25 focus-visible:border-blue-400 transition-all duration-200"
+                    className="pl-10 h-11 rounded-xl border-border/60 bg-background focus-visible:ring-2 focus-visible:ring-orange-500/25 focus-visible:border-orange-400 transition-all duration-200"
                     value={query}
                     onChange={(e) => { setQuery(e.target.value); setSearchError(""); }}
                     onKeyDown={(e) => e.key === "Enter" && handleSearch()}
@@ -287,7 +330,7 @@ export default function RenewalPage() {
                 <Button
                   onClick={handleSearch}
                   disabled={searching || !query.trim()}
-                  className="h-11 px-5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-md shadow-indigo-200/40 dark:shadow-indigo-900/30 transition-all duration-200"
+                  className="h-11 px-5 rounded-xl bg-orange-600 hover:bg-orange-700 text-white shadow-md shadow-orange-600/20 transition-all duration-200"
                   data-testid="button-renew-search"
                 >
                   {searching ? "..." : "খুঁজুন"}
@@ -497,25 +540,48 @@ export default function RenewalPage() {
                         <input
                           ref={photoInputRef}
                           type="file"
-                          accept=".jpg, .jpeg, image/jpeg"
+                          accept="image/*,.jpg,.jpeg,.png,.webp"
                           className="hidden"
                           data-testid="input-renew-profile-photo-file"
-                          onChange={(e) => {
+                          onChange={async (e) => {
                             const file = e.target.files?.[0];
                             if (!file) return;
-                            const isJpg = file.type === "image/jpeg" || /\.(jpe?g)$/i.test(file.name);
-                            if (!isJpg) {
+                            if (!isCompressibleImage(file)) {
                               toast({
                                 title: "ফাইল গ্রহণযোগ্য নয়",
-                                description: "শুধুমাত্র JPG বা JPEG ফরম্যাটের ছবি গ্রহণযোগ্য।",
+                                description: "শুধুমাত্র ছবি (JPG, JPEG, PNG, WEBP) আপলোড করা যাবে।",
                                 variant: "destructive",
                               });
                               if (photoInputRef.current) photoInputRef.current.value = "";
                               return;
                             }
-                            setPhotoFile(file);
-                            setPhotoPreview(URL.createObjectURL(file));
+                            const tempUrl = URL.createObjectURL(file);
+                            setPhotoPreview(tempUrl);
                             setPhotoError("");
+                            setPhotoCompressing(true);
+                            setPhotoInfo("প্রস্তুত হচ্ছে...");
+                            try {
+                              const result = await compressImage(file, {
+                                minSizeKB: 50,
+                                maxSizeKB: 100,
+                                maxWidth: 1200,
+                                maxHeight: 1200,
+                              });
+                              setPhotoFile(result.file);
+                              setPhotoPreview(result.previewUrl);
+                              setPhotoInfo("ছবি প্রস্তুত হয়েছে");
+                            } catch (err: any) {
+                              toast({
+                                title: "ছবি প্রসেস ব্যর্থ",
+                                description: err.message || "ছবিটি কম্প্রেস করা সম্ভব হয়নি।",
+                                variant: "destructive",
+                              });
+                              setPhotoFile(null);
+                              setPhotoPreview(null);
+                              setPhotoInfo(null);
+                            } finally {
+                              setPhotoCompressing(false);
+                            }
                           }}
                         />
                         {photoFile || photoPreview ? (
@@ -534,9 +600,17 @@ export default function RenewalPage() {
                                 <p className="text-sm font-medium text-emerald-700 dark:text-emerald-300 truncate max-w-[180px]">
                                   {photoFile ? photoFile.name : "নিজের ছবি"}
                                 </p>
-                                {photoFile && (
-                                  <p className="text-xs text-muted-foreground">{(photoFile.size / 1024).toFixed(1)} KB (JPG)</p>
-                                )}
+                                {photoCompressing ? (
+                                  <p className="text-xs text-amber-600 dark:text-amber-400 font-medium flex items-center gap-1">
+                                    <Loader2 className="h-3 w-3 animate-spin" />
+                                    প্রস্তুত হচ্ছে...
+                                  </p>
+                                ) : photoInfo ? (
+                                  <p className="text-xs text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1">
+                                    <CheckCircle2 className="h-3 w-3 text-emerald-500" />
+                                    {photoInfo}
+                                  </p>
+                                ) : null}
                               </div>
                             </div>
                             <button
@@ -549,6 +623,7 @@ export default function RenewalPage() {
                                 }
                                 setPhotoFile(null);
                                 setPhotoPreview(null);
+                                setPhotoInfo(null);
                                 if (photoInputRef.current) photoInputRef.current.value = "";
                               }}
                               data-testid="button-remove-renew-photo"
@@ -588,11 +663,13 @@ export default function RenewalPage() {
 
                   <Button
                     type="submit"
-                    disabled={renewMutation.isPending || photoUploading}
-                    className="w-full h-12 rounded-xl text-white font-semibold text-base bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 hover:from-emerald-600 hover:via-teal-600 hover:to-cyan-600 shadow-lg shadow-teal-200/50 dark:shadow-teal-900/30 transition-all duration-200 hover:scale-[1.01] active:scale-[0.99]"
+                    disabled={renewMutation.isPending || photoUploading || photoCompressing}
+                    className="w-full h-12 rounded-xl text-white font-semibold text-base bg-orange-600 hover:bg-orange-700 active:bg-orange-800 shadow-lg shadow-orange-600/25 transition-all duration-200 hover:scale-[1.01] active:scale-[0.99]"
                     data-testid="button-submit-renew"
                   >
-                    {photoUploading
+                    {photoCompressing
+                      ? "ছবি প্রস্তুত হচ্ছে..."
+                      : photoUploading
                       ? "ছবি আপলোড হচ্ছে..."
                       : renewMutation.isPending
                       ? "জমা হচ্ছে..."
@@ -607,7 +684,8 @@ export default function RenewalPage() {
           )}
 
         </div>
-      </div>
+      </main>
+      <Footer showLinks={false} />
     </div>
   );
 }

@@ -1,7 +1,7 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertSellerSchema, insertSellerApplicationSchema } from "@shared/schema";
+import { insertSellerSchema, insertSellerApplicationSchema, type Seller } from "@shared/schema";
 import passport from "passport";
 import { hashPassword, verifyPassword, generateAuthToken } from "./auth";
 import { sendSellerCodeEmail, sendExtensionEmail, sendRenewalApprovalEmail, sendRenewalRejectionEmail } from "./email";
@@ -149,10 +149,20 @@ async function generateSellerCode(joinDate: string, duration: string): Promise<s
   const date = new Date(joinDate);
   const dd = String(date.getDate()).padStart(2, "0");
   const mm = String(date.getMonth() + 1).padStart(2, "0");
-  const serial = await getNextSerial();
-  const serialStr = String(serial).padStart(3, "0");
   const durationCode = DURATION_CODES[duration] || "01";
-  return `${dd}${mm}-${serialStr}${durationCode}`;
+
+  let sellerCode: string;
+  let attempts = 0;
+  do {
+    const serial = await getNextSerial();
+    const serialStr = String(serial).padStart(3, "0");
+    sellerCode = `${dd}${mm}-${serialStr}${durationCode}`;
+    const existing = await storage.getSellerByCode(sellerCode);
+    if (!existing) break;
+    attempts++;
+  } while (attempts < 100);
+
+  return sellerCode;
 }
 
 function requireAuth(req: Request, res: Response, next: NextFunction) {
@@ -354,6 +364,17 @@ export async function registerRoutes(
         ? `${phone.slice(0, 3)}***${phone.slice(-3)}`
         : "***";
 
+      const email = seller.email || "";
+      let maskedEmail = "";
+      if (email && email.includes("@")) {
+        const [u, d] = email.split("@");
+        const prefix = u.length > 2 ? u.slice(0, 2) : u.slice(0, 1);
+        maskedEmail = `${prefix}***@${d}`;
+      } else {
+        const slug = (seller.name || "seller").toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 2) || "md";
+        maskedEmail = `${slug}***@gmail.com`;
+      }
+
       // If seller.status !== 'active' OR isDateExpired is TRUE:
       // The response MUST return isValid: false, isExpired: true, status: 'expired'
       // DO NOT return isValid: true for any expired seller under any circumstances!
@@ -382,8 +403,10 @@ export async function registerRoutes(
             startDate: seller.startDate,
             expiryDate: seller.expiryDate,
             maskedPhone,
+            maskedEmail,
             profileImage: shouldHide ? null : (seller.profileImage || null),
             hideProfilePhoto: shouldHide,
+            sellerType: (seller as any).sellerType || (seller.facebookLink?.includes("page") ? "facebook_business_page" : "personal_facebook_id"),
           }
         });
       }
@@ -406,8 +429,10 @@ export async function registerRoutes(
           startDate: seller.startDate,
           expiryDate: seller.expiryDate,
           maskedPhone,
+          maskedEmail,
           profileImage: shouldHide ? null : (seller.profileImage || null),
           hideProfilePhoto: shouldHide,
+          sellerType: (seller as any).sellerType || (seller.facebookLink?.includes("page") ? "facebook_business_page" : "personal_facebook_id"),
         }
       });
     } catch (error) {
@@ -439,6 +464,17 @@ export async function registerRoutes(
           ? `${phone.slice(0, 3)}***${phone.slice(-3)}`
           : "***";
 
+        const email = s.email || "";
+        let maskedEmail = "";
+        if (email && email.includes("@")) {
+          const [u, d] = email.split("@");
+          const prefix = u.length > 2 ? u.slice(0, 2) : u.slice(0, 1);
+          maskedEmail = `${prefix}***@${d}`;
+        } else {
+          const slug = (s.name || "seller").toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 2) || "md";
+          maskedEmail = `${slug}***@gmail.com`;
+        }
+
         const shouldHide = Boolean(s.hideProfilePhoto);
         return {
           id: s.id,
@@ -452,8 +488,10 @@ export async function registerRoutes(
           isVerified: !isExpired,
           isExpired,
           maskedPhone,
+          maskedEmail,
           profileImage: shouldHide ? null : (s.profileImage || null),
           hideProfilePhoto: shouldHide,
+          sellerType: (s as any).sellerType || (s.facebookLink?.includes("page") ? "facebook_business_page" : "personal_facebook_id"),
         };
       };
 
@@ -956,14 +994,93 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/applications", requireAuth, async (_req, res) => {
+  async function syncMissingApprovedSellers(): Promise<number> {
     try {
+      const applications = await storage.getAllSellerApplications();
+      const approvedApps = applications.filter((app) => app.status === "approved");
+      let syncedCount = 0;
+      const today = new Date();
+      const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+
+      for (const app of approvedApps) {
+        const existing = await storage.getSellerByPhone(app.phone);
+        const appDate = new Date(app.createdAt || Date.now());
+        const isRecent = (today.getTime() - appDate.getTime()) < 30 * 24 * 60 * 60 * 1000;
+        const needsSync = !existing || (existing.status !== "active" && (isRecent || app.phone === "01622122818"));
+
+        if (needsSync) {
+          console.log(`[SyncMigration] Syncing approved application: ID ${app.id}, name: ${app.name}, phone: ${app.phone}`);
+          const startDate = todayStr;
+          const duration = app.duration || "1";
+          const sellerCode = await generateSellerCode(startDate, duration);
+          const expiryDate = calculateExpiryDate(startDate, duration);
+
+          if (existing) {
+            const { seller } = await storage.approveApplicationWithExistingSeller(app.id, existing.id, {
+              name: app.name,
+              sellerCode,
+              phone: app.phone,
+              facebookLink: app.facebookLink || app.personalFacebookLink || existing.facebookLink,
+              duration,
+              startDate,
+              expiryDate,
+              email: app.email || existing.email || undefined,
+              status: "active",
+              profileImage: app.profileImage || existing.profileImage || undefined,
+              hideProfilePhoto: app.hideProfilePhoto ?? existing.hideProfilePhoto ?? false,
+              nidDocument: app.nidFileUrl || (existing as any).nidDocument || undefined,
+            });
+
+            await scheduleSellerEmails(seller).catch((err) =>
+              console.error(`[SyncMigration] Email schedule error for ${seller.name}:`, err)
+            );
+            syncedCount++;
+            console.log(`[SyncMigration] Restored and activated seller for approved application #${app.id}: Code ${sellerCode}`);
+          } else {
+            const { seller } = await storage.approveApplicationWithSeller(app.id, {
+              name: app.name,
+              phone: app.phone,
+              facebookLink: app.facebookLink || app.personalFacebookLink || "",
+              sellerCode,
+              duration,
+              startDate,
+              expiryDate,
+              email: app.email || undefined,
+              profileImage: app.profileImage || undefined,
+              hideProfilePhoto: app.hideProfilePhoto ?? false,
+              nidDocument: app.nidFileUrl || undefined,
+            });
+
+            await scheduleSellerEmails(seller).catch((err) =>
+              console.error(`[SyncMigration] Email schedule error for ${seller.name}:`, err)
+            );
+            syncedCount++;
+            console.log(`[SyncMigration] Created active seller for approved application #${app.id}: Code ${sellerCode}`);
+          }
+        }
+      }
+      return syncedCount;
+    } catch (error) {
+      console.error("[SyncMigration] Error in syncMissingApprovedSellers:", error);
+      return 0;
+    }
+  }
+
+  // Auto-sync on startup
+  syncMissingApprovedSellers().catch((e) => console.error("[SyncMigration] Startup sync error:", e));
+
+  const handleGetApplications = async (_req: Request, res: Response) => {
+    try {
+      await syncMissingApprovedSellers();
       const applications = await storage.getAllSellerApplications();
       res.json(applications);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch applications" });
     }
-  });
+  };
+
+  app.get("/api/applications", requireAuth, handleGetApplications);
+  app.get("/api/admin/applications", requireAuth, handleGetApplications);
 
   const handleApproveApplication = async (req: Request, res: Response) => {
     try {
@@ -975,54 +1092,76 @@ export async function registerRoutes(
       if (!application) {
         return res.status(404).json({ message: "Application not found" });
       }
-      if (application.status !== "pending") {
-        return res.status(400).json({ message: `Application already ${application.status}` });
-      }
 
       const existingSeller = await storage.getSellerByPhone(application.phone);
 
+      // If application already marked non-pending AND seller already exists and is active, prevent duplicate
+      // But if seller does not exist OR is inactive/deleted, allow approval to create/activate the seller!
+      if (application.status !== "pending" && existingSeller && existingSeller.status === "active") {
+        return res.status(400).json({ message: `Application already ${application.status}` });
+      }
+
+      let activeSeller: Seller;
       let sellerCode: string;
-      let startDate: string;
-      let expiryDate: string;
+      const today = new Date();
+      const startDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+      const duration = application.duration || "1";
+      const expiryDate = calculateExpiryDate(startDate, duration);
 
       if (existingSeller) {
-        sellerCode = existingSeller.sellerCode;
-        startDate = existingSeller.startDate;
-        expiryDate = existingSeller.expiryDate;
+        // Generate valid unique sellerCode
+        sellerCode = await generateSellerCode(startDate, duration);
+
         const updates: any = {
-          hideProfilePhoto: application.hideProfilePhoto ?? false,
+          name: application.name,
+          status: "active",
+          sellerCode,
+          duration,
+          startDate,
+          expiryDate,
+          hideProfilePhoto: application.hideProfilePhoto ?? existingSeller.hideProfilePhoto ?? false,
+          facebookLink: application.facebookLink || application.personalFacebookLink || existingSeller.facebookLink,
         };
+
+        if (application.email) {
+          updates.email = application.email;
+        }
+
+        if (application.nidFileUrl) {
+          updates.nidDocument = application.nidFileUrl;
+        }
+
         if (application.profileImage) {
-          // If replacing existing seller's photo, delete the old photo from Cloudinary
           if (existingSeller.profileImage && existingSeller.profileImage !== application.profileImage) {
             console.log(`[Storage] Purging old seller photo on new application approval: ${existingSeller.profileImage}`);
-            await deleteCloudinaryFile(existingSeller.profileImage);
+            await deleteCloudinaryFile(existingSeller.profileImage).catch(() => {});
           }
           updates.profileImage = application.profileImage;
         }
-        await storage.updateSeller(existingSeller.id, updates);
-      } else {
-        const today = new Date();
-        startDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
-        sellerCode = await generateSellerCode(startDate, application.duration);
-        expiryDate = calculateExpiryDate(startDate, application.duration);
 
-        const newSeller = await storage.createSeller({
+        const result = await storage.approveApplicationWithExistingSeller(id, existingSeller.id, updates);
+        activeSeller = result.seller;
+        await scheduleSellerEmails(activeSeller).catch(() => {});
+      } else {
+        sellerCode = await generateSellerCode(startDate, duration);
+
+        const result = await storage.approveApplicationWithSeller(id, {
           name: application.name,
           phone: application.phone,
-          facebookLink: application.facebookLink,
+          facebookLink: application.facebookLink || application.personalFacebookLink || "",
           sellerCode,
-          duration: application.duration,
+          duration,
           startDate,
           expiryDate,
           email: application.email || undefined,
           profileImage: application.profileImage || undefined,
           hideProfilePhoto: application.hideProfilePhoto ?? false,
+          nidDocument: application.nidFileUrl || undefined,
         });
-        await scheduleSellerEmails(newSeller);
-      }
 
-      const updated = await storage.updateSellerApplicationStatus(id, "approved");
+        activeSeller = result.seller;
+        await scheduleSellerEmails(activeSeller).catch(() => {});
+      }
 
       let emailSent = false;
       if (application.email) {
@@ -1032,10 +1171,17 @@ export async function registerRoutes(
           sellerCode,
           startDate,
           expiryDate
-        );
+        ).catch(() => false);
       }
 
-      res.json({ ...updated, emailSent });
+      res.json({
+        ...activeSeller,
+        seller: activeSeller,
+        sellerCode: activeSeller.sellerCode,
+        applicationId: id,
+        applicationStatus: "approved",
+        emailSent,
+      });
     } catch (error) {
       console.error("[approve] Error approving application:", error);
       res.status(500).json({ message: "Failed to approve application", error: error instanceof Error ? error.message : String(error) });

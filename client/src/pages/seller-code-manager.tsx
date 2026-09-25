@@ -40,6 +40,7 @@ import {
   Image as ImageIcon,
   Loader2,
 } from "lucide-react";
+import { compressImage, isCompressibleImage } from "@/lib/image-compressor";
 import { SiMeta } from "react-icons/si";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
@@ -193,11 +194,10 @@ function SellerAvatarWithUpload({
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const isJpg = file.type === "image/jpeg" || /\.(jpe?g)$/i.test(file.name);
-    if (!isJpg) {
+    if (!isCompressibleImage(file)) {
       toast({
         title: "ফাইল গ্রহণযোগ্য নয়",
-        description: "শুধুমাত্র JPG বা JPEG ফরম্যাটের ছবি গ্রহণযোগ্য।",
+        description: "শুধুমাত্র ছবি (JPG, PNG, WEBP) আপলোড করা যাবে।",
         variant: "destructive",
       });
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -206,8 +206,16 @@ function SellerAvatarWithUpload({
 
     try {
       setUploading(true);
+      // Compress to 50 - 100 KB standard .jpg
+      const compressed = await compressImage(file, {
+        minSizeKB: 50,
+        maxSizeKB: 100,
+        maxWidth: 1200,
+        maxHeight: 1200,
+      });
+
       const formData = new FormData();
-      formData.append("photo", file);
+      formData.append("photo", compressed.file);
 
       const token = getAuthToken();
       const headers: Record<string, string> = {};
@@ -237,7 +245,7 @@ function SellerAvatarWithUpload({
         queryClient.refetchQueries({ queryKey: ["/api/sellers"] }),
         queryClient.refetchQueries({ queryKey: ["/api/admin/sellers"] }),
       ]);
-      toast({ title: "প্রোফাইল ছবি সফলভাবে আপডেট হয়েছে!" });
+      toast({ title: `প্রোফাইল ছবি সফলভাবে আপডেট হয়েছে! (${compressed.compressedSizeKB} KB)` });
     } catch (err: any) {
       toast({
         title: "আপলোড ব্যর্থ",
@@ -260,13 +268,13 @@ function SellerAvatarWithUpload({
         e.stopPropagation();
         fileInputRef.current?.click();
       }}
-      title="ছবি পরিবর্তন করতে ক্লিক করুন (শুধুমাত্র JPG)"
+      title="ছবি পরিবর্তন করতে ক্লিক করুন"
       data-testid={`avatar-clickable-${seller.id}`}
     >
       <input
         ref={fileInputRef}
         type="file"
-        accept=".jpg, .jpeg, image/jpeg"
+        accept="image/*,.jpg,.jpeg,.png,.webp"
         className="hidden"
         onChange={handleFileChange}
         data-testid={`input-avatar-file-${seller.id}`}
@@ -416,10 +424,23 @@ function PendingApplications() {
       const res = await apiRequest("POST", `/api/applications/${id}/approve`);
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/applications"] });
       queryClient.invalidateQueries({ queryKey: ["/api/applications"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/sellers"] });
       queryClient.invalidateQueries({ queryKey: ["/api/sellers"] });
-      toast({ title: "Application approved", description: "Seller account created with a unique code." });
+      queryClient.invalidateQueries({ queryKey: ["/api/sellers/archived"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/public/verified-sellers"] });
+      queryClient.refetchQueries({ queryKey: ["/api/applications"] });
+      queryClient.refetchQueries({ queryKey: ["/api/sellers"] });
+      queryClient.refetchQueries({ queryKey: ["/api/public/verified-sellers"] });
+      const code = data?.sellerCode || data?.seller?.sellerCode;
+      toast({
+        title: "Application approved",
+        description: code
+          ? `Seller account created with unique code: ${code}`
+          : "Seller account created with a unique code.",
+      });
     },
     onError: (error: Error) => {
       toast({ title: "Error", description: error.message, variant: "destructive" });
@@ -432,7 +453,11 @@ function PendingApplications() {
       return res.json();
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/applications"] });
       queryClient.invalidateQueries({ queryKey: ["/api/applications"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/sellers"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/sellers"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/public/verified-sellers"] });
       toast({ title: "Application rejected" });
     },
     onError: (error: Error) => {
@@ -1019,14 +1044,22 @@ function SellerForm({
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
-      toast({ title: "ভুল ফরম্যাট", description: "শুধুমাত্র JPG, PNG বা WEBP ইমেজ সমর্থিত", variant: "destructive" });
+    if (!isCompressibleImage(file)) {
+      toast({ title: "ভুল ফরম্যাট", description: "শুধুমাত্র ছবি (JPG, PNG বা WEBP) সমর্থিত", variant: "destructive" });
       return;
     }
     setPhotoUploading(true);
     try {
+      // Compress to 50 - 100 KB standard .jpg
+      const compressed = await compressImage(file, {
+        minSizeKB: 50,
+        maxSizeKB: 100,
+        maxWidth: 1200,
+        maxHeight: 1200,
+      });
+
       const formData = new FormData();
-      formData.append("photo", file);
+      formData.append("photo", compressed.file);
       formData.append("phone", form.getValues("phone") || "admin");
 
       const token = getAuthToken();
@@ -1050,7 +1083,7 @@ function SellerForm({
       }
       setPhotoPreview(data.url);
       form.setValue("profileImage", data.url);
-      toast({ title: "ছবি নির্বাচন সম্পন্ন", description: "সংরক্ষণ বাটনে ক্লিক করলে পুরনো ছবিটি মুছে নতুন ছবি প্রতিস্থাপন হবে।" });
+      toast({ title: "ছবি নির্বাচন সম্পন্ন", description: `ছবিটি অপ্টিমাইজ করা হয়েছে (${compressed.compressedSizeKB} KB)। সংরক্ষণ বাটনে ক্লিক করলে পুরনো ছবিটি মুছে নতুন ছবি প্রতিস্থাপন হবে।` });
     } catch (err: any) {
       toast({ title: "আপলোড ত্রুটি", description: err.message, variant: "destructive" });
     } finally {
@@ -1184,7 +1217,7 @@ function SellerForm({
                 <span>{photoUploading ? "আপলোড হচ্ছে..." : photoPreview ? "ছবি পরিবর্তন করুন" : "ছবি আপলোড করুন"}</span>
                 <input
                   type="file"
-                  accept="image/jpeg,image/png,image/webp"
+                  accept="image/*,.jpg,.jpeg,.png,.webp"
                   className="hidden"
                   onChange={handlePhotoUpload}
                   disabled={photoUploading}

@@ -33,6 +33,7 @@ export const sellers = pgTable("sellers", {
   renewalStartDate: date("renewal_start_date"),
   profileImage: text("profile_image"),
   hideProfilePhoto: boolean("hide_profile_photo").notNull().default(false),
+  nidDocument: text("nid_document"),
 });
 
 export const emailReminderLog = pgTable("email_reminder_log", {
@@ -54,6 +55,7 @@ export const insertSellerSchema = createInsertSchema(sellers).pick({
   email: true,
   profileImage: true,
   hideProfilePhoto: true,
+  nidDocument: true,
 });
 
 export type InsertSeller = z.infer<typeof insertSellerSchema>;

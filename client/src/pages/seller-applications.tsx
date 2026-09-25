@@ -212,8 +212,12 @@ function RenewalsTab() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/renewals"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/sellers"] });
       queryClient.invalidateQueries({ queryKey: ["/api/sellers"] });
       queryClient.invalidateQueries({ queryKey: ["/api/sellers/archived"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/public/verified-sellers"] });
+      queryClient.refetchQueries({ queryKey: ["/api/sellers"] });
+      queryClient.refetchQueries({ queryKey: ["/api/public/verified-sellers"] });
       toast({ title: "Renewal approved", description: "Seller subscription has been extended." });
     },
     onError: (error: Error) => {
@@ -437,10 +441,23 @@ export default function SellerApplications() {
       const res = await apiRequest("POST", `/api/applications/${id}/approve`);
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/applications"] });
       queryClient.invalidateQueries({ queryKey: ["/api/applications"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/sellers"] });
       queryClient.invalidateQueries({ queryKey: ["/api/sellers"] });
-      toast({ title: "Application approved", description: "Seller account created with a unique code." });
+      queryClient.invalidateQueries({ queryKey: ["/api/sellers/archived"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/public/verified-sellers"] });
+      queryClient.refetchQueries({ queryKey: ["/api/applications"] });
+      queryClient.refetchQueries({ queryKey: ["/api/sellers"] });
+      queryClient.refetchQueries({ queryKey: ["/api/public/verified-sellers"] });
+      const code = data?.sellerCode || data?.seller?.sellerCode;
+      toast({
+        title: "Application approved",
+        description: code
+          ? `Seller account created with unique code: ${code}`
+          : "Seller account created with a unique code.",
+      });
     },
     onError: (error: Error) => {
       toast({ title: "Error", description: error.message, variant: "destructive" });
@@ -453,7 +470,11 @@ export default function SellerApplications() {
       return res.json();
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/applications"] });
       queryClient.invalidateQueries({ queryKey: ["/api/applications"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/sellers"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/sellers"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/public/verified-sellers"] });
       toast({ title: "Application rejected" });
     },
     onError: (error: Error) => {
@@ -466,6 +487,7 @@ export default function SellerApplications() {
       await apiRequest("DELETE", `/api/applications/${id}`);
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/applications"] });
       queryClient.invalidateQueries({ queryKey: ["/api/applications"] });
       toast({ title: "Application deleted" });
       setDeleteId(null);

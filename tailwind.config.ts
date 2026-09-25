@@ -11,6 +11,44 @@ export default {
         sm: ".1875rem", /* 3px */
       },
       colors: {
+        // SobChina Brand Colors
+        brand: {
+          orange: {
+            DEFAULT: "#EA580C",
+            50: "#FFF7ED",
+            100: "#FFEDD5",
+            200: "#FED7AA",
+            300: "#FDBA74",
+            400: "#FB923C",
+            500: "#F97316",
+            600: "#EA580C",
+            700: "#C2410C",
+            800: "#9A3412",
+            900: "#7C2D12",
+          },
+          navy: {
+            DEFAULT: "#0B132B",
+            50: "#F8FAFC",
+            100: "#F1F5F9",
+            200: "#E2E8F0",
+            300: "#CBD5E1",
+            400: "#94A3B8",
+            500: "#64748B",
+            600: "#475569",
+            700: "#1E293B",
+            800: "#1C2541",
+            900: "#0B132B",
+            950: "#060A17",
+          },
+          emerald: {
+            DEFAULT: "#059669",
+            50: "#ECFDF5",
+            100: "#D1FAE5",
+            500: "#10B981",
+            600: "#059669",
+            700: "#047857",
+          },
+        },
         // Flat / base colors (regular buttons)
         background: "hsl(var(--background) / <alpha-value>)",
         foreground: "hsl(var(--foreground) / <alpha-value>)",

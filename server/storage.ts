@@ -26,6 +26,8 @@ export interface IStorage {
   getSellerApplicationById(id: number): Promise<SellerApplication | undefined>;
   updateSellerApplicationStatus(id: number, status: string): Promise<SellerApplication | undefined>;
   updateSellerApplicationEmail(id: number, email: string): Promise<SellerApplication | undefined>;
+  approveApplicationWithSeller(applicationId: number, sellerData: InsertSeller & { expiryDate: string; nidDocument?: string | null }): Promise<{ application: SellerApplication; seller: Seller }>;
+  approveApplicationWithExistingSeller(applicationId: number, sellerId: number, sellerUpdates: Partial<InsertSeller & { expiryDate: string; status?: string; renewalStartDate?: string | null; nidDocument?: string | null }>): Promise<{ application: SellerApplication; seller: Seller }>;
   clearApplicationNidFileUrl(id: number): Promise<void>;
   clearApplicationFiles(id: number): Promise<void>;
   getSellerByPhone(phone: string): Promise<Seller | undefined>;
@@ -134,6 +136,7 @@ export class MemStorage implements IStorage {
       renewalStartDate: null,
       profileImage: seller.profileImage ?? null,
       hideProfilePhoto: seller.hideProfilePhoto ?? false,
+      nidDocument: (seller as any).nidDocument ?? null,
     };
     this.sellers.set(id, newSeller);
     return newSeller;
@@ -250,6 +253,55 @@ export class MemStorage implements IStorage {
     app.email = email;
     this.applications.set(id, app);
     return app;
+  }
+
+  async approveApplicationWithSeller(
+    applicationId: number,
+    sellerData: InsertSeller & { expiryDate: string; nidDocument?: string | null }
+  ): Promise<{ application: SellerApplication; seller: Seller }> {
+    const app = this.applications.get(applicationId);
+    if (app) {
+      app.status = "approved";
+      this.applications.set(applicationId, app);
+    }
+    const id = this.currentSellerId++;
+    const newSeller: Seller = {
+      id,
+      name: sellerData.name,
+      phone: sellerData.phone,
+      facebookLink: sellerData.facebookLink,
+      sellerCode: sellerData.sellerCode,
+      duration: sellerData.duration,
+      startDate: sellerData.startDate,
+      expiryDate: sellerData.expiryDate,
+      email: sellerData.email ?? null,
+      status: "active",
+      renewalStartDate: null,
+      profileImage: sellerData.profileImage ?? null,
+      hideProfilePhoto: sellerData.hideProfilePhoto ?? false,
+      nidDocument: sellerData.nidDocument ?? null,
+    };
+    this.sellers.set(id, newSeller);
+    return { application: app!, seller: newSeller };
+  }
+
+  async approveApplicationWithExistingSeller(
+    applicationId: number,
+    sellerId: number,
+    sellerUpdates: Partial<InsertSeller & { expiryDate: string; status?: string; renewalStartDate?: string | null; nidDocument?: string | null }>
+  ): Promise<{ application: SellerApplication; seller: Seller }> {
+    const app = this.applications.get(applicationId);
+    if (app) {
+      app.status = "approved";
+      this.applications.set(applicationId, app);
+    }
+    const existing = this.sellers.get(sellerId);
+    const updated: Seller = {
+      ...existing!,
+      ...sellerUpdates,
+    };
+    this.sellers.set(sellerId, updated);
+    return { application: app!, seller: updated };
   }
 
   async clearApplicationNidFileUrl(id: number): Promise<void> {
@@ -594,6 +646,61 @@ export class DatabaseStorage implements IStorage {
     return result[0];
   }
 
+  async approveApplicationWithSeller(
+    applicationId: number,
+    sellerData: InsertSeller & { expiryDate: string; nidDocument?: string | null }
+  ): Promise<{ application: SellerApplication; seller: Seller }> {
+    return await this.db.transaction(async (tx: any) => {
+      const [createdSeller] = await tx
+        .insert(sellers)
+        .values({
+          name: sellerData.name,
+          phone: sellerData.phone,
+          facebookLink: sellerData.facebookLink,
+          sellerCode: sellerData.sellerCode,
+          duration: sellerData.duration,
+          startDate: sellerData.startDate,
+          expiryDate: sellerData.expiryDate,
+          email: sellerData.email || null,
+          status: "active",
+          profileImage: sellerData.profileImage || null,
+          hideProfilePhoto: sellerData.hideProfilePhoto ?? false,
+          nidDocument: sellerData.nidDocument || null,
+        })
+        .returning();
+
+      const [updatedApp] = await tx
+        .update(sellerApplications)
+        .set({ status: "approved" })
+        .where(eq(sellerApplications.id, applicationId))
+        .returning();
+
+      return { application: updatedApp, seller: createdSeller };
+    });
+  }
+
+  async approveApplicationWithExistingSeller(
+    applicationId: number,
+    sellerId: number,
+    sellerUpdates: Partial<InsertSeller & { expiryDate: string; status?: string; renewalStartDate?: string | null; nidDocument?: string | null }>
+  ): Promise<{ application: SellerApplication; seller: Seller }> {
+    return await this.db.transaction(async (tx: any) => {
+      const [updatedSeller] = await tx
+        .update(sellers)
+        .set(sellerUpdates)
+        .where(eq(sellers.id, sellerId))
+        .returning();
+
+      const [updatedApp] = await tx
+        .update(sellerApplications)
+        .set({ status: "approved" })
+        .where(eq(sellerApplications.id, applicationId))
+        .returning();
+
+      return { application: updatedApp, seller: updatedSeller };
+    });
+  }
+
   async clearApplicationNidFileUrl(id: number): Promise<void> {
     await this.db.update(sellerApplications).set({ nidFileUrl: null }).where(eq(sellerApplications.id, id));
   }
@@ -772,6 +879,7 @@ function initStorage(): IStorage {
     pool.query(`
       ALTER TABLE IF EXISTS sellers ADD COLUMN IF NOT EXISTS profile_image text;
       ALTER TABLE IF EXISTS sellers ADD COLUMN IF NOT EXISTS hide_profile_photo boolean DEFAULT false;
+      ALTER TABLE IF EXISTS sellers ADD COLUMN IF NOT EXISTS nid_document text;
       ALTER TABLE IF EXISTS seller_applications ADD COLUMN IF NOT EXISTS profile_image text;
       ALTER TABLE IF EXISTS seller_applications ADD COLUMN IF NOT EXISTS hide_profile_photo boolean DEFAULT false;
       ALTER TABLE IF EXISTS seller_renewal_applications ADD COLUMN IF NOT EXISTS profile_image text;

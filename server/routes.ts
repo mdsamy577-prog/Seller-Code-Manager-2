@@ -142,26 +142,10 @@ function calculateExpiryDate(startDate: string, duration: string): string {
 }
 
 // 15-minute rotation seed for silent, fair periodic rotation
-function mulberry32(seed: number) {
-  let s = seed | 0;
-  return function () {
-    s = (s + 0x6d2b79f5) | 0;
-    let t = Math.imul(s ^ (s >>> 15), 1 | s);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
-
-function seededShuffle<T>(array: readonly T[], seed: number): T[] {
-  const result = [...array];
-  const rng = mulberry32(seed);
-  for (let i = result.length - 1; i > 0; i--) {
-    const j = Math.floor(rng() * (i + 1));
-    const temp = result[i];
-    result[i] = result[j];
-    result[j] = temp;
-  }
-  return result;
+function rotateArray<T>(array: readonly T[], timeSlot: number): T[] {
+  if (!array || array.length <= 1) return [...(array || [])];
+  const offset = timeSlot % array.length;
+  return [...array.slice(offset), ...array.slice(0, offset)];
 }
 
 async function getNextSerial(): Promise<number> {
@@ -374,7 +358,7 @@ export async function registerRoutes(
 
       // Silent 15-minute deterministic fair rotation
       const timeSlot = Math.floor(Date.now() / (15 * 60 * 1000));
-      const rotated = seededShuffle(sanitized, timeSlot);
+      const rotated = rotateArray(sanitized, timeSlot);
       res.json(rotated);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch verified sellers" });

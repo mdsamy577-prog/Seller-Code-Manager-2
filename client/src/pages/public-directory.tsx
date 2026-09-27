@@ -23,6 +23,7 @@ import {
   Phone,
   ShieldAlert,
   ChevronDown,
+  ChevronUp,
   User,
   Smartphone,
   Share2,
@@ -68,28 +69,11 @@ interface VerificationResult {
 // 15-minute rotation interval (900,000 ms) for fair periodic shuffling
 const ROTATION_INTERVAL_MS = 15 * 60 * 1000;
 
-// Mulberry32 32-bit PRNG for high-quality deterministic pseudo-random numbers
-function mulberry32(seed: number) {
-  let s = seed | 0;
-  return function () {
-    s = (s + 0x6d2b79f5) | 0;
-    let t = Math.imul(s ^ (s >>> 15), 1 | s);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
-
-// Seeded Fisher-Yates shuffle algorithm
-function seededShuffle<T>(array: readonly T[], seed: number): T[] {
-  const result = [...array];
-  const rng = mulberry32(seed);
-  for (let i = result.length - 1; i > 0; i--) {
-    const j = Math.floor(rng() * (i + 1));
-    const temp = result[i];
-    result[i] = result[j];
-    result[j] = temp;
-  }
-  return result;
+// Deterministic array rotation based on time slot
+function rotateArray<T>(array: readonly T[], timeSlot: number): T[] {
+  if (!array || array.length <= 1) return [...(array || [])];
+  const offset = timeSlot % array.length;
+  return [...array.slice(offset), ...array.slice(0, offset)];
 }
 
 export default function PublicDirectory() {
@@ -103,6 +87,21 @@ export default function PublicDirectory() {
   const [shareCopied, setShareCopied] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [disclaimerOpen, setDisclaimerOpen] = useState(false);
+  const [showAllSellers, setShowAllSellers] = useState(false);
+  const [isMobile, setIsMobile] = useState(() => {
+    if (typeof window !== "undefined") {
+      return window.innerWidth < 768;
+    }
+    return false;
+  });
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   // 15-minute time-slot seed for silent, fair periodic rotation
   const [timeSlot, setTimeSlot] = useState(() => Math.floor(Date.now() / ROTATION_INTERVAL_MS));
@@ -317,12 +316,12 @@ export default function PublicDirectory() {
     }
   }, [activeVerification]);
 
-  // Fairly rotated sellers based on the 15-minute time slot
+  // Fairly rotated sellers based on the 15-minute time slot (deterministic array shift)
   const rotatedSellers = useMemo(() => {
     if (!Array.isArray(verifiedSellers) || verifiedSellers.length <= 1) {
       return verifiedSellers || [];
     }
-    return seededShuffle(verifiedSellers, timeSlot);
+    return rotateArray(verifiedSellers, timeSlot);
   }, [verifiedSellers, timeSlot]);
 
   // Filtered sellers for directory showcase based on search query
@@ -336,6 +335,16 @@ export default function PublicDirectory() {
         (s.sellerCode && s.sellerCode.toLowerCase().includes(q))
     );
   }, [rotatedSellers, searchQuery]);
+
+  // Initial limit: 4 cards on mobile (< 768px), 8 cards on desktop/tablet (>= 768px)
+  const initialLimit = isMobile ? 4 : 8;
+
+  // Sellers to display: initialLimit by default, or all if searching or expanded
+  const displayedSellers = useMemo(() => {
+    if (searchQuery.trim()) return filteredSellers;
+    if (showAllSellers) return filteredSellers;
+    return filteredSellers.slice(0, initialLimit);
+  }, [filteredSellers, searchQuery, showAllSellers, initialLimit]);
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#070C1B] text-slate-900 dark:text-slate-100 flex flex-col font-sans selection:bg-orange-500 selection:text-white">
@@ -967,95 +976,128 @@ export default function PublicDirectory() {
           </div>
         ) : (
           /* Responsive Cards: 1 column on mobile (< 768px), 2 on tablet, 3 on desktop */
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
-            {filteredSellers.map((seller) => (
-              <Card
-                key={seller.id}
-                className="group relative overflow-hidden rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-[#0B132B]/80 shadow-xs hover:shadow-lg hover:border-orange-500/40 transition-all duration-200 ease-in-out flex flex-col justify-between"
-                data-testid={`card-seller-${seller.id}`}
-              >
-                <CardContent className="p-4 sm:p-5 flex flex-col justify-between h-full space-y-4">
-                  <div>
-                    {/* Top Row: Seller Avatar, Name & Code Badge */}
-                    <div className="flex items-start justify-between gap-2.5">
-                      <div className="flex items-center gap-3 min-w-0 flex-1">
-                        {seller.hideProfilePhoto || !seller.profileImage ? (
-                          <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 shrink-0">
-                            <User className="w-6 h-6 text-orange-500" />
-                          </div>
-                        ) : (
-                          <img
-                            src={seller.profileImage}
-                            alt={seller.name}
-                            className="w-12 h-12 rounded-full object-cover shrink-0"
-                          />
-                        )}
-                        <div className="min-w-0 flex-1">
-                          <h3 className="font-bold text-base text-slate-900 dark:text-white truncate">
-                            {seller.name}
-                          </h3>
-                          <div className="mt-1 flex items-center gap-2 flex-wrap">
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold bg-emerald-50 text-emerald-800 dark:bg-emerald-950/70 dark:text-emerald-300 border border-emerald-500/20">
-                              <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                              <span>ভেরিফাইড সেলার</span>
-                            </span>
-                            <span className="text-[11px] text-slate-500 flex items-center gap-1">
-                              <Calendar className="w-3 h-3 text-slate-400" />
-                              <span>মেয়াদ: {seller.expiryDate || "সক্রিয়"}</span>
-                            </span>
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
+              {displayedSellers.map((seller) => (
+                <Card
+                  key={seller.id}
+                  className="group relative overflow-hidden rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-[#0B132B]/80 shadow-xs hover:shadow-lg hover:border-orange-500/40 transition-all duration-200 ease-in-out flex flex-col justify-between"
+                  data-testid={`card-seller-${seller.id}`}
+                >
+                  <CardContent className="p-4 sm:p-5 flex flex-col justify-between h-full space-y-4">
+                    <div>
+                      {/* Top Row: Seller Avatar, Name & Code Badge */}
+                      <div className="flex items-start justify-between gap-2.5">
+                        <div className="flex items-center gap-3 min-w-0 flex-1">
+                          {seller.hideProfilePhoto || !seller.profileImage ? (
+                            <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 shrink-0">
+                              <User className="w-6 h-6 text-orange-500" />
+                            </div>
+                          ) : (
+                            <img
+                              src={seller.profileImage}
+                              alt={seller.name}
+                              className="w-12 h-12 rounded-full object-cover shrink-0"
+                            />
+                          )}
+                          <div className="min-w-0 flex-1">
+                            <h3 className="font-bold text-base text-slate-900 dark:text-white truncate">
+                              {seller.name}
+                            </h3>
+                            <div className="mt-1 flex items-center gap-2 flex-wrap">
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold bg-emerald-50 text-emerald-800 dark:bg-emerald-950/70 dark:text-emerald-300 border border-emerald-500/20">
+                                <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                                <span>ভেরিফাইড সেলার</span>
+                              </span>
+                              <span className="text-[11px] text-slate-500 flex items-center gap-1">
+                                <Calendar className="w-3 h-3 text-slate-400" />
+                                <span>মেয়াদ: {seller.expiryDate || "সক্রিয়"}</span>
+                              </span>
+                            </div>
                           </div>
                         </div>
+
+                        {/* Code Badge with 1-tap Copy */}
+                        <button
+                          type="button"
+                          onClick={() => handleCopyCode(seller.sellerCode)}
+                          className="font-mono text-xs font-bold px-2.5 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-orange-50 hover:text-orange-600 dark:hover:bg-orange-950/40 dark:hover:text-orange-400 transition-colors flex items-center gap-1.5 shrink-0 border border-slate-200 dark:border-slate-700 active:scale-95 min-h-[36px]"
+                          title="কোড কপি করতে ট্যাপ করুন"
+                          data-testid={`button-copy-code-${seller.id}`}
+                        >
+                          <span>{seller.sellerCode}</span>
+                          {copiedCode === seller.sellerCode ? (
+                            <Check className="w-3.5 h-3.5 text-emerald-600" />
+                          ) : (
+                            <Copy className="w-3.5 h-3.5 text-slate-400 group-hover:text-orange-600" />
+                          )}
+                        </button>
                       </div>
-
-                      {/* Code Badge with 1-tap Copy */}
-                      <button
-                        type="button"
-                        onClick={() => handleCopyCode(seller.sellerCode)}
-                        className="font-mono text-xs font-bold px-2.5 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-orange-50 hover:text-orange-600 dark:hover:bg-orange-950/40 dark:hover:text-orange-400 transition-colors flex items-center gap-1.5 shrink-0 border border-slate-200 dark:border-slate-700 active:scale-95 min-h-[36px]"
-                        title="কোড কপি করতে ট্যাপ করুন"
-                        data-testid={`button-copy-code-${seller.id}`}
-                      >
-                        <span>{seller.sellerCode}</span>
-                        {copiedCode === seller.sellerCode ? (
-                          <Check className="w-3.5 h-3.5 text-emerald-600" />
-                        ) : (
-                          <Copy className="w-3.5 h-3.5 text-slate-400 group-hover:text-orange-600" />
-                        )}
-                      </button>
                     </div>
-                  </div>
 
-                  {/* Actions Row: Touch-Friendly Buttons */}
-                  <div className="pt-3 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between gap-2">
-                    <a
-                      href={seller.facebookLink}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-xs font-semibold text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 inline-flex items-center gap-1.5 py-1.5 px-2 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-950/40 transition-colors min-h-[40px]"
-                    >
-                      <SiMeta className="w-3.5 h-3.5 shrink-0" />
-                      <span>ফেসবুক প্রোফাইল দেখুন</span>
-                      <ExternalLink className="w-3 h-3 opacity-70" />
-                    </a>
+                    {/* Actions Row: Touch-Friendly Buttons */}
+                    <div className="pt-3 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between gap-2">
+                      <a
+                        href={seller.facebookLink}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs font-semibold text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 inline-flex items-center gap-1.5 py-1.5 px-2 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-950/40 transition-colors min-h-[40px]"
+                      >
+                        <SiMeta className="w-3.5 h-3.5 shrink-0" />
+                        <span>ফেসবুক প্রোফাইল দেখুন</span>
+                        <ExternalLink className="w-3 h-3 opacity-70" />
+                      </a>
 
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => {
-                        setVerifyInput(seller.sellerCode);
-                        window.scrollTo({ top: 220, behavior: "smooth" });
-                        handleVerify(undefined, seller.sellerCode);
-                      }}
-                      className="h-9 text-xs text-slate-700 dark:text-slate-300 hover:text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-950/20 px-3 rounded-lg font-medium transition-colors"
-                    >
-                      <span>যাচাই করুন</span>
-                      <ArrowRight className="w-3 h-3 ml-1 text-orange-600" />
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setVerifyInput(seller.sellerCode);
+                          window.scrollTo({ top: 220, behavior: "smooth" });
+                          handleVerify(undefined, seller.sellerCode);
+                        }}
+                        className="h-9 text-xs text-slate-700 dark:text-slate-300 hover:text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-950/20 px-3 rounded-lg font-medium transition-colors"
+                      >
+                        <span>যাচাই করুন</span>
+                        <ArrowRight className="w-3 h-3 ml-1 text-orange-600" />
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+
+            {/* See More / Show Less Toggle Button */}
+            {!searchQuery.trim() && filteredSellers.length > initialLimit && (
+              <div className="mt-8 flex justify-center">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    if (showAllSellers) {
+                      setShowAllSellers(false);
+                      document.getElementById("directory")?.scrollIntoView({ behavior: "smooth" });
+                    } else {
+                      setShowAllSellers(true);
+                    }
+                  }}
+                  className="group px-6 py-2.5 rounded-full border border-slate-300/80 dark:border-slate-700 bg-white/90 dark:bg-slate-900/90 hover:bg-orange-50 hover:border-orange-500/50 hover:text-orange-600 dark:hover:bg-orange-950/30 dark:hover:border-orange-500/50 dark:hover:text-orange-400 font-semibold text-sm shadow-xs transition-all duration-200 gap-2 items-center text-slate-700 dark:text-slate-200 cursor-pointer active:scale-95"
+                  data-testid="button-toggle-see-more-sellers"
+                >
+                  {showAllSellers ? (
+                    <>
+                      <span>কম দেখুন</span>
+                      <ChevronUp className="w-4 h-4 text-orange-500 transition-transform group-hover:-translate-y-0.5" />
+                    </>
+                  ) : (
+                    <>
+                      <span>আরও সেলার দেখুন</span>
+                      <ChevronDown className="w-4 h-4 text-orange-500 transition-transform group-hover:translate-y-0.5" />
+                    </>
+                  )}
+                </Button>
+              </div>
+            )}
+          </>
         )}
       </section>
 

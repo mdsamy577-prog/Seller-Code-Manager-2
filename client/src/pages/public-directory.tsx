@@ -65,6 +65,33 @@ interface VerificationResult {
   seller?: PublicSeller;
 }
 
+// 15-minute rotation interval (900,000 ms) for fair periodic shuffling
+const ROTATION_INTERVAL_MS = 15 * 60 * 1000;
+
+// Mulberry32 32-bit PRNG for high-quality deterministic pseudo-random numbers
+function mulberry32(seed: number) {
+  let s = seed | 0;
+  return function () {
+    s = (s + 0x6d2b79f5) | 0;
+    let t = Math.imul(s ^ (s >>> 15), 1 | s);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+// Seeded Fisher-Yates shuffle algorithm
+function seededShuffle<T>(array: readonly T[], seed: number): T[] {
+  const result = [...array];
+  const rng = mulberry32(seed);
+  for (let i = result.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    const temp = result[i];
+    result[i] = result[j];
+    result[j] = temp;
+  }
+  return result;
+}
+
 export default function PublicDirectory() {
   const { toast } = useToast();
   const [match, params] = useRoute("/verify/:code");
@@ -76,6 +103,18 @@ export default function PublicDirectory() {
   const [shareCopied, setShareCopied] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [disclaimerOpen, setDisclaimerOpen] = useState(false);
+
+  // 15-minute time-slot seed for silent, fair periodic rotation
+  const [timeSlot, setTimeSlot] = useState(() => Math.floor(Date.now() / ROTATION_INTERVAL_MS));
+
+  useEffect(() => {
+    // Check every minute if the 15-minute interval has rolled over
+    const interval = setInterval(() => {
+      const currentSlot = Math.floor(Date.now() / ROTATION_INTERVAL_MS);
+      setTimeSlot((prev) => (prev !== currentSlot ? currentSlot : prev));
+    }, 60 * 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   // Explicit, immediate public API fetch with no-cache and immediate execution
   const {
@@ -278,17 +317,25 @@ export default function PublicDirectory() {
     }
   }, [activeVerification]);
 
-  // Filtered sellers for directory showcase - completely viewport-independent
+  // Fairly rotated sellers based on the 15-minute time slot
+  const rotatedSellers = useMemo(() => {
+    if (!Array.isArray(verifiedSellers) || verifiedSellers.length <= 1) {
+      return verifiedSellers || [];
+    }
+    return seededShuffle(verifiedSellers, timeSlot);
+  }, [verifiedSellers, timeSlot]);
+
+  // Filtered sellers for directory showcase based on search query
   const filteredSellers = useMemo(() => {
-    if (!Array.isArray(verifiedSellers)) return [];
-    if (!searchQuery.trim()) return verifiedSellers;
+    if (!Array.isArray(rotatedSellers)) return [];
+    if (!searchQuery.trim()) return rotatedSellers;
     const q = searchQuery.toLowerCase().trim();
-    return verifiedSellers.filter(
+    return rotatedSellers.filter(
       (s) =>
         (s.name && s.name.toLowerCase().includes(q)) ||
         (s.sellerCode && s.sellerCode.toLowerCase().includes(q))
     );
-  }, [verifiedSellers, searchQuery]);
+  }, [rotatedSellers, searchQuery]);
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#070C1B] text-slate-900 dark:text-slate-100 flex flex-col font-sans selection:bg-orange-500 selection:text-white">

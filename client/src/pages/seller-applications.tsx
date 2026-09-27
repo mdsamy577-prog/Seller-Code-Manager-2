@@ -200,9 +200,13 @@ function formatDate(createdAt: string) {
 
 function RenewalsTab() {
   const { toast } = useToast();
+  const PAGE_SIZE = 25;
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
 
   const { data: applications = [], isLoading } = useQuery<SellerRenewalApplication[]>({
     queryKey: ["/api/renewals"],
+    staleTime: 1000 * 30,
+    gcTime: 1000 * 60 * 5,
   });
 
   const approveMutation = useMutation({
@@ -210,18 +214,30 @@ function RenewalsTab() {
       const res = await apiRequest("POST", `/api/renewals/${id}/approve`);
       return res.json();
     },
-    onSuccess: () => {
+    onMutate: async (id: number) => {
+      await queryClient.cancelQueries({ queryKey: ["/api/renewals"] });
+      const previous = queryClient.getQueryData<SellerRenewalApplication[]>(["/api/renewals"]) || [];
+      queryClient.setQueryData(
+        ["/api/renewals"],
+        previous.map((app) => (app.id === id ? { ...app, status: "approved" } : app))
+      );
+      return { previous };
+    },
+    onError: (error: Error, _id, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(["/api/renewals"], context.previous);
+      }
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/renewals"] });
       queryClient.invalidateQueries({ queryKey: ["/api/admin/sellers"] });
       queryClient.invalidateQueries({ queryKey: ["/api/sellers"] });
       queryClient.invalidateQueries({ queryKey: ["/api/sellers/archived"] });
       queryClient.invalidateQueries({ queryKey: ["/api/public/verified-sellers"] });
-      queryClient.refetchQueries({ queryKey: ["/api/sellers"] });
-      queryClient.refetchQueries({ queryKey: ["/api/public/verified-sellers"] });
-      toast({ title: "Renewal approved", description: "Seller subscription has been extended." });
     },
-    onError: (error: Error) => {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
+    onSuccess: () => {
+      toast({ title: "Renewal approved", description: "Seller subscription has been extended." });
     },
   });
 
@@ -230,18 +246,34 @@ function RenewalsTab() {
       const res = await apiRequest("POST", `/api/renewals/${id}/reject`);
       return res.json();
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/renewals"] });
-      toast({ title: "Renewal rejected" });
+    onMutate: async (id: number) => {
+      await queryClient.cancelQueries({ queryKey: ["/api/renewals"] });
+      const previous = queryClient.getQueryData<SellerRenewalApplication[]>(["/api/renewals"]) || [];
+      queryClient.setQueryData(
+        ["/api/renewals"],
+        previous.map((app) => (app.id === id ? { ...app, status: "rejected" } : app))
+      );
+      return { previous };
     },
-    onError: (error: Error) => {
+    onError: (error: Error, _id, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(["/api/renewals"], context.previous);
+      }
       toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/renewals"] });
+    },
+    onSuccess: () => {
+      toast({ title: "Renewal rejected" });
     },
   });
 
   const sorted = [...applications].sort(
     (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
   );
+
+  const visibleRenewals = sorted.slice(0, visibleCount);
 
   const pendingCount = applications.filter((a) => a.status === "pending").length;
   const approvedCount = applications.filter((a) => a.status === "approved").length;
@@ -313,7 +345,7 @@ function RenewalsTab() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {sorted.map((app) => (
+                    {visibleRenewals.map((app) => (
                       <TableRow key={app.id} data-testid={`row-renewal-${app.id}`}>
                         <TableCell className="text-xs py-1.5 font-medium" data-testid={`text-renewal-phone-${app.id}`}>{app.phone}</TableCell>
                         <TableCell className="py-1.5">
@@ -361,7 +393,7 @@ function RenewalsTab() {
 
               {/* Mobile cards */}
               <div className="md:hidden space-y-3 px-4 pb-2">
-                {sorted.map((app) => (
+                {visibleRenewals.map((app) => (
                   <div key={app.id} className="border rounded-xl p-4 space-y-3 bg-card shadow-sm" data-testid={`row-renewal-${app.id}`}>
                     <div className="flex items-start justify-between gap-2">
                       <div>
@@ -404,6 +436,36 @@ function RenewalsTab() {
                   </div>
                 ))}
               </div>
+
+              {sorted.length > PAGE_SIZE && (
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3 mx-4 mt-2 rounded-xl border border-border bg-muted/20">
+                  <span className="text-xs text-muted-foreground">
+                    Showing {Math.min(visibleCount, sorted.length)} of {sorted.length} renewals
+                  </span>
+                  <div className="flex items-center gap-2">
+                    {visibleCount < sorted.length && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setVisibleCount((prev) => prev + PAGE_SIZE)}
+                        className="h-8 text-xs"
+                      >
+                        Load More (+{Math.min(PAGE_SIZE, sorted.length - visibleCount)})
+                      </Button>
+                    )}
+                    {visibleCount < sorted.length && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setVisibleCount(sorted.length)}
+                        className="h-8 text-xs text-muted-foreground"
+                      >
+                        View All ({sorted.length})
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              )}
             </>
           )}
         </CardContent>
@@ -416,7 +478,8 @@ function RenewalsTab() {
 
 export default function SellerApplications() {
   const { toast } = useToast();
-  const [, navigate] = useLocation();
+  const [location, navigate] = useLocation();
+  const adminPrefix = location.startsWith("/tanny-admin") ? "/tanny-admin" : "/.tanny.admin";
   const initialTab = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("tab") === "renewals" ? "renewals" : "applications";
   const [activeTab, setActiveTab] = useState<Tab>(initialTab as Tab);
 
@@ -427,13 +490,19 @@ export default function SellerApplications() {
 
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const [previewModal, setPreviewModal] = useState<{ url: string; title: string } | null>(null);
+  const PAGE_SIZE = 25;
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
 
   const { data: applications = [], isLoading } = useQuery<SellerApplication[]>({
     queryKey: ["/api/applications"],
+    staleTime: 1000 * 30,
+    gcTime: 1000 * 60 * 5,
   });
 
   const { data: renewals = [] } = useQuery<SellerRenewalApplication[]>({
     queryKey: ["/api/renewals"],
+    staleTime: 1000 * 30,
+    gcTime: 1000 * 60 * 5,
   });
 
   const approveMutation = useMutation({
@@ -441,16 +510,47 @@ export default function SellerApplications() {
       const res = await apiRequest("POST", `/api/applications/${id}/approve`);
       return res.json();
     },
-    onSuccess: (data: any) => {
+    onMutate: async (id: number) => {
+      await queryClient.cancelQueries({ queryKey: ["/api/applications"] });
+      await queryClient.cancelQueries({ queryKey: ["/api/admin/applications"] });
+
+      const previousApps = queryClient.getQueryData<SellerApplication[]>(["/api/applications"]) || [];
+      const previousAdminApps = queryClient.getQueryData<SellerApplication[]>(["/api/admin/applications"]);
+
+      const updatedApps = previousApps.map((app) =>
+        app.id === id ? { ...app, status: "approved" } : app
+      );
+
+      queryClient.setQueryData(["/api/applications"], updatedApps);
+      if (previousAdminApps) {
+        queryClient.setQueryData(
+          ["/api/admin/applications"],
+          previousAdminApps.map((app) =>
+            app.id === id ? { ...app, status: "approved" } : app
+          )
+        );
+      }
+
+      return { previousApps, previousAdminApps };
+    },
+    onError: (error: Error, _id, context) => {
+      if (context?.previousApps) {
+        queryClient.setQueryData(["/api/applications"], context.previousApps);
+      }
+      if (context?.previousAdminApps) {
+        queryClient.setQueryData(["/api/admin/applications"], context.previousAdminApps);
+      }
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/applications"] });
       queryClient.invalidateQueries({ queryKey: ["/api/applications"] });
       queryClient.invalidateQueries({ queryKey: ["/api/admin/sellers"] });
       queryClient.invalidateQueries({ queryKey: ["/api/sellers"] });
       queryClient.invalidateQueries({ queryKey: ["/api/sellers/archived"] });
       queryClient.invalidateQueries({ queryKey: ["/api/public/verified-sellers"] });
-      queryClient.refetchQueries({ queryKey: ["/api/applications"] });
-      queryClient.refetchQueries({ queryKey: ["/api/sellers"] });
-      queryClient.refetchQueries({ queryKey: ["/api/public/verified-sellers"] });
+    },
+    onSuccess: (data: any) => {
       const code = data?.sellerCode || data?.seller?.sellerCode;
       toast({
         title: "Application approved",
@@ -459,9 +559,6 @@ export default function SellerApplications() {
           : "Seller account created with a unique code.",
       });
     },
-    onError: (error: Error) => {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
-    },
   });
 
   const rejectMutation = useMutation({
@@ -469,16 +566,44 @@ export default function SellerApplications() {
       const res = await apiRequest("POST", `/api/applications/${id}/reject`);
       return res.json();
     },
-    onSuccess: () => {
+    onMutate: async (id: number) => {
+      await queryClient.cancelQueries({ queryKey: ["/api/applications"] });
+      await queryClient.cancelQueries({ queryKey: ["/api/admin/applications"] });
+
+      const previousApps = queryClient.getQueryData<SellerApplication[]>(["/api/applications"]) || [];
+      const previousAdminApps = queryClient.getQueryData<SellerApplication[]>(["/api/admin/applications"]);
+
+      const updatedApps = previousApps.map((app) =>
+        app.id === id ? { ...app, status: "rejected" } : app
+      );
+
+      queryClient.setQueryData(["/api/applications"], updatedApps);
+      if (previousAdminApps) {
+        queryClient.setQueryData(
+          ["/api/admin/applications"],
+          previousAdminApps.map((app) =>
+            app.id === id ? { ...app, status: "rejected" } : app
+          )
+        );
+      }
+
+      return { previousApps, previousAdminApps };
+    },
+    onError: (error: Error, _id, context) => {
+      if (context?.previousApps) {
+        queryClient.setQueryData(["/api/applications"], context.previousApps);
+      }
+      if (context?.previousAdminApps) {
+        queryClient.setQueryData(["/api/admin/applications"], context.previousAdminApps);
+      }
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/applications"] });
       queryClient.invalidateQueries({ queryKey: ["/api/applications"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/admin/sellers"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/sellers"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/public/verified-sellers"] });
-      toast({ title: "Application rejected" });
     },
-    onError: (error: Error) => {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
+    onSuccess: () => {
+      toast({ title: "Application rejected" });
     },
   });
 
@@ -500,6 +625,8 @@ export default function SellerApplications() {
   const sortedApplications = [...applications].sort(
     (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
   );
+
+  const visibleApplications = sortedApplications.slice(0, visibleCount);
 
   const pendingCount = applications.filter((a) => a.status === "pending").length;
   const approvedCount = applications.filter((a) => a.status === "approved").length;
@@ -535,7 +662,7 @@ export default function SellerApplications() {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => navigate("/admin/dashboard")}
+            onClick={() => navigate(`${adminPrefix}/dashboard`)}
             className="h-9 shrink-0"
             data-testid="button-back-to-dashboard"
           >
@@ -653,7 +780,7 @@ export default function SellerApplications() {
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {sortedApplications.map((app) => (
+                          {visibleApplications.map((app) => (
                             <TableRow key={app.id} data-testid={`row-application-${app.id}`}>
                               <TableCell className="font-medium text-xs py-1.5" data-testid={`text-app-name-${app.id}`}>
                                 <div className="flex items-center gap-2">
@@ -759,7 +886,7 @@ export default function SellerApplications() {
 
                     {/* Mobile card list */}
                     <div className="md:hidden space-y-3 px-4 pb-2">
-                      {sortedApplications.map((app) => (
+                      {visibleApplications.map((app) => (
                         <div key={app.id} className="border rounded-xl p-4 space-y-3 bg-card shadow-sm" data-testid={`row-application-${app.id}`}>
                           <div className="flex items-start justify-between gap-2">
                             <div className="flex items-center gap-2.5">
@@ -840,6 +967,36 @@ export default function SellerApplications() {
                         </div>
                       ))}
                     </div>
+
+                    {sortedApplications.length > PAGE_SIZE && (
+                      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3 mx-4 mt-2 rounded-xl border border-border bg-muted/20">
+                        <span className="text-xs text-muted-foreground">
+                          Showing {Math.min(visibleCount, sortedApplications.length)} of {sortedApplications.length} applications
+                        </span>
+                        <div className="flex items-center gap-2">
+                          {visibleCount < sortedApplications.length && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setVisibleCount((prev) => prev + PAGE_SIZE)}
+                              className="h-8 text-xs"
+                            >
+                              Load More (+{Math.min(PAGE_SIZE, sortedApplications.length - visibleCount)})
+                            </Button>
+                          )}
+                          {visibleCount < sortedApplications.length && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setVisibleCount(sortedApplications.length)}
+                              className="h-8 text-xs text-muted-foreground"
+                            >
+                              View All ({sortedApplications.length})
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    )}
                   </>
                 )}
               </CardContent>

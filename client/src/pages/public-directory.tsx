@@ -266,9 +266,12 @@ export default function PublicDirectory() {
       updateNameMeta("twitter:title", title);
       updateNameMeta("twitter:description", desc);
 
-      if (s.profileImage) {
+      if (s.profileImage && !s.hideProfilePhoto) {
         updateMeta("og:image", s.profileImage);
         updateNameMeta("twitter:image", s.profileImage);
+      } else {
+        updateMeta("og:image", `${window.location.origin}/favicon.png`);
+        updateNameMeta("twitter:image", `${window.location.origin}/favicon.png`);
       }
     } else {
       document.title = "সেলার কোড রেজিস্ট্রি - অনুমোদিত ফেসবুক গ্রুপ সেলার যাচাইকরণ";
@@ -444,7 +447,7 @@ export default function PublicDirectory() {
             </div>
             <div className="flex items-center gap-2 bg-slate-100/90 dark:bg-slate-800/80 text-slate-800 dark:text-slate-200 px-3.5 py-1.5 rounded-full border border-slate-300/70 dark:border-slate-700 shadow-xs font-medium">
               <Lock className="w-4 h-4 text-emerald-600" />
-              <span>১০০% নিরাপদ লেনদেন</span>
+              <span className="font-['Hind_Siliguri',sans-serif]" style={{ fontFamily: "'Hind Siliguri', sans-serif" }}>১০০% নিরাপদ লেনদেন</span>
             </div>
           </div>
 
@@ -538,20 +541,20 @@ export default function PublicDirectory() {
                     <div className="flex items-center justify-between gap-2.5 pb-3 border-b border-red-200/70 dark:border-red-900/40">
                       <div className="flex items-center gap-2.5 min-w-0">
                         <div className="relative shrink-0">
-                          {!activeVerification.seller.hideProfilePhoto && activeVerification.seller.profileImage ? (
+                          {activeVerification.seller.hideProfilePhoto || !activeVerification.seller.profileImage ? (
+                            <div
+                              className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-400 shadow-2xs"
+                              data-testid="avatar-expired-seller-placeholder"
+                            >
+                              <User className="w-6 h-6 text-orange-500" />
+                            </div>
+                          ) : (
                             <img
                               src={activeVerification.seller.profileImage}
                               alt={activeVerification.seller.name}
-                              className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl object-cover border-2 border-red-400 opacity-80 grayscale shadow-2xs"
+                              className="w-12 h-12 sm:w-14 sm:h-14 rounded-full object-cover border-2 border-red-400 opacity-80 grayscale shadow-2xs"
                               data-testid="img-expired-seller-profile-photo"
                             />
-                          ) : (
-                            <div
-                              className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl bg-red-100 dark:bg-red-950/60 border border-red-200 dark:border-red-900/50 flex items-center justify-center text-red-500 shadow-2xs"
-                              data-testid="avatar-expired-seller-placeholder"
-                            >
-                              <User className="w-6 h-6 opacity-70" />
-                            </div>
                           )}
                           <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-red-600 text-white flex items-center justify-center border-2 border-white dark:border-slate-900 shadow-2xs" title="নিষ্ক্রিয়">
                             <XCircle className="w-2.5 h-2.5 stroke-[3]" />
@@ -638,20 +641,20 @@ export default function PublicDirectory() {
                       <div className="flex items-center gap-2.5 min-w-0">
                         {/* Profile Photo (Compact: w-12 h-12 on mobile, w-14 h-14 on desktop) */}
                         <div className="relative shrink-0">
-                          {!activeVerification.seller.hideProfilePhoto && activeVerification.seller.profileImage ? (
+                          {activeVerification.seller.hideProfilePhoto || !activeVerification.seller.profileImage ? (
+                            <div
+                              className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-slate-100 flex items-center justify-center text-slate-400"
+                              data-testid="avatar-seller-placeholder"
+                            >
+                              <User className="w-6 h-6 sm:w-7 sm:h-7 text-orange-500" />
+                            </div>
+                          ) : (
                             <img
                               src={activeVerification.seller.profileImage}
                               alt={activeVerification.seller.name}
-                              className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl object-cover border-2 border-emerald-500 shadow-xs"
+                              className="w-12 h-12 sm:w-14 sm:h-14 rounded-full object-cover border-2 border-emerald-500 shadow-xs"
                               data-testid="img-seller-profile-photo"
                             />
-                          ) : (
-                            <div
-                              className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl bg-emerald-100 dark:bg-emerald-950/70 border-2 border-emerald-400 dark:border-emerald-700/60 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shadow-2xs"
-                              data-testid="avatar-seller-placeholder"
-                            >
-                              <User className="w-6 h-6 sm:w-7 sm:h-7 opacity-80" />
-                            </div>
                           )}
                           <div
                             className="absolute -bottom-1 -right-1 w-4 h-4 sm:w-4.5 sm:h-4.5 rounded-full bg-emerald-600 text-white flex items-center justify-center border-2 border-white dark:border-slate-900 shadow-2xs"
@@ -929,16 +932,16 @@ export default function PublicDirectory() {
                     {/* Top Row: Seller Avatar, Name & Code Badge */}
                     <div className="flex items-start justify-between gap-2.5">
                       <div className="flex items-center gap-3 min-w-0 flex-1">
-                        {!seller.hideProfilePhoto && seller.profileImage ? (
+                        {seller.hideProfilePhoto || !seller.profileImage ? (
+                          <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 shrink-0">
+                            <User className="w-6 h-6 text-orange-500" />
+                          </div>
+                        ) : (
                           <img
                             src={seller.profileImage}
                             alt={seller.name}
-                            className="w-10 h-10 rounded-xl object-cover border border-slate-200 dark:border-slate-700 shrink-0 shadow-xs"
+                            className="w-12 h-12 rounded-full object-cover shrink-0"
                           />
-                        ) : (
-                          <div className="w-10 h-10 rounded-xl bg-orange-50 dark:bg-orange-950/40 border border-orange-200 dark:border-orange-900/50 flex items-center justify-center text-orange-600 dark:text-orange-400 shrink-0">
-                            <User className="w-5 h-5 opacity-80" />
-                          </div>
                         )}
                         <div className="min-w-0 flex-1">
                           <h3 className="font-bold text-base text-slate-900 dark:text-white truncate">

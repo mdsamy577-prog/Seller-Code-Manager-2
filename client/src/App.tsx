@@ -66,20 +66,22 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
 }
 
 function ProtectedRoute({ component: Component }: { component: React.ComponentType }) {
-  const [, navigate] = useLocation();
+  const [location, navigate] = useLocation();
   const { data: authStatus, isLoading } = useQuery<{ authenticated: boolean; setupRequired: boolean }>({
     queryKey: ["/api/auth/status"],
   });
 
+  const prefix = location.startsWith("/tanny-admin") ? "/tanny-admin" : "/.tanny.admin";
+
   useEffect(() => {
     if (!isLoading && authStatus) {
       if (authStatus.setupRequired) {
-        navigate("/admin/setup");
+        navigate(`${prefix}/setup`);
       } else if (!authStatus.authenticated) {
-        navigate("/admin/login");
+        navigate(`${prefix}/login`);
       }
     }
-  }, [authStatus, isLoading, navigate]);
+  }, [authStatus, isLoading, navigate, prefix]);
 
   if (isLoading) {
     return (
@@ -109,23 +111,29 @@ function AppRoutes() {
       <Route path="/apply" component={SellerApplication} />
       <Route path="/renew" component={RenewalPage} />
 
-      {/* Admin Dedicated Routes (Direct entry by typing URL) */}
-      <Route path="/admin/login" component={Login} />
-      <Route path="/admin/setup" component={AdminSetup} />
-      <Route path="/admin/dashboard">{() => <ProtectedRoute component={SellerCodeManager} />}</Route>
-      <Route path="/admin/sellers">{() => <ProtectedRoute component={SellerCodeManager} />}</Route>
-      <Route path="/admin/applications">{() => <ProtectedRoute component={SellerApplications} />}</Route>
-      <Route path="/admin/renewals">{() => <ProtectedRoute component={RenewalApplications} />}</Route>
-      <Route path="/admin/email-logs">{() => <ProtectedRoute component={EmailLogsPage} />}</Route>
-      <Route path="/admin">{() => <ProtectedRoute component={SellerCodeManager} />}</Route>
+      {/* Secret Admin Routes (/.tanny.admin) */}
+      <Route path="/.tanny.admin/login" component={Login} />
+      <Route path="/.tanny.admin/setup" component={AdminSetup} />
+      <Route path="/.tanny.admin/dashboard">{() => <ProtectedRoute component={SellerCodeManager} />}</Route>
+      <Route path="/.tanny.admin/sellers">{() => <ProtectedRoute component={SellerCodeManager} />}</Route>
+      <Route path="/.tanny.admin/applications">{() => <ProtectedRoute component={SellerApplications} />}</Route>
+      <Route path="/.tanny.admin/renewals">{() => <ProtectedRoute component={RenewalApplications} />}</Route>
+      <Route path="/.tanny.admin/email-logs">{() => <ProtectedRoute component={EmailLogsPage} />}</Route>
+      <Route path="/.tanny.admin">{() => <ProtectedRoute component={SellerCodeManager} />}</Route>
 
-      {/* Direct Aliases - strictly authenticated */}
-      <Route path="/dashboard">{() => <ProtectedRoute component={SellerCodeManager} />}</Route>
-      <Route path="/applications">{() => <ProtectedRoute component={SellerApplications} />}</Route>
-      <Route path="/renewals">{() => <ProtectedRoute component={RenewalApplications} />}</Route>
-      <Route path="/email-logs">{() => <ProtectedRoute component={EmailLogsPage} />}</Route>
-      <Route path="/login" component={Login} />
-      <Route path="/setup" component={AdminSetup} />
+      {/* Secondary Alias Admin Routes (/tanny-admin fallback) */}
+      <Route path="/tanny-admin/login" component={Login} />
+      <Route path="/tanny-admin/setup" component={AdminSetup} />
+      <Route path="/tanny-admin/dashboard">{() => <ProtectedRoute component={SellerCodeManager} />}</Route>
+      <Route path="/tanny-admin/sellers">{() => <ProtectedRoute component={SellerCodeManager} />}</Route>
+      <Route path="/tanny-admin/applications">{() => <ProtectedRoute component={SellerApplications} />}</Route>
+      <Route path="/tanny-admin/renewals">{() => <ProtectedRoute component={RenewalApplications} />}</Route>
+      <Route path="/tanny-admin/email-logs">{() => <ProtectedRoute component={EmailLogsPage} />}</Route>
+      <Route path="/tanny-admin">{() => <ProtectedRoute component={SellerCodeManager} />}</Route>
+
+      {/* Block Standard /admin Routes - returns 404 (Not Found) without disclosing portal */}
+      <Route path="/admin" component={NotFound} />
+      <Route path="/admin/:rest*" component={NotFound} />
 
       {/* 404 Fallback */}
       <Route component={NotFound} />

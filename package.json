@@ -4,7 +4,7 @@
   "type": "module",
   "license": "MIT",
   "scripts": {
-    "dev": "tsx server/index.ts",
+    "dev": "tsx server.ts",
     "build": "npx tsx script/build.ts",
     "lint": "tsc --noEmit",
     "start": "NODE_ENV=production node dist/index.cjs",

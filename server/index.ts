@@ -174,6 +174,8 @@ process.on("unhandledRejection", (reason) => {
       const port = colonInHost === -1 ? 5432 : parseInt(hostPort.substring(colonInHost + 1), 10);
       const migPool = new Pool({ user, password, host, port, database, ssl: { rejectUnauthorized: false }, max: 1, connectionTimeoutMillis: 3000 });
       await migPool.query(`ALTER TABLE seller_applications ADD COLUMN IF NOT EXISTS personal_facebook_link TEXT`);
+      await migPool.query(`CREATE INDEX IF NOT EXISTS seller_applications_status_idx ON seller_applications(status)`);
+      await migPool.query(`CREATE INDEX IF NOT EXISTS seller_applications_created_at_idx ON seller_applications(created_at)`);
       await migPool.query(`
         CREATE TABLE IF NOT EXISTS email_logs (
           id SERIAL PRIMARY KEY,

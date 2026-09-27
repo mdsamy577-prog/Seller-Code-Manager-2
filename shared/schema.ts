@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, date, integer, uniqueIndex, boolean } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, date, integer, uniqueIndex, boolean, index } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -84,7 +84,10 @@ export const sellerApplications = pgTable("seller_applications", {
   personalFacebookLink: text("personal_facebook_link"),
   profileImage: text("profile_image"),
   hideProfilePhoto: boolean("hide_profile_photo").notNull().default(false),
-});
+}, (table) => [
+  index("seller_applications_status_idx").on(table.status),
+  index("seller_applications_created_at_idx").on(table.createdAt),
+]);
 
 export const insertSellerApplicationSchema = createInsertSchema(sellerApplications).pick({
   name: true,

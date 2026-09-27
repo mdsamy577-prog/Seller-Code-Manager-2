@@ -303,17 +303,21 @@ export async function registerRoutes(
         return true;
       });
 
-      const sanitized = filtered.map((s) => ({
-        id: s.id,
-        name: s.name,
-        sellerCode: s.sellerCode,
-        facebookLink: s.facebookLink,
-        status: s.status,
-        duration: s.duration,
-        startDate: s.startDate,
-        expiryDate: s.expiryDate,
-        profileImage: s.profileImage || null,
-      }));
+      const sanitized = filtered.map((s) => {
+        const shouldHide = Boolean(s.hideProfilePhoto);
+        return {
+          id: s.id,
+          name: s.name,
+          sellerCode: s.sellerCode,
+          facebookLink: s.facebookLink,
+          status: s.status,
+          duration: s.duration,
+          startDate: s.startDate,
+          expiryDate: s.expiryDate,
+          profileImage: shouldHide ? null : (s.profileImage || null),
+          hideProfilePhoto: shouldHide,
+        };
+      });
       res.json(sanitized);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch verified sellers" });
@@ -917,20 +921,27 @@ export async function registerRoutes(
       const wasArchived = seller.status === "deleted";
       console.log(`[renewals] Approved renewal for ${seller.phone}: ${oldExpiryDate} → ${newExpiryDate}${wasArchived ? " (restored from archived)" : ""}`);
 
-      if (seller.email) {
-        await sendRenewalApprovalEmail(
-          seller.email,
-          seller.name,
-          seller.sellerCode,
-          newExpiryDate
-        );
-      }
-
-      if (updatedSeller) {
-        await scheduleSellerEmails(updatedSeller);
-      }
-
+      // Respond immediately to the admin UI
       res.json(updated);
+
+      // Decouple email dispatch and background schedule to setImmediate
+      setImmediate(async () => {
+        try {
+          if (seller.email) {
+            await sendRenewalApprovalEmail(
+              seller.email,
+              seller.name,
+              seller.sellerCode,
+              newExpiryDate
+            );
+          }
+          if (updatedSeller) {
+            await scheduleSellerEmails(updatedSeller);
+          }
+        } catch (err: any) {
+          console.error(`[BackgroundEmail] Renewal approval email error for ${seller.phone}:`, err.message);
+        }
+      });
     } catch (error) {
       res.status(500).json({ message: "Failed to approve renewal application" });
     }
@@ -955,8 +966,18 @@ export async function registerRoutes(
       const updated = await storage.updateRenewalApplicationStatus(id, "rejected");
       console.log(`[renewals] Rejected renewal application ID: ${id}`);
 
+      // Respond immediately to the admin UI
+      res.json(updated);
+
+      // Decouple rejection email dispatch to background
       if (seller?.email) {
-        await sendRenewalRejectionEmail(seller.email, seller.name, seller.sellerCode);
+        setImmediate(async () => {
+          try {
+            await sendRenewalRejectionEmail(seller.email!, seller.name, seller.sellerCode);
+          } catch (err: any) {
+            console.error(`[BackgroundEmail] Renewal rejection email error for ${seller.phone}:`, err.message);
+          }
+        });
       }
 
       res.json(updated);
@@ -1066,18 +1087,73 @@ export async function registerRoutes(
     }
   }
 
+  async function syncApprovedSellersPhotoPrivacy(): Promise<number> {
+    try {
+      const applications = await storage.getAllSellerApplications();
+      const approvedApps = applications.filter((app) => app.status === "approved" && Boolean(app.hideProfilePhoto));
+      const allSellers = await storage.getAllSellers();
+      let synced = 0;
+      for (const app of approvedApps) {
+        const normAppPhone = (app.phone || "").replace(/[^0-9]/g, "").slice(-11);
+        const match = allSellers.find((s) => {
+          const normSellerPhone = (s.phone || "").replace(/[^0-9]/g, "").slice(-11);
+          return (normAppPhone && normAppPhone === normSellerPhone) || (s.name.trim().toLowerCase() === app.name.trim().toLowerCase());
+        });
+
+        if (match && !match.hideProfilePhoto) {
+          console.log(`[PrivacySync] Syncing hideProfilePhoto = true for seller ID ${match.id} (${match.name})`);
+          await storage.updateSeller(match.id, { hideProfilePhoto: true });
+          synced++;
+        }
+      }
+      if (synced > 0) {
+        console.log(`[PrivacySync] Successfully synced hideProfilePhoto for ${synced} seller(s)`);
+      }
+      return synced;
+    } catch (err) {
+      console.error("[PrivacySync] Error syncing seller photo privacy:", err);
+      return 0;
+    }
+  }
+
   // Auto-sync on startup
   syncMissingApprovedSellers().catch((e) => console.error("[SyncMigration] Startup sync error:", e));
+  syncApprovedSellersPhotoPrivacy().catch((e) => console.error("[PrivacySync] Startup sync error:", e));
 
   const handleGetApplications = async (_req: Request, res: Response) => {
     try {
-      await syncMissingApprovedSellers();
       const applications = await storage.getAllSellerApplications();
-      res.json(applications);
+      // Ensure heavy raw base64 data never bloats the table payload
+      const sanitized = applications.map((app) => {
+        const isHeavyNid = app.nidFileUrl && app.nidFileUrl.startsWith("data:") && app.nidFileUrl.length > 500;
+        return isHeavyNid
+          ? { ...app, nidFileUrl: `/api/applications/${app.id}/nid-file` }
+          : app;
+      });
+      res.json(sanitized);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch applications" });
     }
   };
+
+  app.get("/api/applications/:id/nid-file", requireAuth, async (req, res) => {
+    try {
+      const id = parseInt(String(req.params.id));
+      const app = await storage.getSellerApplicationById(id);
+      if (!app || !app.nidFileUrl) {
+        return res.status(404).send("Not found");
+      }
+      if (app.nidFileUrl.startsWith("data:")) {
+        const [header, base64] = app.nidFileUrl.split(",");
+        const contentType = header.replace(/^data:/, "").replace(/;base64$/, "");
+        res.setHeader("Content-Type", contentType || "image/jpeg");
+        return res.send(Buffer.from(base64, "base64"));
+      }
+      res.redirect(302, app.nidFileUrl);
+    } catch {
+      res.status(500).send("Failed to retrieve document");
+    }
+  });
 
   app.get("/api/applications", requireAuth, handleGetApplications);
   app.get("/api/admin/applications", requireAuth, handleGetApplications);
@@ -1119,7 +1195,7 @@ export async function registerRoutes(
           duration,
           startDate,
           expiryDate,
-          hideProfilePhoto: application.hideProfilePhoto ?? existingSeller.hideProfilePhoto ?? false,
+          hideProfilePhoto: application.hideProfilePhoto === true ? true : Boolean(existingSeller.hideProfilePhoto),
           facebookLink: application.facebookLink || application.personalFacebookLink || existingSeller.facebookLink,
         };
 
@@ -1134,14 +1210,15 @@ export async function registerRoutes(
         if (application.profileImage) {
           if (existingSeller.profileImage && existingSeller.profileImage !== application.profileImage) {
             console.log(`[Storage] Purging old seller photo on new application approval: ${existingSeller.profileImage}`);
-            await deleteCloudinaryFile(existingSeller.profileImage).catch(() => {});
+            setImmediate(() => {
+              deleteCloudinaryFile(existingSeller.profileImage).catch(() => {});
+            });
           }
           updates.profileImage = application.profileImage;
         }
 
         const result = await storage.approveApplicationWithExistingSeller(id, existingSeller.id, updates);
         activeSeller = result.seller;
-        await scheduleSellerEmails(activeSeller).catch(() => {});
       } else {
         sellerCode = await generateSellerCode(startDate, duration);
 
@@ -1155,32 +1232,41 @@ export async function registerRoutes(
           expiryDate,
           email: application.email || undefined,
           profileImage: application.profileImage || undefined,
-          hideProfilePhoto: application.hideProfilePhoto ?? false,
+          hideProfilePhoto: Boolean(application.hideProfilePhoto),
           nidDocument: application.nidFileUrl || undefined,
         });
 
         activeSeller = result.seller;
-        await scheduleSellerEmails(activeSeller).catch(() => {});
       }
 
-      let emailSent = false;
-      if (application.email) {
-        emailSent = await sendSellerCodeEmail(
-          application.email,
-          application.name,
-          sellerCode,
-          startDate,
-          expiryDate
-        ).catch(() => false);
-      }
-
+      // Return HTTP 200 immediately to frontend with active seller and code
       res.json({
         ...activeSeller,
         seller: activeSeller,
         sellerCode: activeSeller.sellerCode,
         applicationId: id,
         applicationStatus: "approved",
-        emailSent,
+        emailSent: Boolean(application.email),
+      });
+
+      // Decouple background jobs (scheduling & email dispatch) out of HTTP cycle
+      setImmediate(async () => {
+        try {
+          await scheduleSellerEmails(activeSeller).catch(() => {});
+          if (application.email) {
+            await sendSellerCodeEmail(
+              application.email,
+              application.name,
+              sellerCode,
+              startDate,
+              expiryDate
+            ).catch((err) => {
+              console.error(`[BackgroundEmail] Failed to send code email to ${application.email}:`, err.message);
+            });
+          }
+        } catch (err: any) {
+          console.error("[BackgroundTasks] Error in post-approval background tasks:", err.message);
+        }
       });
     } catch (error) {
       console.error("[approve] Error approving application:", error);
@@ -1205,24 +1291,32 @@ export async function registerRoutes(
         return res.status(400).json({ message: `Application already ${application.status}` });
       }
 
-      // Check if the application contains an uploaded sellerPhoto / profileImage and nidImage / nidFileUrl
       const filesToPurge: string[] = [];
       if (application.profileImage) filesToPurge.push(application.profileImage);
       if ((application as any).sellerPhoto) filesToPurge.push((application as any).sellerPhoto);
       if (application.nidFileUrl) filesToPurge.push(application.nidFileUrl);
       if ((application as any).nidImage) filesToPurge.push((application as any).nidImage);
 
-      // Call deleteCloudinaryFile for images to purge them
-      for (const fileUrl of filesToPurge) {
-        await deleteCloudinaryFile(fileUrl);
-      }
-
-      // Clear the file fields in DB so no dangling URLs remain
+      // Clear the file fields in DB and update status to rejected immediately
       await storage.clearApplicationFiles(id);
-
-      // Update the database application record status to "rejected"
       const updated = await storage.updateSellerApplicationStatus(id, "rejected");
+
+      // Respond immediately to the admin UI
       res.json(updated);
+
+      // Decouple image purging and email notification to background
+      setImmediate(async () => {
+        try {
+          for (const fileUrl of filesToPurge) {
+            await deleteCloudinaryFile(fileUrl).catch(() => {});
+          }
+          if (application.email) {
+            await sendApplicationRejectionEmail(application.email, application.name).catch(() => {});
+          }
+        } catch (err: any) {
+          console.error(`[BackgroundTasks] Rejection cleanup error for application #${id}:`, err.message);
+        }
+      });
     } catch (error) {
       console.error("[reject] Error rejecting application:", error);
       res.status(500).json({ message: "Failed to reject application" });
@@ -1628,6 +1722,14 @@ export async function registerRoutes(
       console.error("Resend webhook error:", error);
       res.status(500).json({ message: "Webhook processing failed" });
     }
+  });
+
+  // Block standard /admin routes directly at server level — redirect straight to home without disclosing admin exists
+  app.use((req, res, next) => {
+    if (req.path === "/admin" || req.path.startsWith("/admin/")) {
+      return res.redirect(302, "/");
+    }
+    next();
   });
 
   // 404 handler for any unmatched /api routes

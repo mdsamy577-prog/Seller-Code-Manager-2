@@ -57,6 +57,8 @@ export default function AdminSetup() {
       });
       queryClient.invalidateQueries({ queryKey: ["/api/auth/status"] });
       toast({ title: "Admin account created", description: "Welcome to the dashboard!" });
+      const prefix = window.location.pathname.startsWith("/tanny-admin") ? "/tanny-admin" : "/.tanny.admin";
+      window.location.href = `${prefix}/dashboard`;
     },
     onError: (error: Error) => {
       toast({ title: "Setup failed", description: error.message, variant: "destructive" });

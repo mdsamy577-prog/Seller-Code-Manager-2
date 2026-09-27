@@ -1340,7 +1340,8 @@ function EmptyState({ onAdd }: { onAdd: () => void }) {
 }
 
 export default function SellerCodeManager() {
-  const [, navigate] = useLocation();
+  const [location, navigate] = useLocation();
+  const adminPrefix = location.startsWith("/tanny-admin") ? "/tanny-admin" : "/.tanny.admin";
   const [searchQuery, setSearchQuery] = useState("");
   const [durationFilter, setDurationFilter] = useState("all");
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -1369,7 +1370,7 @@ export default function SellerCodeManager() {
       });
       queryClient.invalidateQueries({ queryKey: ["/api/auth/status"] });
       toast({ title: "Logged out successfully" });
-      navigate("/admin/login");
+      navigate(`${adminPrefix}/login`);
     },
     onError: (error: Error) => {
       toast({ title: "Error", description: error.message, variant: "destructive" });
@@ -1383,27 +1384,35 @@ export default function SellerCodeManager() {
   useEffect(() => {
     if (authStatus) {
       if (authStatus.setupRequired) {
-        navigate("/admin/setup");
+        navigate(`${adminPrefix}/setup`);
       } else if (!authStatus.authenticated) {
-        navigate("/admin/login");
+        navigate(`${adminPrefix}/login`);
       }
     }
-  }, [authStatus, navigate]);
+  }, [authStatus, navigate, adminPrefix]);
 
   const { data: sellers = [], isLoading } = useQuery<Seller[]>({
     queryKey: ["/api/sellers"],
+    staleTime: 1000 * 30,
+    gcTime: 1000 * 60 * 5,
   });
 
   const { data: applications = [] } = useQuery<SellerApplication[]>({
     queryKey: ["/api/applications"],
+    staleTime: 1000 * 30,
+    gcTime: 1000 * 60 * 5,
   });
 
   const { data: archivedSellers = [] } = useQuery<Seller[]>({
     queryKey: ["/api/sellers/archived"],
+    staleTime: 1000 * 30,
+    gcTime: 1000 * 60 * 5,
   });
 
   const { data: renewalApplications = [] } = useQuery<SellerRenewalApplication[]>({
     queryKey: ["/api/renewals"],
+    staleTime: 1000 * 30,
+    gcTime: 1000 * 60 * 5,
   });
 
   const { data: nextEmails = [] } = useQuery<{ sellerId: number; sendAt: string }[]>({
@@ -1584,7 +1593,7 @@ export default function SellerCodeManager() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => navigate("/admin/email-logs")}
+              onClick={() => navigate(`${adminPrefix}/email-logs`)}
               data-testid="button-email-logs"
               className="h-9"
             >
@@ -1595,7 +1604,7 @@ export default function SellerCodeManager() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => navigate(pendingRenewalsCount > 0 ? "/admin/applications?tab=renewals" : "/admin/applications")}
+              onClick={() => navigate(pendingRenewalsCount > 0 ? `${adminPrefix}/applications?tab=renewals` : `${adminPrefix}/applications`)}
               data-testid="button-seller-applications"
               className="h-9"
             >
@@ -1717,6 +1726,11 @@ export default function SellerCodeManager() {
                             <div className="flex items-center gap-2.5">
                               <SellerAvatarWithUpload seller={seller} size="sm" />
                               <span className="truncate max-w-[140px]">{seller.name}</span>
+                              {seller.hideProfilePhoto && (
+                                <Badge variant="outline" className="text-[10px] text-amber-600 border-amber-300 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/40 px-1 py-0 leading-none shrink-0" title="পাবলিক ডিরেক্টরিতে ছবি গোপন রাখা হয়েছে">
+                                  ছবি গোপন
+                                </Badge>
+                              )}
                             </div>
                           </TableCell>
                           <TableCell data-testid={`text-phone-${seller.id}`}>
@@ -1783,7 +1797,14 @@ export default function SellerCodeManager() {
                         <div className="min-w-0 flex items-center gap-2.5">
                           <SellerAvatarWithUpload seller={seller} size="md" />
                           <div className="min-w-0">
-                            <p className="font-semibold text-sm truncate" data-testid={`text-name-${seller.id}`}>{seller.name}</p>
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <p className="font-semibold text-sm truncate" data-testid={`text-name-${seller.id}`}>{seller.name}</p>
+                              {seller.hideProfilePhoto && (
+                                <Badge variant="outline" className="text-[10px] text-amber-600 border-amber-300 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/40 px-1 py-0 leading-none shrink-0" title="পাবলিক ডিরেক্টরিতে ছবি গোপন রাখা হয়েছে">
+                                  ছবি গোপন
+                                </Badge>
+                              )}
+                            </div>
                             <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1" data-testid={`text-phone-${seller.id}`}>
                               <Phone className="h-3 w-3 shrink-0" />{seller.phone}
                             </p>

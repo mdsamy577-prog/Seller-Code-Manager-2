@@ -419,3 +419,50 @@ export async function sendRenewalRejectionEmail(
     return false;
   }
 }
+
+export async function sendApplicationRejectionEmail(
+  recipientEmail: string,
+  sellerName: string
+): Promise<boolean> {
+  if (!process.env.RESEND_API_KEY) {
+    return false;
+  }
+
+  const senderName = await getSenderName();
+  const senderEmail = await getSenderEmail();
+  const replyTo = await getReplyEmail();
+  const fbUrl = await getFacebookPageUrl();
+
+  const htmlBody = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+      <div style="background-color: #dc2626; color: white; padding: 20px; border-radius: 8px 8px 0 0; text-align: center;">
+        <h1 style="margin: 0; font-size: 24px;">আবেদন পর্যালোচনার ফলাফল</h1>
+      </div>
+      <div style="border: 1px solid #e5e7eb; border-top: none; padding: 24px; border-radius: 0 0 8px 8px;">
+        <p style="font-size: 16px; color: #374151;">প্রিয় <strong>${sellerName}</strong>,</p>
+        <p style="font-size: 15px; color: #4b5563;">দুঃখের সাথে জানাচ্ছি যে, আপনার সেলার কোড আবেদনটি এই মুহূর্তে অনুমোদন করা সম্ভব হয়নি।</p>
+        <p style="font-size: 15px; color: #4b5563;">অনুগ্রহ করে সঠিক ও পূর্ণাঙ্গ তথ্য দিয়ে পুনরায় আবেদন করুন।</p>
+        ${facebookButton(fbUrl)}
+      </div>
+    </div>
+  `;
+
+  const resend = getResendClient();
+  if (!resend) return false;
+
+  const subject = "সেলার কোড আবেদন পর্যালোচনার ফলাফল";
+  try {
+    const { data: emailData } = await resend.emails.send({
+      from: `${senderName} <${senderEmail}>`,
+      to: recipientEmail,
+      replyTo,
+      subject,
+      html: htmlBody,
+    });
+    storage.createEmailLog({ resendEmailId: emailData?.id, recipientEmail, sellerName, sellerCode: "", subject, emailType: "application_rejection" }).catch(() => {});
+    return true;
+  } catch (error) {
+    console.error(`Failed to send application rejection email to ${recipientEmail}:`, error);
+    return false;
+  }
+}

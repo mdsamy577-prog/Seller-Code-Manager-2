@@ -70,7 +70,7 @@ export default function Login() {
       queryClient.invalidateQueries({ queryKey: ["/api/auth/status"] });
       toast({ title: "Login successful" });
       const prefix = window.location.pathname.startsWith("/tanny-admin") ? "/tanny-admin" : "/.tanny.admin";
-      window.location.href = `${prefix}/dashboard`;
+      navigate(`${prefix}/dashboard`);
     },
     onError: (error: Error) => {
       toast({ title: "Login failed", description: error.message, variant: "destructive" });

@@ -1,8 +1,8 @@
 {
   "name": "Seller Code Manager",
-  "short_name": "SCM",
-  "description": "Manage Facebook group seller codes and subscriptions",
-  "start_url": "/admin",
+  "short_name": "Admin Manager",
+  "description": "Seller Code Registry & Admin Portal",
+  "start_url": "/.tanny.admin/dashboard",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait-primary",

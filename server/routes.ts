@@ -181,6 +181,36 @@ export async function registerRoutes(
     res.status(200).json({ status: "ok", timestamp: new Date().toISOString() });
   });
 
+  app.get(["/manifest.json", "/manifest.webmanifest"], (_req, res) => {
+    res.setHeader("Content-Type", "application/manifest+json; charset=utf-8");
+    res.setHeader("Cache-Control", "public, max-age=60");
+    res.json({
+      name: "Seller Code Manager",
+      short_name: "Admin Manager",
+      description: "Seller Code Registry & Admin Portal",
+      start_url: "/.tanny.admin/dashboard",
+      scope: "/",
+      display: "standalone",
+      orientation: "portrait-primary",
+      background_color: "#ffffff",
+      theme_color: "#000000",
+      icons: [
+        {
+          src: "/favicon.png",
+          sizes: "192x192",
+          type: "image/png",
+          purpose: "any"
+        },
+        {
+          src: "/favicon.png",
+          sizes: "512x512",
+          type: "image/png",
+          purpose: "any maskable"
+        }
+      ]
+    });
+  });
+
   app.get("/api/auth/status", async (req, res) => {
     res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate");
     try {

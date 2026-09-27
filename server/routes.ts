@@ -4,7 +4,7 @@ import { storage } from "./storage";
 import { insertSellerSchema, insertSellerApplicationSchema, type Seller } from "@shared/schema";
 import passport from "passport";
 import { hashPassword, verifyPassword, generateAuthToken } from "./auth";
-import { sendSellerCodeEmail, sendExtensionEmail, sendRenewalApprovalEmail, sendRenewalRejectionEmail } from "./email";
+import { sendSellerCodeEmail, sendExtensionEmail, sendRenewalApprovalEmail, sendRenewalRejectionEmail, sendApplicationRejectionEmail } from "./email";
 import { scheduleSellerEmails } from "./scheduler";
 import multer from "multer";
 import { uploadNidFile, uploadProfilePhoto, deleteCloudinaryFile } from "./cloudinary";
@@ -1208,10 +1208,11 @@ export async function registerRoutes(
         }
 
         if (application.profileImage) {
-          if (existingSeller.profileImage && existingSeller.profileImage !== application.profileImage) {
-            console.log(`[Storage] Purging old seller photo on new application approval: ${existingSeller.profileImage}`);
+          const oldPhoto = existingSeller.profileImage;
+          if (oldPhoto && oldPhoto !== application.profileImage) {
+            console.log(`[Storage] Purging old seller photo on new application approval: ${oldPhoto}`);
             setImmediate(() => {
-              deleteCloudinaryFile(existingSeller.profileImage).catch(() => {});
+              deleteCloudinaryFile(oldPhoto).catch(() => {});
             });
           }
           updates.profileImage = application.profileImage;

@@ -447,7 +447,7 @@ export default function PublicDirectory() {
             </div>
             <div className="flex items-center gap-2 bg-slate-100/90 dark:bg-slate-800/80 text-slate-800 dark:text-slate-200 px-3.5 py-1.5 rounded-full border border-slate-300/70 dark:border-slate-700 shadow-xs font-medium">
               <Lock className="w-4 h-4 text-emerald-600" />
-              <span className="font-['Hind_Siliguri',sans-serif]" style={{ fontFamily: "'Hind Siliguri', sans-serif" }}>১০০% নিরাপদ লেনদেন</span>
+              <span>100% নিরাপদ লেনদেন</span>
             </div>
           </div>
 

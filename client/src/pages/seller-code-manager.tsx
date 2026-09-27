@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest, setAuthToken, getAuthToken } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -1355,6 +1355,7 @@ export default function SellerCodeManager() {
   const [extendSeller, setExtendSeller] = useState<Seller | undefined>();
   const [extendMonths, setExtendMonths] = useState<number>(1);
   const [archivedOpen, setArchivedOpen] = useState(false);
+  const [archivedSearch, setArchivedSearch] = useState("");
   const [permanentDeleteId, setPermanentDeleteId] = useState<number | null>(null);
   const { toast } = useToast();
 
@@ -1408,6 +1409,17 @@ export default function SellerCodeManager() {
     staleTime: 1000 * 30,
     gcTime: 1000 * 60 * 5,
   });
+
+  const filteredArchivedSellers = useMemo(() => {
+    const q = archivedSearch.trim().toLowerCase();
+    if (!q) return archivedSellers;
+    return archivedSellers.filter(
+      (s) =>
+        (s.name && s.name.toLowerCase().includes(q)) ||
+        (s.sellerCode && s.sellerCode.toLowerCase().includes(q)) ||
+        (s.phone && s.phone.toLowerCase().includes(q))
+    );
+  }, [archivedSellers, archivedSearch]);
 
   const { data: renewalApplications = [] } = useQuery<SellerRenewalApplication[]>({
     queryKey: ["/api/renewals"],
@@ -2075,7 +2087,10 @@ export default function SellerCodeManager() {
           </AlertDialogContent>
         </AlertDialog>
 
-        <Dialog open={archivedOpen} onOpenChange={setArchivedOpen}>
+        <Dialog open={archivedOpen} onOpenChange={(open) => {
+          setArchivedOpen(open);
+          if (!open) setArchivedSearch("");
+        }}>
           <DialogContent className="w-[calc(100vw-2rem)] max-w-2xl sm:w-full rounded-xl sm:rounded-lg" aria-describedby={undefined}>
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
@@ -2083,15 +2098,45 @@ export default function SellerCodeManager() {
                 Expired Sellers ({archivedSellers.length})
               </DialogTitle>
             </DialogHeader>
+
+            {/* Search filter input */}
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+              <Input
+                type="text"
+                placeholder="সেলার কোড, নাম বা মোবাইল দিয়ে খুঁজুন..."
+                value={archivedSearch}
+                onChange={(e) => setArchivedSearch(e.target.value)}
+                className="pl-9 pr-9 h-9 text-xs sm:text-sm bg-muted/40 focus:bg-background"
+                data-testid="input-expired-sellers-search"
+              />
+              {archivedSearch && (
+                <button
+                  type="button"
+                  onClick={() => setArchivedSearch("")}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-0.5"
+                  data-testid="button-clear-expired-search"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              )}
+            </div>
+
             <div className="max-h-[60vh] overflow-y-auto">
               {archivedSellers.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-10 text-center">
                   <Archive className="h-10 w-10 text-muted-foreground mb-3" />
                   <p className="text-muted-foreground">No expired sellers</p>
                 </div>
+              ) : filteredArchivedSellers.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-10 text-center">
+                  <Search className="h-8 w-8 text-muted-foreground mb-2" />
+                  <p className="text-sm font-medium text-muted-foreground">কোনো সেলার পাওয়া যায়নি</p>
+                  <p className="text-xs text-muted-foreground/70 mt-1">"{archivedSearch}" এর সাথে মিল রয়েছে এমন কোনো সেলার নেই</p>
+                </div>
               ) : (
                 <div className="space-y-2">
-                  {archivedSellers.map((seller) => (
+                  {filteredArchivedSellers.map((seller) => (
                     <div key={seller.id} className="flex items-center justify-between gap-3 rounded-lg border p-3 bg-red-500/5" data-testid={`row-archived-${seller.id}`}>
                       <div className="min-w-0 flex-1 space-y-0.5">
                         <p className="font-semibold text-sm truncate" data-testid={`text-archived-name-${seller.id}`}>{seller.name}</p>

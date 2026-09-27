@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -16,9 +16,11 @@ import {
   RefreshCw,
   ArrowLeft,
   User,
+  Search,
 } from "lucide-react";
 import { SiMeta } from "react-icons/si";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -202,6 +204,7 @@ function RenewalsTab() {
   const { toast } = useToast();
   const PAGE_SIZE = 25;
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const { data: applications = [], isLoading } = useQuery<SellerRenewalApplication[]>({
     queryKey: ["/api/renewals"],
@@ -269,9 +272,21 @@ function RenewalsTab() {
     },
   });
 
-  const sorted = [...applications].sort(
-    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-  );
+  const filteredRenewals = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return applications;
+    return applications.filter(
+      (app) =>
+        (app.phone && app.phone.toLowerCase().includes(q)) ||
+        (app.senderNumber && app.senderNumber.toLowerCase().includes(q))
+    );
+  }, [applications, searchQuery]);
+
+  const sorted = useMemo(() => {
+    return [...filteredRenewals].sort(
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+  }, [filteredRenewals]);
 
   const visibleRenewals = sorted.slice(0, visibleCount);
 
@@ -312,10 +327,46 @@ function RenewalsTab() {
       </div>
 
       <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-lg">Renewal Requests</CardTitle>
+        <CardHeader className="pb-3 border-b border-border/50">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div>
+              <CardTitle className="text-lg">Renewal Requests</CardTitle>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {searchQuery
+                  ? `ফলাফল: ${sorted.length} টি রিনিউয়াল`
+                  : `মোট আবেদন: ${applications.length} টি`}
+              </p>
+            </div>
+            <div className="relative w-full sm:w-80 md:w-96">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+              <Input
+                type="text"
+                placeholder="মোবাইল বা সেন্ডার নম্বর দিয়ে খুঁজুন..."
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setVisibleCount(PAGE_SIZE);
+                }}
+                className="pl-9 pr-9 h-10 text-xs sm:text-sm bg-muted/40 focus:bg-background rounded-lg border-border"
+                data-testid="input-renewals-search"
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearchQuery("");
+                    setVisibleCount(PAGE_SIZE);
+                  }}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-1 rounded-full hover:bg-muted"
+                  data-testid="button-clear-renewals-search"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              )}
+            </div>
+          </div>
         </CardHeader>
-        <CardContent className="p-0 pb-4">
+        <CardContent className="p-0 pb-4 pt-3">
           {isLoading ? (
             <div className="px-6"><TableSkeleton /></div>
           ) : applications.length === 0 ? (
@@ -327,6 +378,25 @@ function RenewalsTab() {
               <p className="text-muted-foreground max-w-sm">
                 Renewal requests submitted through the public form will appear here.
               </p>
+            </div>
+          ) : sorted.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 text-center px-6">
+              <div className="rounded-full bg-muted p-4 mb-3">
+                <Search className="h-8 w-8 text-muted-foreground" />
+              </div>
+              <h3 className="text-base font-semibold mb-1">কোনো রিনিউয়াল পাওয়া যায়নি</h3>
+              <p className="text-xs text-muted-foreground max-w-sm">
+                "{searchQuery}" এর সাথে মিলে এমন কোনো রিনিউয়াল আবেদন নেই।
+              </p>
+              <Button
+                variant="outline"
+                size="sm"
+                className="mt-3 text-xs h-8"
+                onClick={() => setSearchQuery("")}
+                data-testid="button-reset-renewals-search"
+              >
+                সার্চ রিসেট করুন
+              </Button>
             </div>
           ) : (
             <>
@@ -490,6 +560,7 @@ export default function SellerApplications() {
 
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const [previewModal, setPreviewModal] = useState<{ url: string; title: string } | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
   const PAGE_SIZE = 25;
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
 
@@ -622,9 +693,22 @@ export default function SellerApplications() {
     },
   });
 
-  const sortedApplications = [...applications].sort(
-    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-  );
+  const filteredApplications = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return applications;
+    return applications.filter(
+      (app) =>
+        (app.name && app.name.toLowerCase().includes(q)) ||
+        (app.phone && app.phone.toLowerCase().includes(q)) ||
+        (app.senderNumber && app.senderNumber.toLowerCase().includes(q))
+    );
+  }, [applications, searchQuery]);
+
+  const sortedApplications = useMemo(() => {
+    return [...filteredApplications].sort(
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+  }, [filteredApplications]);
 
   const visibleApplications = sortedApplications.slice(0, visibleCount);
 
@@ -743,10 +827,47 @@ export default function SellerApplications() {
             </div>
 
             <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-lg">Applications</CardTitle>
+              <CardHeader className="pb-3 border-b border-border/50">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                  <div>
+                    <CardTitle className="text-lg">Applications</CardTitle>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {searchQuery
+                        ? `ফলাফল: ${sortedApplications.length} টি আবেদন`
+                        : `মোট আবেদন: ${applications.length} টি`}
+                    </p>
+                  </div>
+                  {/* Prominent Search Input Bar */}
+                  <div className="relative w-full sm:w-80 md:w-96">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                    <Input
+                      type="text"
+                      placeholder="নাম, মোবাইল বা সেন্ডার নম্বর দিয়ে খুঁজুন..."
+                      value={searchQuery}
+                      onChange={(e) => {
+                        setSearchQuery(e.target.value);
+                        setVisibleCount(PAGE_SIZE);
+                      }}
+                      className="pl-9 pr-9 h-10 text-xs sm:text-sm bg-muted/40 focus:bg-background rounded-lg border-border"
+                      data-testid="input-applications-search"
+                    />
+                    {searchQuery && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSearchQuery("");
+                          setVisibleCount(PAGE_SIZE);
+                        }}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-1 rounded-full hover:bg-muted"
+                        data-testid="button-clear-applications-search"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    )}
+                  </div>
+                </div>
               </CardHeader>
-              <CardContent className="p-0 pb-4">
+              <CardContent className="p-0 pb-4 pt-3">
                 {isLoading ? (
                   <div className="px-6"><TableSkeleton /></div>
                 ) : applications.length === 0 ? (
@@ -758,6 +879,25 @@ export default function SellerApplications() {
                     <p className="text-muted-foreground max-w-sm">
                       Applications submitted through the public form will appear here.
                     </p>
+                  </div>
+                ) : sortedApplications.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-16 text-center px-6">
+                    <div className="rounded-full bg-muted p-4 mb-3">
+                      <Search className="h-8 w-8 text-muted-foreground" />
+                    </div>
+                    <h3 className="text-base font-semibold mb-1">কোনো আবেদন পাওয়া যায়নি</h3>
+                    <p className="text-xs text-muted-foreground max-w-sm">
+                      "{searchQuery}" এর সাথে মিলে এমন কোনো আবেদন নেই।
+                    </p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="mt-3 text-xs h-8"
+                      onClick={() => setSearchQuery("")}
+                      data-testid="button-reset-application-search"
+                    >
+                      সার্চ রিসেট করুন
+                    </Button>
                   </div>
                 ) : (
                   <>

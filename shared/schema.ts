@@ -118,6 +118,7 @@ export const sellerRenewalApplications = pgTable("seller_renewal_applications", 
   createdAt: text("created_at").notNull().default(sql`now()`),
   isDeleted: boolean("is_deleted").notNull().default(false),
   profileImage: text("profile_image"),
+  hideProfilePhoto: boolean("hide_profile_photo").notNull().default(false),
 });
 
 export const insertSellerRenewalApplicationSchema = createInsertSchema(sellerRenewalApplications).pick({
@@ -127,6 +128,7 @@ export const insertSellerRenewalApplicationSchema = createInsertSchema(sellerRen
   paymentMethod: true,
   senderNumber: true,
   profileImage: true,
+  hideProfilePhoto: true,
 });
 
 export type InsertSellerRenewalApplication = z.infer<typeof insertSellerRenewalApplicationSchema>;

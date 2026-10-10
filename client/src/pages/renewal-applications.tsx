@@ -198,7 +198,23 @@ export default function RenewalApplications() {
                     <TableBody>
                       {sorted.map((app) => (
                         <TableRow key={app.id} data-testid={`row-renewal-${app.id}`}>
-                          <TableCell className="text-xs py-1.5 font-medium" data-testid={`text-renewal-phone-${app.id}`}>{app.phone}</TableCell>
+                          <TableCell className="text-xs py-1.5 font-medium" data-testid={`text-renewal-phone-${app.id}`}>
+                            <div className="flex items-center gap-2">
+                              {app.profileImage ? (
+                                <img
+                                  src={app.profileImage}
+                                  alt="Photo"
+                                  className="w-7 h-7 rounded-full object-cover border border-border shrink-0"
+                                />
+                              ) : null}
+                              <span>{app.phone}</span>
+                              {app.hideProfilePhoto && (
+                                <span className="inline-flex items-center text-[10px] font-semibold text-amber-700 bg-amber-50 dark:bg-amber-950/40 dark:text-amber-300 border border-amber-200 dark:border-amber-800 rounded px-1.5 py-0.5" title="ছবি ওয়েবসাইটে প্রদর্শিত হবে না">
+                                  ছবি গোপন
+                                </span>
+                              )}
+                            </div>
+                          </TableCell>
                           <TableCell className="py-1.5">
                             <Badge variant="secondary" className="no-default-active-elevate text-xs" data-testid={`text-renewal-duration-${app.id}`}>
                               {durationLabels[app.duration] || app.duration}
@@ -258,9 +274,25 @@ export default function RenewalApplications() {
                   {sorted.map((app) => (
                     <div key={app.id} className="border rounded-xl p-4 space-y-3 bg-card shadow-sm" data-testid={`row-renewal-${app.id}`}>
                       <div className="flex items-start justify-between gap-2">
-                        <div>
-                          <p className="font-semibold text-sm" data-testid={`text-renewal-phone-${app.id}`}>{app.phone}</p>
-                          <p className="text-xs text-muted-foreground mt-0.5" data-testid={`text-renewal-submitted-${app.id}`}>{formatDate(app.createdAt)}</p>
+                        <div className="flex items-center gap-2.5">
+                          {app.profileImage ? (
+                            <img
+                              src={app.profileImage}
+                              alt="Photo"
+                              className="w-9 h-9 rounded-full object-cover border border-border shrink-0"
+                            />
+                          ) : null}
+                          <div>
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <p className="font-semibold text-sm" data-testid={`text-renewal-phone-${app.id}`}>{app.phone}</p>
+                              {app.hideProfilePhoto && (
+                                <span className="inline-flex items-center text-[10px] font-semibold text-amber-700 bg-amber-50 dark:bg-amber-950/40 dark:text-amber-300 border border-amber-200 dark:border-amber-800 rounded px-1.5 py-0.5" title="ছবি ওয়েবসাইটে প্রদর্শিত হবে না">
+                                  ছবি গোপন
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-xs text-muted-foreground mt-0.5" data-testid={`text-renewal-submitted-${app.id}`}>{formatDate(app.createdAt)}</p>
+                          </div>
                         </div>
                         <div className="flex items-center gap-1">
                           <StatusBadge status={app.status} />

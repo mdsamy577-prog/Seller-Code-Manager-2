@@ -1,7 +1,7 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertSellerSchema, insertSellerApplicationSchema, type Seller } from "@shared/schema";
+import { insertSellerSchema, insertSellerApplicationSchema, type Seller, type InsertSeller } from "@shared/schema";
 import passport from "passport";
 import { hashPassword, verifyPassword, generateAuthToken } from "./auth";
 import { sendSellerCodeEmail, sendExtensionEmail, sendRenewalApprovalEmail, sendRenewalRejectionEmail, sendApplicationRejectionEmail } from "./email";
@@ -871,7 +871,7 @@ export async function registerRoutes(
 
   app.post("/api/renewals", async (req, res) => {
     try {
-      const { phone, duration, paymentMethod, senderNumber, profileImage } = req.body;
+      const { phone, duration, paymentMethod, senderNumber, profileImage, hideProfilePhoto } = req.body;
       if (!phone || typeof phone !== "string" || !phone.trim()) {
         return res.status(400).json({ message: "phone is required" });
       }
@@ -889,10 +889,19 @@ export async function registerRoutes(
         return res.status(404).json({ message: "Seller not found" });
       }
 
+      const shouldHideProfilePhoto = typeof hideProfilePhoto === "boolean" ? hideProfilePhoto : false;
+
       // If renewal includes a profile photo, update seller record in database automatically
+      const sellerPreUpdates: Partial<InsertSeller & { expiryDate: string }> = {};
       if (profileImage && typeof profileImage === "string" && profileImage.trim()) {
-        await storage.updateSeller(seller.id, { profileImage: profileImage.trim() });
-        console.log(`[renewals] Auto-updated seller photo for ${seller.phone} (seller ID: ${seller.id})`);
+        sellerPreUpdates.profileImage = profileImage.trim();
+      }
+      if (typeof hideProfilePhoto === "boolean") {
+        sellerPreUpdates.hideProfilePhoto = shouldHideProfilePhoto;
+      }
+      if (Object.keys(sellerPreUpdates).length > 0) {
+        await storage.updateSeller(seller.id, sellerPreUpdates);
+        console.log(`[renewals] Auto-updated seller photo/privacy for ${seller.phone} (seller ID: ${seller.id}, hideProfilePhoto: ${shouldHideProfilePhoto})`);
       }
 
       const application = await storage.createRenewalApplication({
@@ -902,8 +911,9 @@ export async function registerRoutes(
         paymentMethod,
         senderNumber: senderNumber.trim(),
         profileImage: profileImage && typeof profileImage === "string" ? profileImage.trim() : undefined,
+        hideProfilePhoto: shouldHideProfilePhoto,
       });
-      console.log(`[renewals] New renewal application from ${seller.phone} (seller ID: ${seller.id}), duration: ${duration} months`);
+      console.log(`[renewals] New renewal application from ${seller.phone} (seller ID: ${seller.id}), duration: ${duration} months, hideProfilePhoto: ${shouldHideProfilePhoto}`);
       res.status(201).json({ message: "Renewal application submitted successfully", application });
     } catch (error) {
       res.status(500).json({ message: "Failed to submit renewal application" });
@@ -945,6 +955,11 @@ export async function registerRoutes(
         status: "active",
       };
 
+      // Explicitly update hideProfilePhoto to match the seller's choice from renewal request
+      if (typeof application.hideProfilePhoto === "boolean") {
+        updates.hideProfilePhoto = application.hideProfilePhoto;
+      }
+
       // If renewal application updated the photo, purge old photo from Cloudinary
       if (
         (application as any).profileImage &&
@@ -953,6 +968,8 @@ export async function registerRoutes(
       ) {
         console.log(`[Storage] Deleting old seller photo on renewal update: ${seller.profileImage}`);
         await deleteCloudinaryFile(seller.profileImage);
+        updates.profileImage = (application as any).profileImage;
+      } else if ((application as any).profileImage && !seller.profileImage) {
         updates.profileImage = (application as any).profileImage;
       }
 

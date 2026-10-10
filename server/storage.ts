@@ -365,6 +365,7 @@ export class MemStorage implements IStorage {
       createdAt: new Date().toISOString(),
       isDeleted: false,
       profileImage: data.profileImage ?? null,
+      hideProfilePhoto: Boolean(data.hideProfilePhoto),
     };
     this.renewals.set(id, renewal);
     return renewal;
@@ -883,7 +884,10 @@ function initStorage(): IStorage {
       ALTER TABLE IF EXISTS seller_applications ADD COLUMN IF NOT EXISTS profile_image text;
       ALTER TABLE IF EXISTS seller_applications ADD COLUMN IF NOT EXISTS hide_profile_photo boolean DEFAULT false;
       ALTER TABLE IF EXISTS seller_renewal_applications ADD COLUMN IF NOT EXISTS profile_image text;
-    `).catch(() => {});
+      ALTER TABLE IF EXISTS seller_renewal_applications ADD COLUMN IF NOT EXISTS hide_profile_photo boolean DEFAULT false;
+    `).catch((err: any) => {
+      console.warn("[DB] Non-fatal migration check warning:", err?.message || err);
+    });
 
     pool.on("error", (err) => {
       console.error("[DB] Unexpected PostgreSQL pool error:", err.message);

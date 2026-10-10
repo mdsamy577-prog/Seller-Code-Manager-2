@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Footer } from "@/components/footer";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -27,6 +28,7 @@ type Seller = {
   expiryDate: string;
   startDate: string;
   profileImage?: string | null;
+  hideProfilePhoto?: boolean;
 };
 
 const MONTH_LABELS: Record<string, string> = {
@@ -78,6 +80,7 @@ export default function RenewalPage() {
   const [photoInfo, setPhotoInfo] = useState<string | null>(null);
   const [photoUploading, setPhotoUploading] = useState(false);
   const [photoError, setPhotoError] = useState("");
+  const [hideProfilePhoto, setHideProfilePhoto] = useState(false);
   const photoInputRef = useRef<HTMLInputElement>(null);
 
   const { data: paymentSettings } = useQuery<{ bkashNumber: string; nagadNumber: string }>({
@@ -130,8 +133,9 @@ export default function RenewalPage() {
       } else if (!res.ok) {
         setSearchError("অনুসন্ধানে সমস্যা হয়েছে। আবার চেষ্টা করুন।");
       } else {
-        const data = await res.json();
+        const data: Seller = await res.json();
         setSeller(data);
+        setHideProfilePhoto(Boolean(data.hideProfilePhoto));
       }
     } catch {
       setSearchError("সার্ভার চালু হচ্ছে, একটু অপেক্ষা করুন...");
@@ -148,6 +152,7 @@ export default function RenewalPage() {
         paymentMethod,
         senderNumber: senderNumber.trim(),
         profileImage: variables?.profileImage,
+        hideProfilePhoto,
       });
       return res.json();
     },
@@ -645,18 +650,51 @@ export default function RenewalPage() {
                           </div>
                         )}
                       </div>
+                      {/* Privacy Checkbox directly underneath the profile photo upload box */}
+                      <div className="flex flex-row items-center space-x-2.5 p-2.5 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/60 mt-1.5">
+                        <Checkbox
+                          id="renew-hide-photo-new"
+                          checked={hideProfilePhoto}
+                          onCheckedChange={(checked) => setHideProfilePhoto(Boolean(checked))}
+                          data-testid="checkbox-hide-profile-photo"
+                        />
+                        <label
+                          htmlFor="renew-hide-photo-new"
+                          className="text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 cursor-pointer select-none leading-none"
+                        >
+                          ছবি গোপন রাখতে চাই (ওয়েবসাইটে প্রোফাইল ছবি প্রদর্শিত হবে না)
+                        </label>
+                      </div>
                       {photoError && <p className="text-xs text-red-600 dark:text-red-400 font-medium">{photoError}</p>}
                     </div>
                   ) : (
-                    <div className="flex items-center gap-3 p-3 rounded-xl border border-emerald-200/70 dark:border-emerald-900/50 bg-emerald-50/50 dark:bg-emerald-950/20">
-                      <img
-                        src={seller.profileImage}
-                        alt={seller.name}
-                        className="w-10 h-10 rounded-full object-cover border border-emerald-400 shrink-0 shadow-xs"
-                      />
-                      <div className="min-w-0 flex-1">
-                        <p className="text-xs font-semibold text-emerald-700 dark:text-emerald-300">প্রোফাইল ছবি সংরক্ষিত আছে</p>
-                        <p className="text-[11px] text-muted-foreground">আপনার প্রোফাইল ছবি ইতোমধ্যে সিস্টেমে সংযুক্ত রয়েছে।</p>
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-3 p-3 rounded-xl border border-emerald-200/70 dark:border-emerald-900/50 bg-emerald-50/50 dark:bg-emerald-950/20">
+                        <img
+                          src={seller.profileImage}
+                          alt={seller.name}
+                          className="w-10 h-10 rounded-full object-cover border border-emerald-400 shrink-0 shadow-xs"
+                        />
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-semibold text-emerald-700 dark:text-emerald-300">প্রোফাইল ছবি সংরক্ষিত আছে</p>
+                          <p className="text-[11px] text-muted-foreground">আপনার প্রোফাইল ছবি ইতোমধ্যে সিস্টেমে সংযুক্ত রয়েছে।</p>
+                        </div>
+                      </div>
+
+                      {/* Privacy Checkbox for existing photo */}
+                      <div className="flex flex-row items-center space-x-2.5 p-2.5 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/60 mt-1.5">
+                        <Checkbox
+                          id="renew-hide-photo-existing"
+                          checked={hideProfilePhoto}
+                          onCheckedChange={(checked) => setHideProfilePhoto(Boolean(checked))}
+                          data-testid="checkbox-hide-profile-photo"
+                        />
+                        <label
+                          htmlFor="renew-hide-photo-existing"
+                          className="text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 cursor-pointer select-none leading-none"
+                        >
+                          ছবি গোপন রাখতে চাই (ওয়েবসাইটে প্রোফাইল ছবি প্রদর্শিত হবে না)
+                        </label>
                       </div>
                     </div>
                   )}

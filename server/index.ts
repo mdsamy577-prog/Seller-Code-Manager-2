@@ -153,83 +153,101 @@ process.on("unhandledRejection", (reason) => {
   console.error("[Process] Unhandled Promise Rejection — server will keep running:", reason);
 });
 
-(async () => {
-  // Ensure new tables exist (idempotent migrations)
-  try {
-    const { Pool } = await import("pg");
-    const rawUrl = process.env.SUPABASE_DATABASE_URL || process.env.DATABASE_URL || "";
-    if (rawUrl) {
-      const withoutScheme = rawUrl.replace(/^postgresql:\/\//, "");
-      const lastAt = withoutScheme.lastIndexOf("@");
-      const userInfo = withoutScheme.substring(0, lastAt);
-      const hostInfo = withoutScheme.substring(lastAt + 1);
-      const colonInUser = userInfo.indexOf(":");
-      const user = userInfo.substring(0, colonInUser);
-      const password = userInfo.substring(colonInUser + 1);
-      const slashInHost = hostInfo.indexOf("/");
-      const hostPort = slashInHost === -1 ? hostInfo : hostInfo.substring(0, slashInHost);
-      const database = slashInHost === -1 ? "postgres" : hostInfo.substring(slashInHost + 1);
-      const colonInHost = hostPort.lastIndexOf(":");
-      const host = colonInHost === -1 ? hostPort : hostPort.substring(0, colonInHost);
-      const port = colonInHost === -1 ? 5432 : parseInt(hostPort.substring(colonInHost + 1), 10);
-      const migPool = new Pool({ user, password, host, port, database, ssl: { rejectUnauthorized: false }, max: 1, connectionTimeoutMillis: 3000 });
-      await migPool.query(`ALTER TABLE seller_applications ADD COLUMN IF NOT EXISTS personal_facebook_link TEXT`);
-      await migPool.query(`CREATE INDEX IF NOT EXISTS seller_applications_status_idx ON seller_applications(status)`);
-      await migPool.query(`CREATE INDEX IF NOT EXISTS seller_applications_created_at_idx ON seller_applications(created_at)`);
-      await migPool.query(`
-        CREATE TABLE IF NOT EXISTS email_logs (
-          id SERIAL PRIMARY KEY,
-          resend_email_id TEXT,
-          recipient_email TEXT NOT NULL,
-          seller_name TEXT NOT NULL,
-          seller_code TEXT NOT NULL DEFAULT '',
-          subject TEXT NOT NULL,
-          email_type TEXT NOT NULL,
-          status TEXT NOT NULL DEFAULT 'sent',
-          sent_at TEXT NOT NULL,
-          updated_at TEXT NOT NULL
-        )
-      `);
-      await migPool.end();
-      console.log("[Migration] email_logs table ready");
-    }
-  } catch (err: any) {
-    console.error("[Migration] Failed to create email_logs table:", err.message);
-  }
+let initPromise: Promise<void> | null = null;
 
-  if (process.env.NODE_ENV !== "production") {
-    await seedDatabase();
-  }
-
-  await registerRoutes(httpServer, app);
-
-  app.use((err: any, _req: Request, res: Response, next: NextFunction) => {
-    const status = err.status || err.statusCode || 500;
-    const message = err.message || "Internal Server Error";
-
-    console.error("Internal Server Error:", err);
-
-    if (res.headersSent) {
-      return next(err);
+export async function initApp() {
+  if (initPromise) return initPromise;
+  initPromise = (async () => {
+    // Ensure new tables exist (idempotent migrations)
+    try {
+      const { Pool } = await import("pg");
+      const rawUrl = process.env.SUPABASE_DATABASE_URL || process.env.DATABASE_URL || "";
+      if (rawUrl) {
+        const withoutScheme = rawUrl.replace(/^postgresql:\/\//, "");
+        const lastAt = withoutScheme.lastIndexOf("@");
+        const userInfo = withoutScheme.substring(0, lastAt);
+        const hostInfo = withoutScheme.substring(lastAt + 1);
+        const colonInUser = userInfo.indexOf(":");
+        const user = userInfo.substring(0, colonInUser);
+        const password = userInfo.substring(colonInUser + 1);
+        const slashInHost = hostInfo.indexOf("/");
+        const hostPort = slashInHost === -1 ? hostInfo : hostInfo.substring(0, slashInHost);
+        const database = slashInHost === -1 ? "postgres" : hostInfo.substring(slashInHost + 1);
+        const colonInHost = hostPort.lastIndexOf(":");
+        const host = colonInHost === -1 ? hostPort : hostPort.substring(0, colonInHost);
+        const port = colonInHost === -1 ? 5432 : parseInt(hostPort.substring(colonInHost + 1), 10);
+        const migPool = new Pool({ user, password, host, port, database, ssl: { rejectUnauthorized: false }, max: 1, connectionTimeoutMillis: 3000 });
+        await migPool.query(`ALTER TABLE seller_applications ADD COLUMN IF NOT EXISTS personal_facebook_link TEXT`);
+        await migPool.query(`CREATE INDEX IF NOT EXISTS seller_applications_status_idx ON seller_applications(status)`);
+        await migPool.query(`CREATE INDEX IF NOT EXISTS seller_applications_created_at_idx ON seller_applications(created_at)`);
+        await migPool.query(`
+          CREATE TABLE IF NOT EXISTS email_logs (
+            id SERIAL PRIMARY KEY,
+            resend_email_id TEXT,
+            recipient_email TEXT NOT NULL,
+            seller_name TEXT NOT NULL,
+            seller_code TEXT NOT NULL DEFAULT '',
+            subject TEXT NOT NULL,
+            email_type TEXT NOT NULL,
+            status TEXT NOT NULL DEFAULT 'sent',
+            sent_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+          )
+        `);
+        await migPool.end();
+        console.log("[Migration] email_logs table ready");
+      }
+    } catch (err: any) {
+      console.error("[Migration] Failed to create email_logs table:", err.message);
     }
 
-    return res.status(status).json({ message });
-  });
+    if (process.env.NODE_ENV !== "production") {
+      await seedDatabase();
+    }
 
-  // importantly only setup vite in development and after
-  // setting up all the other routes so the catch-all route
-  // doesn't interfere with the other routes
-  if (process.env.NODE_ENV === "production") {
-    serveStatic(app);
-  } else {
-    const { setupVite } = await import("./vite");
-    await setupVite(httpServer, app);
-  }
+    await registerRoutes(httpServer, app);
 
-  // Dev server port must be 3000 for AI Studio environment
-  const port = parseInt(process.env.PORT || "3000", 10);
-  httpServer.listen(port, "0.0.0.0", () => {
-    log(`serving on port ${port}`);
-    startCronJobs();
+    app.use((err: any, _req: Request, res: Response, next: NextFunction) => {
+      const status = err.status || err.statusCode || 500;
+      const message = err.message || "Internal Server Error";
+
+      console.error("Internal Server Error:", err);
+
+      if (res.headersSent) {
+        return next(err);
+      }
+
+      return res.status(status).json({ message });
+    });
+
+    // In Vercel serverless functions, static files are handled by Vercel routes rewrites
+    const isVercel = Boolean(process.env.VERCEL || process.env.NOW_REGION);
+
+    if (!isVercel) {
+      if (process.env.NODE_ENV === "production") {
+        serveStatic(app);
+      } else {
+        const { setupVite } = await import("./vite");
+        await setupVite(httpServer, app);
+      }
+    }
+  })();
+
+  return initPromise;
+}
+
+// Auto-start listener when run standalone (not inside Vercel serverless)
+if (!process.env.VERCEL && !process.env.NOW_REGION) {
+  initApp().then(() => {
+    const port = parseInt(process.env.PORT || "3000", 10);
+    httpServer.listen(port, "0.0.0.0", () => {
+      log(`serving on port ${port}`);
+      startCronJobs();
+    });
+  }).catch((err) => {
+    console.error("Failed to start server:", err);
   });
-})();
+}
+
+export { app, httpServer };
+export default app;

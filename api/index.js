@@ -46782,7 +46782,7 @@ var require_color = __commonJS({
     var __toCommonJS = (mod) => __copyProps2(__defProp2({}, "__esModule", { value: true }), mod);
     var index_exports = {};
     __export2(index_exports, {
-      default: () => index_default
+      default: () => index_default2
     });
     module.exports = __toCommonJS(index_exports);
     var colors = {
@@ -48344,7 +48344,7 @@ var require_color = __commonJS({
       }
       return array;
     }
-    var index_default = Color;
+    var index_default2 = Color;
   }
 });
 
@@ -91812,12 +91812,12 @@ if (!process.env.VERCEL && !process.env.NOW_REGION) {
     console.error("Failed to start server:", err);
   });
 }
-var server_default = app;
+var index_default = app;
 
-// api/index.ts
+// server/serverless.ts
 async function handler(req, res) {
   await initApp();
-  return server_default(req, res);
+  return index_default(req, res);
 }
 export {
   handler as default

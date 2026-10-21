@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "tsx server.ts",
     "build": "npx tsx script/build.ts",
-    "build:api": "node node_modules/esbuild/bin/esbuild server/serverless.ts --bundle --platform=node --target=node18 --format=esm --outfile=api/index.js --external:pg-native --define:process.env.NODE_ENV='\"production\"' --define:process.env.SERVERLESS='\"true\"'",
+    "build:api": "node node_modules/esbuild/bin/esbuild server/serverless.ts --bundle --platform=node --target=node18 --format=cjs --outfile=api/index.js --external:pg-native --define:process.env.NODE_ENV='\"production\"' --define:process.env.SERVERLESS='\"true\"'",
     "lint": "tsc --noEmit",
     "start": "NODE_ENV=production node dist/index.cjs",
     "check": "tsc",

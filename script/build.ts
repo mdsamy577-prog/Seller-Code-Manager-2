@@ -66,7 +66,7 @@ async function buildAll() {
     platform: "node",
     target: "node18",
     bundle: true,
-    format: "esm",
+    format: "cjs",
     outfile: "api/index.js",
     external: ["pg-native"],
     define: {

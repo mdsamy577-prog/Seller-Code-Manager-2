@@ -9,7 +9,6 @@ import passport from "passport";
 import { Strategy as LocalStrategy } from "passport-local";
 import { storage } from "./storage";
 import { hashPassword, verifyPassword, verifyAuthToken } from "./auth";
-import { startCronJobs } from "./cron";
 import type { User } from "@shared/schema";
 
 declare module "express-session" {
@@ -249,11 +248,16 @@ const isServerlessEnvironment = Boolean(
 );
 
 if (!isServerlessEnvironment) {
-  initApp().then(() => {
+  initApp().then(async () => {
     const port = parseInt(process.env.PORT || "3000", 10);
-    httpServer.listen(port, "0.0.0.0", () => {
+    httpServer.listen(port, "0.0.0.0", async () => {
       log(`serving on port ${port}`);
-      startCronJobs();
+      try {
+        const { startCronJobs } = await import("./cron");
+        startCronJobs();
+      } catch (err) {
+        console.warn("[Cron] Cron jobs could not be started:", err);
+      }
     });
   }).catch((err) => {
     console.error("Failed to start server:", err);

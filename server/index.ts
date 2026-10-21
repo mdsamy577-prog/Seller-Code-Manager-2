@@ -227,7 +227,8 @@ export async function initApp() {
       if (process.env.NODE_ENV === "production") {
         serveStatic(app);
       } else {
-        const { setupVite } = await import("./vite");
+        const viteModulePath = "./vite";
+        const { setupVite } = await import(viteModulePath);
         await setupVite(httpServer, app);
       }
     }

@@ -93345,6 +93345,11 @@ var index_default = app;
 // server/serverless.ts
 async function handler(req, res) {
   await initApp();
+  if (req.url && !req.url.startsWith("/api") && !req.url.startsWith("/api/")) {
+    const original = req.url;
+    req.url = `/api${req.url.startsWith("/") ? "" : "/"}${req.url}`;
+    req.originalUrl = req.url;
+  }
   return index_default(req, res);
 }
 /*! Bundled license information:

@@ -93306,7 +93306,9 @@ async function initApp() {
       }
       return res.status(status).json({ message });
     });
-    const isServerless = Boolean(process.env.VERCEL || process.env.NOW_REGION || process.env.AWS_LAMBDA_FUNCTION_NAME);
+    const isServerless = Boolean(
+      process.env.VERCEL || process.env.NOW_REGION || process.env.AWS_LAMBDA_FUNCTION_NAME || true
+    );
     if (!isServerless) {
       if (true) {
         serveStatic(app);

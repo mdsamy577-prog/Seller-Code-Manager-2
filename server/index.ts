@@ -220,7 +220,12 @@ export async function initApp() {
     });
 
     // In Vercel serverless functions, static files are handled by Vercel routes rewrites
-    const isServerless = Boolean(process.env.VERCEL || process.env.NOW_REGION || process.env.AWS_LAMBDA_FUNCTION_NAME);
+    const isServerless = Boolean(
+      process.env.VERCEL ||
+      process.env.NOW_REGION ||
+      process.env.AWS_LAMBDA_FUNCTION_NAME ||
+      process.env.SERVERLESS === "true"
+    );
 
     if (!isServerless) {
       if (process.env.NODE_ENV === "production") {

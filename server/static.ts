@@ -4,11 +4,16 @@ import path from "path";
 import { storage } from "./storage";
 
 export function serveStatic(app: Express) {
-  const distPath = path.resolve(__dirname, "public");
-  if (!fs.existsSync(distPath)) {
-    throw new Error(
-      `Could not find the build directory: ${distPath}, make sure to build the client first`,
-    );
+  const candidatePaths = [
+    path.resolve(__dirname, "public"),
+    path.resolve(process.cwd(), "dist", "public"),
+    path.resolve(__dirname, "..", "dist", "public"),
+  ];
+  const distPath = candidatePaths.find((p) => fs.existsSync(p));
+
+  if (!distPath) {
+    console.warn(`[serveStatic] Static dist/public directory not found. Skipping static asset mounting.`);
+    return;
   }
 
   app.use(express.static(distPath));

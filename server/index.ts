@@ -221,15 +221,18 @@ export async function initApp() {
     });
 
     // In Vercel serverless functions, static files are handled by Vercel routes rewrites
-    const isVercel = Boolean(process.env.VERCEL || process.env.NOW_REGION);
+    const isServerless = Boolean(process.env.VERCEL || process.env.NOW_REGION || process.env.AWS_LAMBDA_FUNCTION_NAME);
 
-    if (!isVercel) {
+    if (!isServerless) {
       if (process.env.NODE_ENV === "production") {
         serveStatic(app);
       } else {
-        const viteModulePath = "./vite";
-        const { setupVite } = await import(viteModulePath);
-        await setupVite(httpServer, app);
+        try {
+          const { setupVite } = await import("./vite");
+          await setupVite(httpServer, app);
+        } catch {
+          // Vite dev server not available in bundled production environments
+        }
       }
     }
   })();
@@ -237,8 +240,15 @@ export async function initApp() {
   return initPromise;
 }
 
-// Auto-start listener when run standalone (not inside Vercel serverless)
-if (!process.env.VERCEL && !process.env.NOW_REGION) {
+// Auto-start listener when run standalone directly (not imported as a serverless function)
+const isServerlessEnvironment = Boolean(
+  process.env.VERCEL ||
+  process.env.NOW_REGION ||
+  process.env.AWS_LAMBDA_FUNCTION_NAME ||
+  process.env.SERVERLESS
+);
+
+if (!isServerlessEnvironment) {
   initApp().then(() => {
     const port = parseInt(process.env.PORT || "3000", 10);
     httpServer.listen(port, "0.0.0.0", () => {

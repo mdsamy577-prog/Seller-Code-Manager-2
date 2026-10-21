@@ -89486,11 +89486,15 @@ var import_express = __toESM(require_express2(), 1);
 import fs from "fs";
 import path from "path";
 function serveStatic(app2) {
-  const distPath = path.resolve(__dirname, "public");
-  if (!fs.existsSync(distPath)) {
-    throw new Error(
-      `Could not find the build directory: ${distPath}, make sure to build the client first`
-    );
+  const candidatePaths = [
+    path.resolve(__dirname, "public"),
+    path.resolve(process.cwd(), "dist", "public"),
+    path.resolve(__dirname, "..", "dist", "public")
+  ];
+  const distPath = candidatePaths.find((p) => fs.existsSync(p));
+  if (!distPath) {
+    console.warn(`[serveStatic] Static dist/public directory not found. Skipping static asset mounting.`);
+    return;
   }
   app2.use(import_express.default.static(distPath));
   app2.use("/{*path}", async (req, res) => {
@@ -91788,20 +91792,25 @@ async function initApp() {
       }
       return res.status(status).json({ message });
     });
-    const isVercel = Boolean(process.env.VERCEL || process.env.NOW_REGION);
-    if (!isVercel) {
+    const isServerless = Boolean(process.env.VERCEL || process.env.NOW_REGION || process.env.AWS_LAMBDA_FUNCTION_NAME);
+    if (!isServerless) {
       if (true) {
         serveStatic(app);
       } else {
-        const viteModulePath = "./vite";
-        const { setupVite } = await import(viteModulePath);
-        await setupVite(httpServer, app);
+        try {
+          const { setupVite } = await null;
+          await setupVite(httpServer, app);
+        } catch {
+        }
       }
     }
   })();
   return initPromise;
 }
-if (!process.env.VERCEL && !process.env.NOW_REGION) {
+var isServerlessEnvironment = Boolean(
+  process.env.VERCEL || process.env.NOW_REGION || process.env.AWS_LAMBDA_FUNCTION_NAME || "true"
+);
+if (!isServerlessEnvironment) {
   initApp().then(() => {
     const port = parseInt(process.env.PORT || "3000", 10);
     httpServer.listen(port, "0.0.0.0", () => {

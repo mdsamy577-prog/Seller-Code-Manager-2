@@ -60,14 +60,14 @@ async function buildAll() {
     logLevel: "info",
   });
 
-  console.log("building Vercel serverless api bundle (api/index.js)...");
+  console.log("building Vercel serverless api bundle (api/index.cjs)...");
   await esbuild({
     entryPoints: ["server/serverless.ts"],
     platform: "node",
     target: "node18",
     bundle: true,
     format: "cjs",
-    outfile: "api/index.js",
+    outfile: "api/index.cjs",
     external: ["pg-native"],
     define: {
       "process.env.NODE_ENV": '"production"',

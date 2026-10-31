@@ -62105,10 +62105,11 @@ function parseSupabaseUrl(raw) {
   return { user, password, host, port, database };
 }
 function initStorage() {
+  const memStorage = new MemStorage();
   const rawUrl = process.env.SUPABASE_DATABASE_URL || process.env.DATABASE_URL || "";
   if (!rawUrl) {
     console.warn("[AI Studio] No database URL configured \u2014 using in-memory mock storage");
-    return new MemStorage();
+    return memStorage;
   }
   try {
     const poolConfig = {
@@ -62131,7 +62132,7 @@ function initStorage() {
       console.warn("[DB] Non-fatal migration check warning:", err?.message || err);
     });
     pool.on("error", (err) => {
-      console.error("[DB] Unexpected PostgreSQL pool error:", err.message);
+      console.warn("[DB] Pool background error:", err?.message || err);
     });
     const RETRYABLE_CODES = /* @__PURE__ */ new Set(["ECONNRESET", "ECONNREFUSED", "ETIMEDOUT", "EPIPE", "57P01", "08006", "08001", "08004"]);
     const isRetryableError = (err) => {
@@ -62151,13 +62152,14 @@ function initStorage() {
       }
     };
     const db = drizzle(pool);
-    return new DatabaseStorage(pool, db);
+    const dbStorage = new DatabaseStorage(pool, db);
+    return new ResilientStorage(dbStorage, memStorage);
   } catch (err) {
     console.warn("[AI Studio] Database initialization failed \u2014 falling back to mock storage:", err);
-    return new MemStorage();
+    return memStorage;
   }
 }
-var MemStorage, DatabaseStorage, storage;
+var MemStorage, DatabaseStorage, ResilientStorage, storage;
 var init_storage = __esm({
   "server/storage.ts"() {
     "use strict";
@@ -62795,6 +62797,182 @@ var init_storage = __esm({
       }
       async clearEmailLogs() {
         await this.db.delete(emailLogs);
+      }
+    };
+    ResilientStorage = class {
+      dbStorage = null;
+      memStorage;
+      useMemoryOnly = false;
+      constructor(dbStorage, memStorage) {
+        this.dbStorage = dbStorage;
+        this.memStorage = memStorage;
+        if (!dbStorage) {
+          this.useMemoryOnly = true;
+        }
+      }
+      fallback(err) {
+        if (!this.useMemoryOnly) {
+          console.warn(`[DB] Database error (${err?.message || err}) \u2014 seamlessly falling back to in-memory storage`);
+          this.useMemoryOnly = true;
+        }
+      }
+      async execute(op) {
+        if (this.useMemoryOnly || !this.dbStorage) {
+          return op(this.memStorage);
+        }
+        try {
+          return await op(this.dbStorage);
+        } catch (err) {
+          this.fallback(err);
+          return op(this.memStorage);
+        }
+      }
+      getUser(id) {
+        return this.execute((s) => s.getUser(id));
+      }
+      getUserByUsername(username) {
+        return this.execute((s) => s.getUserByUsername(username));
+      }
+      createUser(user) {
+        return this.execute((s) => s.createUser(user));
+      }
+      getAllSellers() {
+        return this.execute((s) => s.getAllSellers());
+      }
+      getDeletedSellers() {
+        return this.execute((s) => s.getDeletedSellers());
+      }
+      getSellerById(id) {
+        return this.execute((s) => s.getSellerById(id));
+      }
+      createSeller(seller) {
+        return this.execute((s) => s.createSeller(seller));
+      }
+      updateSeller(id, seller) {
+        return this.execute((s) => s.updateSeller(id, seller));
+      }
+      softDeleteSeller(id) {
+        return this.execute((s) => s.softDeleteSeller(id));
+      }
+      deleteSeller(id) {
+        return this.execute((s) => s.deleteSeller(id));
+      }
+      restoreSeller(id) {
+        return this.execute((s) => s.restoreSeller(id));
+      }
+      searchSellers(query) {
+        return this.execute((s) => s.searchSellers(query));
+      }
+      getSetting(key) {
+        return this.execute((s) => s.getSetting(key));
+      }
+      setSetting(key, value) {
+        return this.execute((s) => s.setSetting(key, value));
+      }
+      getSettings(keys) {
+        return this.execute((s) => s.getSettings(keys));
+      }
+      createSellerApplication(application) {
+        return this.execute((s) => s.createSellerApplication(application));
+      }
+      getAllSellerApplications() {
+        return this.execute((s) => s.getAllSellerApplications());
+      }
+      getSellerApplicationById(id) {
+        return this.execute((s) => s.getSellerApplicationById(id));
+      }
+      updateSellerApplicationStatus(id, status) {
+        return this.execute((s) => s.updateSellerApplicationStatus(id, status));
+      }
+      updateSellerApplicationEmail(id, email) {
+        return this.execute((s) => s.updateSellerApplicationEmail(id, email));
+      }
+      approveApplicationWithSeller(applicationId, sellerData) {
+        return this.execute((s) => s.approveApplicationWithSeller(applicationId, sellerData));
+      }
+      approveApplicationWithExistingSeller(applicationId, sellerId, sellerUpdates) {
+        return this.execute((s) => s.approveApplicationWithExistingSeller(applicationId, sellerId, sellerUpdates));
+      }
+      clearApplicationNidFileUrl(id) {
+        return this.execute((s) => s.clearApplicationNidFileUrl(id));
+      }
+      clearApplicationFiles(id) {
+        return this.execute((s) => s.clearApplicationFiles(id));
+      }
+      getSellerByPhone(phone) {
+        return this.execute((s) => s.getSellerByPhone(phone));
+      }
+      getSellerByCode(code) {
+        return this.execute((s) => s.getSellerByCode(code));
+      }
+      deleteSellerApplication(id) {
+        return this.execute((s) => s.deleteSellerApplication(id));
+      }
+      updateUserPassword(id, hashedPassword) {
+        return this.execute((s) => s.updateUserPassword(id, hashedPassword));
+      }
+      getUserCount() {
+        return this.execute((s) => s.getUserCount());
+      }
+      getAllUsers() {
+        return this.execute((s) => s.getAllUsers());
+      }
+      getSellersWithEmail() {
+        return this.execute((s) => s.getSellersWithEmail());
+      }
+      hasReminderBeenSent(sellerId, reminderType, date2) {
+        return this.execute((s) => s.hasReminderBeenSent(sellerId, reminderType, date2));
+      }
+      logReminderSent(sellerId, reminderType, date2) {
+        return this.execute((s) => s.logReminderSent(sellerId, reminderType, date2));
+      }
+      getAndIncrementSerial() {
+        return this.execute((s) => s.getAndIncrementSerial());
+      }
+      createRenewalApplication(data) {
+        return this.execute((s) => s.createRenewalApplication(data));
+      }
+      getAllRenewalApplications() {
+        return this.execute((s) => s.getAllRenewalApplications());
+      }
+      getRenewalApplicationById(id) {
+        return this.execute((s) => s.getRenewalApplicationById(id));
+      }
+      updateRenewalApplicationStatus(id, status) {
+        return this.execute((s) => s.updateRenewalApplicationStatus(id, status));
+      }
+      softDeleteRenewalApplication(id) {
+        return this.execute((s) => s.softDeleteRenewalApplication(id));
+      }
+      createEmailScheduleEntries(entries) {
+        return this.execute((s) => s.createEmailScheduleEntries(entries));
+      }
+      getPendingScheduledEmails() {
+        return this.execute((s) => s.getPendingScheduledEmails());
+      }
+      markScheduledEmailStatus(id, status) {
+        return this.execute((s) => s.markScheduledEmailStatus(id, status));
+      }
+      cancelPendingEmailsForSeller(sellerId) {
+        return this.execute((s) => s.cancelPendingEmailsForSeller(sellerId));
+      }
+      hasPendingScheduleForSeller(sellerId) {
+        return this.execute((s) => s.hasPendingScheduleForSeller(sellerId));
+      }
+      getNextPendingEmailPerSeller() {
+        return this.execute((s) => s.getNextPendingEmailPerSeller());
+      }
+      createEmailLog(data) {
+        return this.execute((s) => s.createEmailLog(data));
+      }
+      updateEmailLogStatus(resendEmailId, status) {
+        return this.execute((s) => s.updateEmailLogStatus(resendEmailId, status));
+      }
+      getEmailLogs() {
+        return this.execute((s) => s.getEmailLogs());
+      }
+      clearEmailLogs() {
+        return this.execute((s) => s.clearEmailLogs());
       }
     };
     storage = initStorage();
@@ -93294,7 +93472,11 @@ async function initApp() {
       console.error("[Migration] Failed to create email_logs table:", err.message);
     }
     if (false) {
-      await seedDatabase();
+      try {
+        await seedDatabase();
+      } catch (err) {
+        console.warn("[Seed] Seeding warning:", err?.message || err);
+      }
     }
     await registerRoutes(httpServer, app);
     app.use((err, _req, res, next) => {
@@ -93327,19 +93509,33 @@ var isServerlessEnvironment = Boolean(
   process.env.VERCEL || process.env.NOW_REGION || process.env.AWS_LAMBDA_FUNCTION_NAME || "true"
 );
 if (!isServerlessEnvironment) {
+  const getPort = () => {
+    if (process.env.PORT && process.env.PORT !== "8080") {
+      return parseInt(process.env.PORT, 10);
+    }
+    return 3e3;
+  };
   initApp().then(async () => {
-    const port = parseInt(process.env.PORT || "3000", 10);
-    httpServer.listen(port, "0.0.0.0", async () => {
-      log2(`serving on port ${port}`);
-      try {
-        const { startCronJobs: startCronJobs2 } = await Promise.resolve().then(() => (init_cron(), cron_exports));
-        startCronJobs2();
-      } catch (err) {
-        console.warn("[Cron] Cron jobs could not be started:", err);
-      }
-    });
+    const port = getPort();
+    if (!httpServer.listening) {
+      httpServer.listen(port, "0.0.0.0", async () => {
+        log2(`serving on port ${port}`);
+        try {
+          const { startCronJobs: startCronJobs2 } = await Promise.resolve().then(() => (init_cron(), cron_exports));
+          startCronJobs2();
+        } catch (err) {
+          console.warn("[Cron] Cron jobs could not be started:", err);
+        }
+      });
+    }
   }).catch((err) => {
     console.error("Failed to start server:", err);
+    const port = getPort();
+    if (!httpServer.listening) {
+      httpServer.listen(port, "0.0.0.0", () => {
+        log2(`[Recovery] serving on port ${port} after init error`);
+      });
+    }
   });
 }
 var index_default = app;

@@ -860,11 +860,95 @@ export class DatabaseStorage implements IStorage {
   }
 }
 
+export class ResilientStorage implements IStorage {
+  private dbStorage: DatabaseStorage | null = null;
+  private memStorage: MemStorage;
+  private useMemoryOnly: boolean = false;
+
+  constructor(dbStorage: DatabaseStorage | null, memStorage: MemStorage) {
+    this.dbStorage = dbStorage;
+    this.memStorage = memStorage;
+    if (!dbStorage) {
+      this.useMemoryOnly = true;
+    }
+  }
+
+  private fallback(err: any): void {
+    if (!this.useMemoryOnly) {
+      console.warn(`[DB] Database error (${err?.message || err}) — seamlessly falling back to in-memory storage`);
+      this.useMemoryOnly = true;
+    }
+  }
+
+  private async execute<T>(op: (s: IStorage) => Promise<T>): Promise<T> {
+    if (this.useMemoryOnly || !this.dbStorage) {
+      return op(this.memStorage);
+    }
+    try {
+      return await op(this.dbStorage);
+    } catch (err: any) {
+      this.fallback(err);
+      return op(this.memStorage);
+    }
+  }
+
+  getUser(id: string) { return this.execute((s) => s.getUser(id)); }
+  getUserByUsername(username: string) { return this.execute((s) => s.getUserByUsername(username)); }
+  createUser(user: InsertUser) { return this.execute((s) => s.createUser(user)); }
+  getAllSellers() { return this.execute((s) => s.getAllSellers()); }
+  getDeletedSellers() { return this.execute((s) => s.getDeletedSellers()); }
+  getSellerById(id: number) { return this.execute((s) => s.getSellerById(id)); }
+  createSeller(seller: InsertSeller & { expiryDate: string }) { return this.execute((s) => s.createSeller(seller)); }
+  updateSeller(id: number, seller: Partial<InsertSeller & { expiryDate: string; status?: string; renewalStartDate?: string | null }>) { return this.execute((s) => s.updateSeller(id, seller)); }
+  softDeleteSeller(id: number) { return this.execute((s) => s.softDeleteSeller(id)); }
+  deleteSeller(id: number) { return this.execute((s) => s.deleteSeller(id)); }
+  restoreSeller(id: number) { return this.execute((s) => s.restoreSeller(id)); }
+  searchSellers(query: string) { return this.execute((s) => s.searchSellers(query)); }
+  getSetting(key: string) { return this.execute((s) => s.getSetting(key)); }
+  setSetting(key: string, value: string) { return this.execute((s) => s.setSetting(key, value)); }
+  getSettings(keys: string[]) { return this.execute((s) => s.getSettings(keys)); }
+  createSellerApplication(application: InsertSellerApplication) { return this.execute((s) => s.createSellerApplication(application)); }
+  getAllSellerApplications() { return this.execute((s) => s.getAllSellerApplications()); }
+  getSellerApplicationById(id: number) { return this.execute((s) => s.getSellerApplicationById(id)); }
+  updateSellerApplicationStatus(id: number, status: string) { return this.execute((s) => s.updateSellerApplicationStatus(id, status)); }
+  updateSellerApplicationEmail(id: number, email: string) { return this.execute((s) => s.updateSellerApplicationEmail(id, email)); }
+  approveApplicationWithSeller(applicationId: number, sellerData: InsertSeller & { expiryDate: string; nidDocument?: string | null }) { return this.execute((s) => s.approveApplicationWithSeller(applicationId, sellerData)); }
+  approveApplicationWithExistingSeller(applicationId: number, sellerId: number, sellerUpdates: Partial<InsertSeller & { expiryDate: string; status?: string; renewalStartDate?: string | null; nidDocument?: string | null }>) { return this.execute((s) => s.approveApplicationWithExistingSeller(applicationId, sellerId, sellerUpdates)); }
+  clearApplicationNidFileUrl(id: number) { return this.execute((s) => s.clearApplicationNidFileUrl(id)); }
+  clearApplicationFiles(id: number) { return this.execute((s) => s.clearApplicationFiles(id)); }
+  getSellerByPhone(phone: string) { return this.execute((s) => s.getSellerByPhone(phone)); }
+  getSellerByCode(code: string) { return this.execute((s) => s.getSellerByCode(code)); }
+  deleteSellerApplication(id: number) { return this.execute((s) => s.deleteSellerApplication(id)); }
+  updateUserPassword(id: string, hashedPassword: string) { return this.execute((s) => s.updateUserPassword(id, hashedPassword)); }
+  getUserCount() { return this.execute((s) => s.getUserCount()); }
+  getAllUsers() { return this.execute((s) => s.getAllUsers()); }
+  getSellersWithEmail() { return this.execute((s) => s.getSellersWithEmail()); }
+  hasReminderBeenSent(sellerId: number, reminderType: string, date: string) { return this.execute((s) => s.hasReminderBeenSent(sellerId, reminderType, date)); }
+  logReminderSent(sellerId: number, reminderType: string, date: string) { return this.execute((s) => s.logReminderSent(sellerId, reminderType, date)); }
+  getAndIncrementSerial() { return this.execute((s) => s.getAndIncrementSerial()); }
+  createRenewalApplication(data: InsertSellerRenewalApplication) { return this.execute((s) => s.createRenewalApplication(data)); }
+  getAllRenewalApplications() { return this.execute((s) => s.getAllRenewalApplications()); }
+  getRenewalApplicationById(id: number) { return this.execute((s) => s.getRenewalApplicationById(id)); }
+  updateRenewalApplicationStatus(id: number, status: string) { return this.execute((s) => s.updateRenewalApplicationStatus(id, status)); }
+  softDeleteRenewalApplication(id: number) { return this.execute((s) => s.softDeleteRenewalApplication(id)); }
+  createEmailScheduleEntries(entries: { sellerId: number; sendAt: string; reminderType: string; emailType: string }[]) { return this.execute((s) => s.createEmailScheduleEntries(entries)); }
+  getPendingScheduledEmails() { return this.execute((s) => s.getPendingScheduledEmails()); }
+  markScheduledEmailStatus(id: number, status: string) { return this.execute((s) => s.markScheduledEmailStatus(id, status)); }
+  cancelPendingEmailsForSeller(sellerId: number) { return this.execute((s) => s.cancelPendingEmailsForSeller(sellerId)); }
+  hasPendingScheduleForSeller(sellerId: number) { return this.execute((s) => s.hasPendingScheduleForSeller(sellerId)); }
+  getNextPendingEmailPerSeller() { return this.execute((s) => s.getNextPendingEmailPerSeller()); }
+  createEmailLog(data: { resendEmailId?: string; recipientEmail: string; sellerName: string; sellerCode: string; subject: string; emailType: string }) { return this.execute((s) => s.createEmailLog(data)); }
+  updateEmailLogStatus(resendEmailId: string, status: string) { return this.execute((s) => s.updateEmailLogStatus(resendEmailId, status)); }
+  getEmailLogs() { return this.execute((s) => s.getEmailLogs()); }
+  clearEmailLogs() { return this.execute((s) => s.clearEmailLogs()); }
+}
+
 function initStorage(): IStorage {
+  const memStorage = new MemStorage();
   const rawUrl = process.env.SUPABASE_DATABASE_URL || process.env.DATABASE_URL || "";
   if (!rawUrl) {
     console.warn("[AI Studio] No database URL configured — using in-memory mock storage");
-    return new MemStorage();
+    return memStorage;
   }
 
   try {
@@ -890,7 +974,7 @@ function initStorage(): IStorage {
     });
 
     pool.on("error", (err) => {
-      console.error("[DB] Unexpected PostgreSQL pool error:", err.message);
+      console.warn("[DB] Pool background error:", err?.message || err);
     });
 
     const RETRYABLE_CODES = new Set(["ECONNRESET", "ECONNREFUSED", "ETIMEDOUT", "EPIPE", "57P01", "08006", "08001", "08004"]);
@@ -921,11 +1005,13 @@ function initStorage(): IStorage {
     };
 
     const db = drizzle(pool);
-    return new DatabaseStorage(pool, db);
+    const dbStorage = new DatabaseStorage(pool, db);
+    return new ResilientStorage(dbStorage, memStorage);
   } catch (err) {
     console.warn("[AI Studio] Database initialization failed — falling back to mock storage:", err);
-    return new MemStorage();
+    return memStorage;
   }
 }
 
 export const storage: IStorage = initStorage();
+

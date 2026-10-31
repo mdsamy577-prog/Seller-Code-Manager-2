@@ -201,7 +201,11 @@ export async function initApp() {
     }
 
     if (process.env.NODE_ENV !== "production") {
-      await seedDatabase();
+      try {
+        await seedDatabase();
+      } catch (err: any) {
+        console.warn("[Seed] Seeding warning:", err?.message || err);
+      }
     }
 
     await registerRoutes(httpServer, app);
@@ -253,20 +257,37 @@ const isServerlessEnvironment = Boolean(
 );
 
 if (!isServerlessEnvironment) {
-  initApp().then(async () => {
-    const port = parseInt(process.env.PORT || "3000", 10);
-    httpServer.listen(port, "0.0.0.0", async () => {
-      log(`serving on port ${port}`);
-      try {
-        const { startCronJobs } = await import("./cron");
-        startCronJobs();
-      } catch (err) {
-        console.warn("[Cron] Cron jobs could not be started:", err);
+  const getPort = () => {
+    if (process.env.NODE_ENV === "production" && process.env.PORT && process.env.PORT !== "8080") {
+      return parseInt(process.env.PORT, 10);
+    }
+    return 3000;
+  };
+
+  initApp()
+    .then(async () => {
+      const port = getPort();
+      if (!httpServer.listening) {
+        httpServer.listen(port, "0.0.0.0", async () => {
+          log(`serving on port ${port}`);
+          try {
+            const { startCronJobs } = await import("./cron");
+            startCronJobs();
+          } catch (err) {
+            console.warn("[Cron] Cron jobs could not be started:", err);
+          }
+        });
+      }
+    })
+    .catch((err) => {
+      console.error("Failed to start server:", err);
+      const port = getPort();
+      if (!httpServer.listening) {
+        httpServer.listen(port, "0.0.0.0", () => {
+          log(`[Recovery] serving on port ${port} after init error`);
+        });
       }
     });
-  }).catch((err) => {
-    console.error("Failed to start server:", err);
-  });
 }
 
 export { app, httpServer };

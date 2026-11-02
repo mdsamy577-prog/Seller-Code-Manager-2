@@ -160,22 +160,15 @@ export async function initApp() {
     // Ensure new tables exist (idempotent migrations)
     try {
       const { Pool } = await import("pg");
+      const { parseSupabaseUrl } = await import("./storage");
       const rawUrl = process.env.SUPABASE_DATABASE_URL || process.env.DATABASE_URL || "";
       if (rawUrl) {
-        const withoutScheme = rawUrl.replace(/^postgresql:\/\//, "");
-        const lastAt = withoutScheme.lastIndexOf("@");
-        const userInfo = withoutScheme.substring(0, lastAt);
-        const hostInfo = withoutScheme.substring(lastAt + 1);
-        const colonInUser = userInfo.indexOf(":");
-        const user = userInfo.substring(0, colonInUser);
-        const password = userInfo.substring(colonInUser + 1);
-        const slashInHost = hostInfo.indexOf("/");
-        const hostPort = slashInHost === -1 ? hostInfo : hostInfo.substring(0, slashInHost);
-        const database = slashInHost === -1 ? "postgres" : hostInfo.substring(slashInHost + 1);
-        const colonInHost = hostPort.lastIndexOf(":");
-        const host = colonInHost === -1 ? hostPort : hostPort.substring(0, colonInHost);
-        const port = colonInHost === -1 ? 5432 : parseInt(hostPort.substring(colonInHost + 1), 10);
-        const migPool = new Pool({ user, password, host, port, database, ssl: { rejectUnauthorized: false }, max: 1, connectionTimeoutMillis: 3000 });
+        const migPool = new Pool({
+          ...parseSupabaseUrl(rawUrl),
+          ssl: { rejectUnauthorized: false },
+          max: 1,
+          connectionTimeoutMillis: 3000,
+        });
         await migPool.query(`ALTER TABLE seller_applications ADD COLUMN IF NOT EXISTS personal_facebook_link TEXT`);
         await migPool.query(`CREATE INDEX IF NOT EXISTS seller_applications_status_idx ON seller_applications(status)`);
         await migPool.query(`CREATE INDEX IF NOT EXISTS seller_applications_created_at_idx ON seller_applications(created_at)`);

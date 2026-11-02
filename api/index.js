@@ -62093,35 +62093,64 @@ var init_cloudinary = __esm({
 });
 
 // server/storage.ts
+var storage_exports = {};
+__export(storage_exports, {
+  DatabaseStorage: () => DatabaseStorage,
+  MemStorage: () => MemStorage,
+  ResilientStorage: () => ResilientStorage,
+  deleteCloudinaryFile: () => deleteCloudinaryFile,
+  deleteFileFromCloudflare: () => deleteCloudinaryFile,
+  parseSupabaseUrl: () => parseSupabaseUrl,
+  storage: () => storage
+});
 function parseSupabaseUrl(raw) {
-  const withoutScheme = raw.replace(/^postgresql:\/\//, "");
+  const withoutScheme = raw.replace(/^postgres(ql)?:\/\//, "");
   const lastAt = withoutScheme.lastIndexOf("@");
   const userInfo = withoutScheme.substring(0, lastAt);
   const hostInfo = withoutScheme.substring(lastAt + 1);
   const colonInUser = userInfo.indexOf(":");
-  const user = userInfo.substring(0, colonInUser);
-  const password = userInfo.substring(colonInUser + 1);
+  let user = userInfo.substring(0, colonInUser);
+  let password = userInfo.substring(colonInUser + 1);
+  try {
+    if (user.includes("%")) user = decodeURIComponent(user);
+    if (password.includes("%")) password = decodeURIComponent(password);
+  } catch {
+  }
   const slashInHost = hostInfo.indexOf("/");
   const hostPort = slashInHost === -1 ? hostInfo : hostInfo.substring(0, slashInHost);
   const database = slashInHost === -1 ? "postgres" : hostInfo.substring(slashInHost + 1);
   const colonInHost = hostPort.lastIndexOf(":");
-  const host = colonInHost === -1 ? hostPort : hostPort.substring(0, colonInHost);
-  const port = colonInHost === -1 ? 5432 : parseInt(hostPort.substring(colonInHost + 1), 10);
+  let host = colonInHost === -1 ? hostPort : hostPort.substring(0, colonInHost);
+  let port = colonInHost === -1 ? 6543 : parseInt(hostPort.substring(colonInHost + 1), 10);
+  if (user.includes("fcjvzcinptnsukvakyhn") && host.includes("aws-0-ap-southeast-1.pooler.supabase.com")) {
+    console.warn("[DB] Correcting Supabase pooler host from aws-0 to aws-1 for project fcjvzcinptnsukvakyhn");
+    host = "aws-1-ap-southeast-1.pooler.supabase.com";
+  }
+  if (host.includes("db.fcjvzcinptnsukvakyhn.supabase.co")) {
+    console.warn("[DB] Routing direct host to transaction pooler aws-1-ap-southeast-1.pooler.supabase.com:6543");
+    host = "aws-1-ap-southeast-1.pooler.supabase.com";
+    port = 6543;
+  }
   return { user, password, host, port, database };
 }
 function initStorage() {
   const memStorage = new MemStorage();
   const rawUrl = process.env.SUPABASE_DATABASE_URL || process.env.DATABASE_URL || "";
+  const isProduction = true;
   if (!rawUrl) {
-    console.warn("[AI Studio] No database URL configured \u2014 using in-memory mock storage");
+    if (isProduction) {
+      console.error("[CRITICAL] Neither SUPABASE_DATABASE_URL nor DATABASE_URL is set in production!");
+      return new ResilientStorage(null, memStorage);
+    }
+    console.warn("[AI Studio] No database URL configured \u2014 using in-memory mock storage for local dev");
     return memStorage;
   }
   try {
     const poolConfig = {
       ...parseSupabaseUrl(rawUrl),
-      max: 10,
+      max: isProduction ? 3 : 10,
       idleTimeoutMillis: 3e4,
-      connectionTimeoutMillis: 5e3,
+      connectionTimeoutMillis: 1e4,
       ssl: { rejectUnauthorized: false }
     };
     const pool = new esm_default.Pool(poolConfig);
@@ -62160,6 +62189,10 @@ function initStorage() {
     const dbStorage = new DatabaseStorage(pool, db);
     return new ResilientStorage(dbStorage, memStorage);
   } catch (err) {
+    if (isProduction) {
+      console.error("[CRITICAL] Database initialization failed in production:", err);
+      return new ResilientStorage(null, memStorage);
+    }
     console.warn("[AI Studio] Database initialization failed \u2014 falling back to mock storage:", err);
     return memStorage;
   }
@@ -62807,28 +62840,29 @@ var init_storage = __esm({
     ResilientStorage = class {
       dbStorage = null;
       memStorage;
-      useMemoryOnly = false;
+      isProduction;
       constructor(dbStorage, memStorage) {
         this.dbStorage = dbStorage;
         this.memStorage = memStorage;
-        if (!dbStorage) {
-          this.useMemoryOnly = true;
-        }
-      }
-      fallback(err) {
-        if (!this.useMemoryOnly) {
-          console.warn(`[DB] Database error (${err?.message || err}) \u2014 seamlessly falling back to in-memory storage`);
-          this.useMemoryOnly = true;
-        }
+        this.isProduction = true;
       }
       async execute(op) {
-        if (this.useMemoryOnly || !this.dbStorage) {
+        if (!this.dbStorage) {
+          if (this.isProduction) {
+            const err = new Error("Database connection is not configured in production.");
+            err.code = "ECONNREFUSED";
+            throw err;
+          }
           return op(this.memStorage);
         }
         try {
           return await op(this.dbStorage);
         } catch (err) {
-          this.fallback(err);
+          if (this.isProduction) {
+            console.error(`[DB] Production database error (${err?.code || "NO_CODE"}): ${err?.message || err}`);
+            throw err;
+          }
+          console.warn(`[DB] Development database error (${err?.message || err}) \u2014 falling back to in-memory storage`);
           return op(this.memStorage);
         }
       }
@@ -92003,7 +92037,11 @@ async function registerRoutes(httpServer2, app2) {
       const rotated = rotateArray(sanitized, timeSlot);
       res.json(rotated);
     } catch (error) {
-      res.status(500).json({ message: "Failed to fetch verified sellers" });
+      console.error("[API] Error fetching verified sellers:", error);
+      const isDbError = error?.code === "ENOTFOUND" || error?.code === "ECONNREFUSED" || error?.code === "ETIMEDOUT" || error?.code === "XX000" || error?.code === "28P01" || typeof error?.message === "string" && (error.message.includes("tenant/user") || error.message.includes("Database connection is not configured") || error.message.includes("Connection terminated"));
+      res.status(isDbError ? 503 : 500).json({
+        message: isDbError ? "Database service unavailable. Please try again later." : "Failed to fetch verified sellers"
+      });
     }
   });
   app2.get("/api/public/verify/:code", async (req, res) => {
@@ -92104,12 +92142,14 @@ async function registerRoutes(httpServer2, app2) {
         }
       });
     } catch (error) {
-      res.status(500).json({
+      console.error("[API] Error verifying seller:", error);
+      const isDbError = error?.code === "ENOTFOUND" || error?.code === "ECONNREFUSED" || error?.code === "ETIMEDOUT" || error?.code === "XX000";
+      res.status(isDbError ? 503 : 500).json({
         found: false,
         isValid: false,
         isVerified: false,
         isExpired: false,
-        message: "Verification check failed"
+        message: isDbError ? "Database service unavailable. Please try again later." : "Verification check failed"
       });
     }
   });
@@ -92176,7 +92216,12 @@ async function registerRoutes(httpServer2, app2) {
         results: matched.map(formatPublicResult)
       });
     } catch (error) {
-      res.status(500).json({ results: [], message: "Search failed" });
+      console.error("[API] Error searching sellers:", error);
+      const isDbError = error?.code === "ENOTFOUND" || error?.code === "ECONNREFUSED" || error?.code === "ETIMEDOUT" || error?.code === "XX000";
+      res.status(isDbError ? 503 : 500).json({
+        results: [],
+        message: isDbError ? "Database service unavailable. Please try again later." : "Search failed"
+      });
     }
   });
   app2.get("/api/sellers/lookup", async (req, res) => {
@@ -93429,22 +93474,15 @@ async function initApp() {
   initPromise = (async () => {
     try {
       const { Pool: Pool3 } = await Promise.resolve().then(() => (init_esm(), esm_exports));
+      const { parseSupabaseUrl: parseSupabaseUrl2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
       const rawUrl = process.env.SUPABASE_DATABASE_URL || process.env.DATABASE_URL || "";
       if (rawUrl) {
-        const withoutScheme = rawUrl.replace(/^postgresql:\/\//, "");
-        const lastAt = withoutScheme.lastIndexOf("@");
-        const userInfo = withoutScheme.substring(0, lastAt);
-        const hostInfo = withoutScheme.substring(lastAt + 1);
-        const colonInUser = userInfo.indexOf(":");
-        const user = userInfo.substring(0, colonInUser);
-        const password = userInfo.substring(colonInUser + 1);
-        const slashInHost = hostInfo.indexOf("/");
-        const hostPort = slashInHost === -1 ? hostInfo : hostInfo.substring(0, slashInHost);
-        const database = slashInHost === -1 ? "postgres" : hostInfo.substring(slashInHost + 1);
-        const colonInHost = hostPort.lastIndexOf(":");
-        const host = colonInHost === -1 ? hostPort : hostPort.substring(0, colonInHost);
-        const port = colonInHost === -1 ? 5432 : parseInt(hostPort.substring(colonInHost + 1), 10);
-        const migPool = new Pool3({ user, password, host, port, database, ssl: { rejectUnauthorized: false }, max: 1, connectionTimeoutMillis: 3e3 });
+        const migPool = new Pool3({
+          ...parseSupabaseUrl2(rawUrl),
+          ssl: { rejectUnauthorized: false },
+          max: 1,
+          connectionTimeoutMillis: 3e3
+        });
         await migPool.query(`ALTER TABLE seller_applications ADD COLUMN IF NOT EXISTS personal_facebook_link TEXT`);
         await migPool.query(`CREATE INDEX IF NOT EXISTS seller_applications_status_idx ON seller_applications(status)`);
         await migPool.query(`CREATE INDEX IF NOT EXISTS seller_applications_created_at_idx ON seller_applications(created_at)`);

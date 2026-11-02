@@ -7,7 +7,7 @@ import { hashPassword, verifyPassword, generateAuthToken } from "./auth";
 import { sendSellerCodeEmail, sendExtensionEmail, sendRenewalApprovalEmail, sendRenewalRejectionEmail, sendApplicationRejectionEmail } from "./email";
 import { scheduleSellerEmails } from "./scheduler";
 import multer from "multer";
-import { uploadNidFile, uploadProfilePhoto, deleteCloudinaryFile } from "./cloudinary";
+import { uploadNidFile, uploadProfilePhoto, deleteCloudinaryFile, cleanDisplayValue } from "./cloudinary";
 import rateLimit from "express-rate-limit";
 
 const upload = multer({
@@ -360,8 +360,22 @@ export async function registerRoutes(
       const timeSlot = Math.floor(Date.now() / (15 * 60 * 1000));
       const rotated = rotateArray(sanitized, timeSlot);
       res.json(rotated);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to fetch verified sellers" });
+    } catch (error: any) {
+      console.error("[API] Error fetching verified sellers:", error);
+      const isDbError =
+        error?.code === "ENOTFOUND" ||
+        error?.code === "ECONNREFUSED" ||
+        error?.code === "ETIMEDOUT" ||
+        error?.code === "XX000" ||
+        error?.code === "28P01" ||
+        (typeof error?.message === "string" && (
+          error.message.includes("tenant/user") ||
+          error.message.includes("Database connection is not configured") ||
+          error.message.includes("Connection terminated")
+        ));
+      res.status(isDbError ? 503 : 500).json({
+        message: isDbError ? "Database service unavailable. Please try again later." : "Failed to fetch verified sellers"
+      });
     }
   });
 
@@ -480,13 +494,19 @@ export async function registerRoutes(
           sellerType: (seller as any).sellerType || (seller.facebookLink?.includes("page") ? "facebook_business_page" : "personal_facebook_id"),
         }
       });
-    } catch (error) {
-      res.status(500).json({
+    } catch (error: any) {
+      console.error("[API] Error verifying seller:", error);
+      const isDbError =
+        error?.code === "ENOTFOUND" ||
+        error?.code === "ECONNREFUSED" ||
+        error?.code === "ETIMEDOUT" ||
+        error?.code === "XX000";
+      res.status(isDbError ? 503 : 500).json({
         found: false,
         isValid: false,
         isVerified: false,
         isExpired: false,
-        message: "Verification check failed"
+        message: isDbError ? "Database service unavailable. Please try again later." : "Verification check failed"
       });
     }
   });
@@ -565,8 +585,17 @@ export async function registerRoutes(
       return res.json({
         results: matched.map(formatPublicResult)
       });
-    } catch (error) {
-      res.status(500).json({ results: [], message: "Search failed" });
+    } catch (error: any) {
+      console.error("[API] Error searching sellers:", error);
+      const isDbError =
+        error?.code === "ENOTFOUND" ||
+        error?.code === "ECONNREFUSED" ||
+        error?.code === "ETIMEDOUT" ||
+        error?.code === "XX000";
+      res.status(isDbError ? 503 : 500).json({
+        results: [],
+        message: isDbError ? "Database service unavailable. Please try again later." : "Search failed"
+      });
     }
   });
 
@@ -1575,18 +1604,18 @@ export async function registerRoutes(
         return res.status(400).json({ message: "No file uploaded" });
       }
       const { phone, name } = req.body;
-      if (!phone) {
-        return res.status(400).json({ message: "phone is required" });
-      }
+      const cleanName = cleanDisplayValue(name, "Verified Seller");
+      const cleanPhone = cleanDisplayValue(phone, "Not Provided");
       const ext = req.file.mimetype === "image/png" ? "png" : "jpg";
       const timestamp = Math.floor(Date.now() / 1000);
-      const publicId = `TEMP_${phone}_${timestamp}.${ext}`;
+      const safePhoneForId = cleanPhone.replace(/[^0-9+]/g, "") || "doc";
+      const publicId = `TEMP_${safePhoneForId}_${timestamp}.${ext}`;
       const secureUrl = await uploadNidFile(
         req.file.buffer,
         req.file.mimetype,
         publicId,
-        name || "",
-        phone
+        cleanName,
+        cleanPhone
       );
       res.json({ url: secureUrl });
     } catch (error: any) {

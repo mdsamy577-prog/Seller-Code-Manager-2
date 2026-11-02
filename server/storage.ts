@@ -496,20 +496,39 @@ export class MemStorage implements IStorage {
   }
 }
 
-function parseSupabaseUrl(raw: string): pg.PoolConfig {
-  const withoutScheme = raw.replace(/^postgresql:\/\//, "");
+export function parseSupabaseUrl(raw: string): pg.PoolConfig {
+  const withoutScheme = raw.replace(/^postgres(ql)?:\/\//, "");
   const lastAt = withoutScheme.lastIndexOf("@");
   const userInfo = withoutScheme.substring(0, lastAt);
   const hostInfo = withoutScheme.substring(lastAt + 1);
   const colonInUser = userInfo.indexOf(":");
-  const user = userInfo.substring(0, colonInUser);
-  const password = userInfo.substring(colonInUser + 1);
+  let user = userInfo.substring(0, colonInUser);
+  let password = userInfo.substring(colonInUser + 1);
+  try {
+    if (user.includes("%")) user = decodeURIComponent(user);
+    if (password.includes("%")) password = decodeURIComponent(password);
+  } catch {}
+
   const slashInHost = hostInfo.indexOf("/");
   const hostPort = slashInHost === -1 ? hostInfo : hostInfo.substring(0, slashInHost);
   const database = slashInHost === -1 ? "postgres" : hostInfo.substring(slashInHost + 1);
   const colonInHost = hostPort.lastIndexOf(":");
-  const host = colonInHost === -1 ? hostPort : hostPort.substring(0, colonInHost);
-  const port = colonInHost === -1 ? 5432 : parseInt(hostPort.substring(colonInHost + 1), 10);
+  let host = colonInHost === -1 ? hostPort : hostPort.substring(0, colonInHost);
+  let port = colonInHost === -1 ? 6543 : parseInt(hostPort.substring(colonInHost + 1), 10);
+
+  // If host is misconfigured to aws-0 for this Supabase project, correct to aws-1 where the tenant is actually provisioned
+  if (user.includes("fcjvzcinptnsukvakyhn") && host.includes("aws-0-ap-southeast-1.pooler.supabase.com")) {
+    console.warn("[DB] Correcting Supabase pooler host from aws-0 to aws-1 for project fcjvzcinptnsukvakyhn");
+    host = "aws-1-ap-southeast-1.pooler.supabase.com";
+  }
+
+  // Redirect direct hostname (db.fcjvzcinptnsukvakyhn.supabase.co) to transaction pooler for IPv4/serverless compatibility
+  if (host.includes("db.fcjvzcinptnsukvakyhn.supabase.co")) {
+    console.warn("[DB] Routing direct host to transaction pooler aws-1-ap-southeast-1.pooler.supabase.com:6543");
+    host = "aws-1-ap-southeast-1.pooler.supabase.com";
+    port = 6543;
+  }
+
   return { user, password, host, port, database };
 }
 
@@ -863,31 +882,36 @@ export class DatabaseStorage implements IStorage {
 export class ResilientStorage implements IStorage {
   private dbStorage: DatabaseStorage | null = null;
   private memStorage: MemStorage;
-  private useMemoryOnly: boolean = false;
+  private isProduction: boolean;
 
   constructor(dbStorage: DatabaseStorage | null, memStorage: MemStorage) {
     this.dbStorage = dbStorage;
     this.memStorage = memStorage;
-    if (!dbStorage) {
-      this.useMemoryOnly = true;
-    }
-  }
-
-  private fallback(err: any): void {
-    if (!this.useMemoryOnly) {
-      console.warn(`[DB] Database error (${err?.message || err}) — seamlessly falling back to in-memory storage`);
-      this.useMemoryOnly = true;
-    }
+    this.isProduction =
+      process.env.NODE_ENV === "production" ||
+      process.env.SERVERLESS === "true" ||
+      Boolean(process.env.VERCEL);
   }
 
   private async execute<T>(op: (s: IStorage) => Promise<T>): Promise<T> {
-    if (this.useMemoryOnly || !this.dbStorage) {
+    if (!this.dbStorage) {
+      if (this.isProduction) {
+        const err: any = new Error("Database connection is not configured in production.");
+        err.code = "ECONNREFUSED";
+        throw err;
+      }
       return op(this.memStorage);
     }
+
     try {
       return await op(this.dbStorage);
     } catch (err: any) {
-      this.fallback(err);
+      if (this.isProduction) {
+        console.error(`[DB] Production database error (${err?.code || 'NO_CODE'}): ${err?.message || err}`);
+        // In production, strictly throw the error: NEVER silently return empty/mock data!
+        throw err;
+      }
+      console.warn(`[DB] Development database error (${err?.message || err}) — falling back to in-memory storage`);
       return op(this.memStorage);
     }
   }
@@ -946,17 +970,26 @@ export class ResilientStorage implements IStorage {
 function initStorage(): IStorage {
   const memStorage = new MemStorage();
   const rawUrl = process.env.SUPABASE_DATABASE_URL || process.env.DATABASE_URL || "";
+  const isProduction =
+    process.env.NODE_ENV === "production" ||
+    process.env.SERVERLESS === "true" ||
+    Boolean(process.env.VERCEL);
+
   if (!rawUrl) {
-    console.warn("[AI Studio] No database URL configured — using in-memory mock storage");
+    if (isProduction) {
+      console.error("[CRITICAL] Neither SUPABASE_DATABASE_URL nor DATABASE_URL is set in production!");
+      return new ResilientStorage(null, memStorage);
+    }
+    console.warn("[AI Studio] No database URL configured — using in-memory mock storage for local dev");
     return memStorage;
   }
 
   try {
     const poolConfig: pg.PoolConfig = {
       ...parseSupabaseUrl(rawUrl),
-      max: 10,
+      max: isProduction ? 3 : 10,
       idleTimeoutMillis: 30000,
-      connectionTimeoutMillis: 5000,
+      connectionTimeoutMillis: 10000,
       ssl: { rejectUnauthorized: false },
     };
 
@@ -1008,6 +1041,10 @@ function initStorage(): IStorage {
     const dbStorage = new DatabaseStorage(pool, db);
     return new ResilientStorage(dbStorage, memStorage);
   } catch (err) {
+    if (isProduction) {
+      console.error("[CRITICAL] Database initialization failed in production:", err);
+      return new ResilientStorage(null, memStorage);
+    }
     console.warn("[AI Studio] Database initialization failed — falling back to mock storage:", err);
     return memStorage;
   }

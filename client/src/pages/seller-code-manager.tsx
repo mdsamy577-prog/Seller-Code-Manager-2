@@ -39,7 +39,9 @@ import {
   User,
   Image as ImageIcon,
   Loader2,
+  FileText,
 } from "lucide-react";
+import { NidViewerModal } from "@/components/nid-viewer-modal";
 import { compressImage, isCompressibleImage } from "@/lib/image-compressor";
 import { SiMeta } from "react-icons/si";
 import { useLocation } from "wouter";
@@ -1357,6 +1359,7 @@ export default function SellerCodeManager() {
   const [archivedOpen, setArchivedOpen] = useState(false);
   const [archivedSearch, setArchivedSearch] = useState("");
   const [permanentDeleteId, setPermanentDeleteId] = useState<number | null>(null);
+  const [nidModalSeller, setNidModalSeller] = useState<Seller | null>(null);
   const { toast } = useToast();
 
   const logoutMutation = useMutation({
@@ -1787,6 +1790,17 @@ export default function SellerCodeManager() {
                           <TableCell><StatusBadge expiryDate={seller.expiryDate} /></TableCell>
                           <TableCell>
                             <div className="flex items-center justify-end gap-1">
+                              {seller.nidDocument && (
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  onClick={() => setNidModalSeller(seller)}
+                                  data-testid={`button-view-nid-${seller.id}`}
+                                  title="View NID Document"
+                                >
+                                  <FileText className="h-4 w-4 text-violet-600" />
+                                </Button>
+                              )}
                               <Button size="icon" variant="ghost" onClick={() => { setExtendSeller(seller); setExtendMonths(1); }} data-testid={`button-extend-${seller.id}`} title="Extend subscription">
                                 <CalendarPlus className="h-4 w-4 text-emerald-600" />
                               </Button>
@@ -1824,6 +1838,18 @@ export default function SellerCodeManager() {
                         </div>
                         <div className="flex items-center gap-1 shrink-0">
                           <StatusBadge expiryDate={seller.expiryDate} />
+                          {seller.nidDocument && (
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-7 w-7"
+                              onClick={() => setNidModalSeller(seller)}
+                              data-testid={`button-view-nid-mobile-${seller.id}`}
+                              title="View NID Document"
+                            >
+                              <FileText className="h-3.5 w-3.5 text-violet-600" />
+                            </Button>
+                          )}
                           <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => { setExtendSeller(seller); setExtendMonths(1); }} data-testid={`button-extend-${seller.id}`} title="Extend subscription">
                             <CalendarPlus className="h-3.5 w-3.5 text-emerald-600" />
                           </Button>
@@ -2152,6 +2178,18 @@ export default function SellerCodeManager() {
                         )}
                       </div>
                       <div className="flex items-center gap-1 shrink-0">
+                        {seller.nidDocument && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-8 text-violet-600 hover:text-violet-700"
+                            onClick={() => setNidModalSeller(seller)}
+                            data-testid={`button-view-archived-nid-${seller.id}`}
+                            title="View NID Document"
+                          >
+                            <FileText className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
                         <Button
                           size="sm"
                           variant="outline"
@@ -2180,6 +2218,16 @@ export default function SellerCodeManager() {
             </div>
           </DialogContent>
         </Dialog>
+
+        {nidModalSeller && (
+          <NidViewerModal
+            url={nidModalSeller.nidDocument!}
+            title={`${nidModalSeller.name} - NID Document`}
+            sellerName={nidModalSeller.name}
+            phone={nidModalSeller.phone}
+            onClose={() => setNidModalSeller(null)}
+          />
+        )}
 
       </div>
     </div>

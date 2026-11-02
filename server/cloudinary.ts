@@ -20,6 +20,26 @@ function escapeXml(str: string): string {
     .replace(/'/g, "&apos;");
 }
 
+export function cleanDisplayValue(
+  val: string | undefined | null,
+  fallbackPlaceholder: string
+): string {
+  if (!val) return fallbackPlaceholder;
+  const trimmed = String(val).trim();
+  if (
+    trimmed === "" ||
+    trimmed === "0" ||
+    trimmed === "000" ||
+    /^0+$/.test(trimmed) ||
+    trimmed.toLowerCase() === "undefined" ||
+    trimmed.toLowerCase() === "null" ||
+    trimmed.toLowerCase() === "n/a"
+  ) {
+    return fallbackPlaceholder;
+  }
+  return trimmed;
+}
+
 async function stampTextOnImage(
   fileBuffer: Buffer,
   sellerName: string,
@@ -32,11 +52,14 @@ async function stampTextOnImage(
   const boxHeight = 72;
   const overlayY = Math.max(0, height - boxHeight);
 
+  const cleanName = cleanDisplayValue(sellerName, "Verified Seller");
+  const cleanPhone = cleanDisplayValue(phone, "Not Provided");
+
   const svgText = `
 <svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${boxHeight}">
   <rect width="${width}" height="${boxHeight}" fill="rgba(0,0,0,0.72)" />
-  <text x="14" y="26" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="bold" fill="#facc15">Name: ${escapeXml(sellerName)}</text>
-  <text x="14" y="56" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="bold" fill="#facc15">Phone: ${escapeXml(phone)}</text>
+  <text x="14" y="26" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="bold" fill="#facc15">Name: ${escapeXml(cleanName)}</text>
+  <text x="14" y="56" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="bold" fill="#facc15">Phone: ${escapeXml(cleanPhone)}</text>
 </svg>`;
 
   const overlayBuffer = Buffer.from(svgText);

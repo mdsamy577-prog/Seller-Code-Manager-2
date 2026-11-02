@@ -33,74 +33,9 @@ import {
 } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 
+import { NidViewerModal } from "@/components/nid-viewer-modal";
+
 type Tab = "applications" | "renewals";
-
-function NidViewerModal({ url, onClose, title = "Document Preview" }: { url: string; onClose: () => void; title?: string }) {
-  const handleDownload = async () => {
-    try {
-      const response = await fetch(url);
-      const blob = await response.blob();
-      const blobUrl = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = blobUrl;
-      a.download = title.toLowerCase().replace(/[^a-z0-9]+/g, "-");
-      a.click();
-      URL.revokeObjectURL(blobUrl);
-    } catch {
-      window.open(url, "_blank");
-    }
-  };
-
-  return (
-    <div
-      className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
-      onClick={onClose}
-      data-testid="overlay-nid-modal"
-    >
-      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
-      <div
-        className="relative z-10 w-full max-w-2xl bg-white dark:bg-gray-900 rounded-xl shadow-2xl overflow-hidden flex flex-col"
-        style={{ maxHeight: "90vh" }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700 shrink-0">
-          <div className="flex items-center gap-2 text-sm font-semibold">
-            <FileText className="h-4 w-4 text-violet-500 shrink-0" />
-            <span>{title}</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <Button
-              size="sm"
-              variant="outline"
-              className="h-7 text-xs gap-1.5 px-2.5"
-              onClick={handleDownload}
-              data-testid="button-nid-modal-download"
-            >
-              <Download className="h-3 w-3" />
-              <span className="hidden sm:inline">Download</span>
-            </Button>
-            <button
-              onClick={onClose}
-              className="rounded-full p-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors ml-1"
-              data-testid="button-nid-modal-close"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          </div>
-        </div>
-        <div className="overflow-auto flex-1 flex items-center justify-center p-4 bg-gray-50 dark:bg-gray-800/50">
-          <img
-            src={url}
-            alt={title}
-            style={{ maxWidth: "100%", height: "auto" }}
-            className="rounded-md shadow-md"
-            data-testid="img-nid-preview"
-          />
-        </div>
-      </div>
-    </div>
-  );
-}
 
 const durationLabels: Record<string, string> = {
   "15_days": "15 Days",
@@ -559,7 +494,12 @@ export default function SellerApplications() {
   }, []);
 
   const [deleteId, setDeleteId] = useState<number | null>(null);
-  const [previewModal, setPreviewModal] = useState<{ url: string; title: string } | null>(null);
+  const [previewModal, setPreviewModal] = useState<{
+    url: string;
+    title: string;
+    name?: string;
+    phone?: string;
+  } | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const PAGE_SIZE = 25;
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
@@ -733,6 +673,8 @@ export default function SellerApplications() {
         <NidViewerModal
           url={previewModal.url}
           title={previewModal.title}
+          sellerName={previewModal.name}
+          phone={previewModal.phone}
           onClose={() => setPreviewModal(null)}
         />
       )}
@@ -994,7 +936,12 @@ export default function SellerApplications() {
                                     size="sm"
                                     variant="outline"
                                     className="h-6 text-xs px-1.5 text-violet-700 border-violet-300 hover:bg-violet-50 dark:text-violet-400 dark:border-violet-700 dark:hover:bg-violet-950"
-                                    onClick={() => setPreviewModal({ url: app.nidFileUrl!, title: `${app.name} - NID Document` })}
+                                    onClick={() => setPreviewModal({
+                                      url: app.nidFileUrl!,
+                                      title: `${app.name} - NID Document`,
+                                      name: app.name,
+                                      phone: app.phone,
+                                    })}
                                     data-testid={`button-view-nid-${app.id}`}
                                   >
                                     <FileText className="h-3 w-3 mr-1" />View
@@ -1087,7 +1034,12 @@ export default function SellerApplications() {
                               size="sm"
                               variant="outline"
                               className="h-8 text-xs text-violet-700 border-violet-300 hover:bg-violet-50 dark:text-violet-400 dark:border-violet-700 dark:hover:bg-violet-950"
-                              onClick={() => setPreviewModal({ url: app.nidFileUrl!, title: `${app.name} - NID Document` })}
+                              onClick={() => setPreviewModal({
+                                url: app.nidFileUrl!,
+                                title: `${app.name} - NID Document`,
+                                name: app.name,
+                                phone: app.phone,
+                              })}
                               data-testid={`button-view-nid-mobile-${app.id}`}
                             >
                               <FileText className="h-3.5 w-3.5 mr-1.5" />View

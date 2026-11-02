@@ -36,6 +36,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { Footer } from "@/components/footer";
+import { SocialCommunitySection } from "@/components/social-community-section";
 
 interface PublicSeller {
   id: number;
@@ -389,6 +390,9 @@ export default function PublicDirectory() {
             <a href="#how-it-works" className="hover:text-orange-600 transition-colors duration-200">
               কীভাবে কাজ করে
             </a>
+            <a href="#community" className="hover:text-orange-600 transition-colors duration-200">
+              কমিউনিটি
+            </a>
             <Link href="/apply" className="hover:text-orange-600 transition-colors duration-200">
               আবেদন করুন
             </Link>
@@ -444,6 +448,13 @@ export default function PublicDirectory() {
               className="block py-2 px-3 rounded-lg text-sm font-medium text-slate-800 dark:text-slate-200 hover:bg-orange-50 dark:hover:bg-slate-800"
             >
               💡 কীভাবে কাজ করে
+            </a>
+            <a
+              href="#community"
+              onClick={() => setMobileMenuOpen(false)}
+              className="block py-2 px-3 rounded-lg text-sm font-medium text-slate-800 dark:text-slate-200 hover:bg-orange-50 dark:hover:bg-slate-800"
+            >
+              👥 অফিশিয়াল কমিউনিটি
             </a>
             <Link
               href="/apply"
@@ -1143,7 +1154,7 @@ export default function PublicDirectory() {
                 ৩
               </div>
               <h3 className="font-bold text-base text-slate-900 dark:text-white mb-2">
-                ফেসবুক লিংক মিলিয়ে নিন
+                ফেসবুক প্রোফাইল মিলিয়ে নিন
               </h3>
               <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
                 সেলার কার্ডের ফেসবুক প্রোফাইল বাটনে ক্লিক করে মেসেজ পাঠানো অ্যাকাউন্টের সাথে মিলিয়ে নিশ্চিত হোন।
@@ -1253,6 +1264,9 @@ export default function PublicDirectory() {
           </div>
         </div>
       </section>
+
+      {/* Dynamic Social Community Section (Only rendered when active links exist) */}
+      <SocialCommunitySection />
 
       {/* Footer */}
       <Footer />

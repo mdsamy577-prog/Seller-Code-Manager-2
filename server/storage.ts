@@ -1,5 +1,5 @@
-import { type User, type InsertUser, type Seller, type InsertSeller, type InsertSellerApplication, type SellerApplication, type InsertSellerRenewalApplication, type SellerRenewalApplication, type EmailScheduleEntry, type EmailLog, users, sellers, appSettings, sellerApplications, emailReminderLog, sellerRenewalApplications, emailSchedule, emailLogs } from "@shared/schema";
-import { eq, or, ilike, count, and, ne, desc } from "drizzle-orm";
+import { type User, type InsertUser, type Seller, type InsertSeller, type InsertSellerApplication, type SellerApplication, type InsertSellerRenewalApplication, type SellerRenewalApplication, type EmailScheduleEntry, type EmailLog, type SocialCommunityLink, type InsertSocialCommunityLink, users, sellers, appSettings, sellerApplications, emailReminderLog, sellerRenewalApplications, emailSchedule, emailLogs, socialCommunityLinks } from "@shared/schema";
+import { eq, or, ilike, count, and, ne, desc, asc } from "drizzle-orm";
 import { sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import pg from "pg";
@@ -55,6 +55,13 @@ export interface IStorage {
   updateEmailLogStatus(resendEmailId: string, status: string): Promise<void>;
   getEmailLogs(): Promise<EmailLog[]>;
   clearEmailLogs(): Promise<void>;
+  getAllSocialCommunityLinks(): Promise<SocialCommunityLink[]>;
+  getActiveSocialCommunityLinks(): Promise<SocialCommunityLink[]>;
+  getSocialCommunityLinkById(id: number): Promise<SocialCommunityLink | undefined>;
+  createSocialCommunityLink(data: InsertSocialCommunityLink): Promise<SocialCommunityLink>;
+  updateSocialCommunityLink(id: number, data: Partial<InsertSocialCommunityLink>): Promise<SocialCommunityLink | undefined>;
+  deleteSocialCommunityLink(id: number): Promise<boolean>;
+  reorderSocialCommunityLinks(orderedIds: number[]): Promise<void>;
 }
 
 export class MemStorage implements IStorage {
@@ -71,6 +78,8 @@ export class MemStorage implements IStorage {
   private currentRenewalId = 1;
   private currentScheduleId = 1;
   private currentEmailLogId = 1;
+  private communityLinks: Map<number, SocialCommunityLink> = new Map();
+  private currentCommunityLinkId = 1;
 
   async getUser(id: string): Promise<User | undefined> {
     return this.users.get(id);
@@ -494,6 +503,65 @@ export class MemStorage implements IStorage {
   async clearEmailLogs(): Promise<void> {
     this.emailLogsList = [];
   }
+
+  async getAllSocialCommunityLinks(): Promise<SocialCommunityLink[]> {
+    return Array.from(this.communityLinks.values()).sort((a, b) => (a.displayOrder - b.displayOrder) || (a.id - b.id));
+  }
+
+  async getActiveSocialCommunityLinks(): Promise<SocialCommunityLink[]> {
+    return Array.from(this.communityLinks.values())
+      .filter((l) => l.isActive)
+      .sort((a, b) => (a.displayOrder - b.displayOrder) || (a.id - b.id));
+  }
+
+  async getSocialCommunityLinkById(id: number): Promise<SocialCommunityLink | undefined> {
+    return this.communityLinks.get(id);
+  }
+
+  async createSocialCommunityLink(data: InsertSocialCommunityLink): Promise<SocialCommunityLink> {
+    const id = this.currentCommunityLinkId++;
+    const now = new Date().toISOString();
+    const link: SocialCommunityLink = {
+      id,
+      platform: data.platform,
+      groupName: data.groupName,
+      description: data.description ?? null,
+      invitationUrl: data.invitationUrl,
+      isActive: data.isActive ?? true,
+      displayOrder: data.displayOrder ?? 0,
+      createdAt: now,
+      updatedAt: now,
+    };
+    this.communityLinks.set(id, link);
+    return link;
+  }
+
+  async updateSocialCommunityLink(id: number, data: Partial<InsertSocialCommunityLink>): Promise<SocialCommunityLink | undefined> {
+    const existing = this.communityLinks.get(id);
+    if (!existing) return undefined;
+    const updated: SocialCommunityLink = {
+      ...existing,
+      ...data,
+      updatedAt: new Date().toISOString(),
+    };
+    this.communityLinks.set(id, updated);
+    return updated;
+  }
+
+  async deleteSocialCommunityLink(id: number): Promise<boolean> {
+    return this.communityLinks.delete(id);
+  }
+
+  async reorderSocialCommunityLinks(orderedIds: number[]): Promise<void> {
+    orderedIds.forEach((id, index) => {
+      const link = this.communityLinks.get(id);
+      if (link) {
+        link.displayOrder = index;
+        link.updatedAt = new Date().toISOString();
+        this.communityLinks.set(id, link);
+      }
+    });
+  }
 }
 
 export function parseSupabaseUrl(raw: string): pg.PoolConfig {
@@ -877,6 +945,78 @@ export class DatabaseStorage implements IStorage {
   async clearEmailLogs(): Promise<void> {
     await this.db.delete(emailLogs);
   }
+
+  async getAllSocialCommunityLinks(): Promise<SocialCommunityLink[]> {
+    return await this.db
+      .select()
+      .from(socialCommunityLinks)
+      .orderBy(asc(socialCommunityLinks.displayOrder), asc(socialCommunityLinks.id));
+  }
+
+  async getActiveSocialCommunityLinks(): Promise<SocialCommunityLink[]> {
+    return await this.db
+      .select()
+      .from(socialCommunityLinks)
+      .where(eq(socialCommunityLinks.isActive, true))
+      .orderBy(asc(socialCommunityLinks.displayOrder), asc(socialCommunityLinks.id));
+  }
+
+  async getSocialCommunityLinkById(id: number): Promise<SocialCommunityLink | undefined> {
+    const res = await this.db
+      .select()
+      .from(socialCommunityLinks)
+      .where(eq(socialCommunityLinks.id, id));
+    return res[0];
+  }
+
+  async createSocialCommunityLink(data: InsertSocialCommunityLink): Promise<SocialCommunityLink> {
+    const now = new Date().toISOString();
+    const res = await this.db
+      .insert(socialCommunityLinks)
+      .values({
+        platform: data.platform,
+        groupName: data.groupName,
+        description: data.description ?? null,
+        invitationUrl: data.invitationUrl,
+        isActive: data.isActive ?? true,
+        displayOrder: data.displayOrder ?? 0,
+        createdAt: now,
+        updatedAt: now,
+      })
+      .returning();
+    return res[0];
+  }
+
+  async updateSocialCommunityLink(id: number, data: Partial<InsertSocialCommunityLink>): Promise<SocialCommunityLink | undefined> {
+    const now = new Date().toISOString();
+    const res = await this.db
+      .update(socialCommunityLinks)
+      .set({
+        ...data,
+        updatedAt: now,
+      })
+      .where(eq(socialCommunityLinks.id, id))
+      .returning();
+    return res[0];
+  }
+
+  async deleteSocialCommunityLink(id: number): Promise<boolean> {
+    const res = await this.db
+      .delete(socialCommunityLinks)
+      .where(eq(socialCommunityLinks.id, id))
+      .returning();
+    return res.length > 0;
+  }
+
+  async reorderSocialCommunityLinks(orderedIds: number[]): Promise<void> {
+    const now = new Date().toISOString();
+    for (let i = 0; i < orderedIds.length; i++) {
+      await this.db
+        .update(socialCommunityLinks)
+        .set({ displayOrder: i, updatedAt: now })
+        .where(eq(socialCommunityLinks.id, orderedIds[i]));
+    }
+  }
 }
 
 export class ResilientStorage implements IStorage {
@@ -965,6 +1105,13 @@ export class ResilientStorage implements IStorage {
   updateEmailLogStatus(resendEmailId: string, status: string) { return this.execute((s) => s.updateEmailLogStatus(resendEmailId, status)); }
   getEmailLogs() { return this.execute((s) => s.getEmailLogs()); }
   clearEmailLogs() { return this.execute((s) => s.clearEmailLogs()); }
+  getAllSocialCommunityLinks() { return this.execute((s) => s.getAllSocialCommunityLinks()); }
+  getActiveSocialCommunityLinks() { return this.execute((s) => s.getActiveSocialCommunityLinks()); }
+  getSocialCommunityLinkById(id: number) { return this.execute((s) => s.getSocialCommunityLinkById(id)); }
+  createSocialCommunityLink(data: InsertSocialCommunityLink) { return this.execute((s) => s.createSocialCommunityLink(data)); }
+  updateSocialCommunityLink(id: number, data: Partial<InsertSocialCommunityLink>) { return this.execute((s) => s.updateSocialCommunityLink(id, data)); }
+  deleteSocialCommunityLink(id: number) { return this.execute((s) => s.deleteSocialCommunityLink(id)); }
+  reorderSocialCommunityLinks(orderedIds: number[]) { return this.execute((s) => s.reorderSocialCommunityLinks(orderedIds)); }
 }
 
 function initStorage(): IStorage {
@@ -995,6 +1142,17 @@ function initStorage(): IStorage {
 
     const pool = new pg.Pool(poolConfig);
     pool.query(`
+      CREATE TABLE IF NOT EXISTS social_community_links (
+        id integer PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+        platform text NOT NULL,
+        group_name text NOT NULL,
+        description text,
+        invitation_url text NOT NULL,
+        is_active boolean NOT NULL DEFAULT true,
+        display_order integer NOT NULL DEFAULT 0,
+        created_at text NOT NULL DEFAULT now(),
+        updated_at text NOT NULL DEFAULT now()
+      );
       ALTER TABLE IF EXISTS sellers ADD COLUMN IF NOT EXISTS profile_image text;
       ALTER TABLE IF EXISTS sellers ADD COLUMN IF NOT EXISTS hide_profile_photo boolean DEFAULT false;
       ALTER TABLE IF EXISTS sellers ADD COLUMN IF NOT EXISTS nid_document text;

@@ -160,3 +160,40 @@ export const emailLogs = pgTable("email_logs", {
 
 export type EmailLog = typeof emailLogs.$inferSelect;
 
+export const socialCommunityLinks = pgTable("social_community_links", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  platform: text("platform").notNull(), // 'facebook' | 'messenger' | 'whatsapp' | 'telegram' | 'other'
+  groupName: text("group_name").notNull(),
+  description: text("description"),
+  invitationUrl: text("invitation_url").notNull(),
+  isActive: boolean("is_active").notNull().default(true),
+  displayOrder: integer("display_order").notNull().default(0),
+  createdAt: text("created_at").notNull().default(sql`now()`),
+  updatedAt: text("updated_at").notNull().default(sql`now()`),
+}, (table) => [
+  index("social_community_platform_idx").on(table.platform),
+  index("social_community_order_idx").on(table.displayOrder),
+]);
+
+export const insertSocialCommunityLinkSchema = createInsertSchema(socialCommunityLinks).pick({
+  platform: true,
+  groupName: true,
+  description: true,
+  invitationUrl: true,
+  isActive: true,
+  displayOrder: true,
+}).extend({
+  platform: z.enum(["facebook", "messenger", "whatsapp", "telegram", "other"]),
+  groupName: z.string().min(1, "Group name is required").max(120),
+  description: z.string().max(300).optional().nullable(),
+  invitationUrl: z.string().url("Must be a valid URL").refine(
+    (url) => url.startsWith("https://") || url.startsWith("http://"),
+    "URL must start with https:// or http://"
+  ),
+  isActive: z.boolean().optional().default(true),
+  displayOrder: z.number().int().optional().default(0),
+});
+
+export type InsertSocialCommunityLink = z.infer<typeof insertSocialCommunityLinkSchema>;
+export type SocialCommunityLink = typeof socialCommunityLinks.$inferSelect;
+

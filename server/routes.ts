@@ -1,7 +1,7 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertSellerSchema, insertSellerApplicationSchema, type Seller, type InsertSeller } from "@shared/schema";
+import { insertSellerSchema, insertSellerApplicationSchema, insertSocialCommunityLinkSchema, type Seller, type InsertSeller, type SocialCommunityLink } from "@shared/schema";
 import passport from "passport";
 import { hashPassword, verifyPassword, generateAuthToken } from "./auth";
 import { sendSellerCodeEmail, sendExtensionEmail, sendRenewalApprovalEmail, sendRenewalRejectionEmail, sendApplicationRejectionEmail } from "./email";
@@ -1777,6 +1777,212 @@ export async function registerRoutes(
       res.json({ message: "Email logs cleared" });
     } catch (error) {
       res.status(500).json({ message: "Failed to clear email logs" });
+    }
+  });
+
+  // ==========================================
+  // Social Media & Community Links Endpoints
+  // ==========================================
+
+  // Helper to validate external URLs safely
+  const isValidSafeUrl = (urlStr: string): boolean => {
+    try {
+      const u = new URL(urlStr);
+      return u.protocol === "http:" || u.protocol === "https:";
+    } catch {
+      return false;
+    }
+  };
+
+  // Public: Get all active community links
+  app.get("/api/public/community-links", async (_req, res) => {
+    try {
+      const links = await storage.getActiveSocialCommunityLinks();
+      // Ensure only safe http/https URLs are returned
+      const safeLinks = links.filter((l) => isValidSafeUrl(l.invitationUrl));
+      res.json(safeLinks);
+    } catch (error) {
+      console.error("[Community] Error fetching public community links:", error);
+      res.status(500).json({ message: "Failed to fetch community links" });
+    }
+  });
+
+  // Admin: Get all community links (active and inactive)
+  app.get("/api/admin/community-links", requireAuth, async (_req, res) => {
+    try {
+      const links = await storage.getAllSocialCommunityLinks();
+      res.json(links);
+    } catch (error) {
+      console.error("[Community] Error fetching admin community links:", error);
+      res.status(500).json({ message: "Failed to fetch community links" });
+    }
+  });
+
+  // Admin: Create new community link
+  app.post("/api/admin/community-links", requireAuth, async (req, res) => {
+    try {
+      const parsed = insertSocialCommunityLinkSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({
+          message: parsed.error.errors[0]?.message || "Invalid community link data",
+        });
+      }
+
+      const { platform, groupName, description, invitationUrl, isActive, displayOrder } = parsed.data;
+
+      if (!isValidSafeUrl(invitationUrl)) {
+        return res.status(400).json({
+          message: "Invitation URL must start with http:// or https:// and be a valid web address",
+        });
+      }
+
+      // Max 5 Facebook Groups rule
+      if (platform === "facebook") {
+        const allLinks = await storage.getAllSocialCommunityLinks();
+        const fbCount = allLinks.filter((l) => l.platform === "facebook").length;
+        if (fbCount >= 5) {
+          return res.status(400).json({
+            message: "ফেসবুক গ্রুপের সর্বোচ্চ সীমা (৫টি) পূর্ণ হয়েছে। নতুন গ্রুপ যোগ করতে কোনো গ্রুপ ডিলিট করুন।",
+          });
+        }
+      }
+
+      // Determine display order if not specified
+      let order = displayOrder ?? 0;
+      if (order === 0) {
+        const allLinks = await storage.getAllSocialCommunityLinks();
+        order = allLinks.length > 0 ? Math.max(...allLinks.map((l) => l.displayOrder)) + 1 : 0;
+      }
+
+      const created = await storage.createSocialCommunityLink({
+        platform,
+        groupName: groupName.trim(),
+        description: description ? description.trim() : null,
+        invitationUrl: invitationUrl.trim(),
+        isActive: isActive ?? true,
+        displayOrder: order,
+      });
+
+      res.status(201).json(created);
+    } catch (error: any) {
+      console.error("[Community] Error creating community link:", error);
+      res.status(500).json({ message: error?.message || "Failed to create community link" });
+    }
+  });
+
+  // Admin: Update community link
+  app.put("/api/admin/community-links/:id", requireAuth, async (req, res) => {
+    try {
+      const id = parseInt(String(req.params.id), 10);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid ID" });
+      }
+
+      const existing = await storage.getSocialCommunityLinkById(id);
+      if (!existing) {
+        return res.status(404).json({ message: "Community link not found" });
+      }
+
+      const parsed = insertSocialCommunityLinkSchema.partial().safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({
+          message: parsed.error.errors[0]?.message || "Invalid update data",
+        });
+      }
+
+      const updates = parsed.data;
+
+      if (updates.invitationUrl && !isValidSafeUrl(updates.invitationUrl)) {
+        return res.status(400).json({
+          message: "Invitation URL must start with http:// or https:// and be a valid web address",
+        });
+      }
+
+      // Check Facebook limit if switching platform to facebook
+      if (updates.platform === "facebook" && existing.platform !== "facebook") {
+        const allLinks = await storage.getAllSocialCommunityLinks();
+        const fbCount = allLinks.filter((l) => l.platform === "facebook").length;
+        if (fbCount >= 5) {
+          return res.status(400).json({
+            message: "ফেসবুক গ্রুপের সর্বোচ্চ সীমা (৫টি) পূর্ণ হয়েছে।",
+          });
+        }
+      }
+
+      const updated = await storage.updateSocialCommunityLink(id, {
+        ...(updates.platform && { platform: updates.platform }),
+        ...(updates.groupName && { groupName: updates.groupName.trim() }),
+        ...(updates.description !== undefined && { description: updates.description ? updates.description.trim() : null }),
+        ...(updates.invitationUrl && { invitationUrl: updates.invitationUrl.trim() }),
+        ...(updates.isActive !== undefined && { isActive: updates.isActive }),
+        ...(updates.displayOrder !== undefined && { displayOrder: updates.displayOrder }),
+      });
+
+      res.json(updated);
+    } catch (error: any) {
+      console.error("[Community] Error updating community link:", error);
+      res.status(500).json({ message: error?.message || "Failed to update community link" });
+    }
+  });
+
+  // Admin: Toggle active status
+  app.patch("/api/admin/community-links/:id/toggle", requireAuth, async (req, res) => {
+    try {
+      const id = parseInt(String(req.params.id), 10);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid ID" });
+      }
+
+      const existing = await storage.getSocialCommunityLinkById(id);
+      if (!existing) {
+        return res.status(404).json({ message: "Community link not found" });
+      }
+
+      const updated = await storage.updateSocialCommunityLink(id, {
+        isActive: !existing.isActive,
+      });
+
+      res.json(updated);
+    } catch (error: any) {
+      console.error("[Community] Error toggling community link status:", error);
+      res.status(500).json({ message: error?.message || "Failed to toggle status" });
+    }
+  });
+
+  // Admin: Delete community link
+  app.delete("/api/admin/community-links/:id", requireAuth, async (req, res) => {
+    try {
+      const id = parseInt(String(req.params.id), 10);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid ID" });
+      }
+
+      const existing = await storage.getSocialCommunityLinkById(id);
+      if (!existing) {
+        return res.status(404).json({ message: "Community link not found" });
+      }
+
+      await storage.deleteSocialCommunityLink(id);
+      res.json({ message: "Community link deleted successfully" });
+    } catch (error: any) {
+      console.error("[Community] Error deleting community link:", error);
+      res.status(500).json({ message: error?.message || "Failed to delete community link" });
+    }
+  });
+
+  // Admin: Reorder community links
+  app.post("/api/admin/community-links/reorder", requireAuth, async (req, res) => {
+    try {
+      const { orderedIds } = req.body;
+      if (!Array.isArray(orderedIds)) {
+        return res.status(400).json({ message: "orderedIds must be an array of link IDs" });
+      }
+
+      await storage.reorderSocialCommunityLinks(orderedIds.map((id) => Number(id)));
+      res.json({ message: "Community links reordered successfully" });
+    } catch (error: any) {
+      console.error("[Community] Error reordering community links:", error);
+      res.status(500).json({ message: error?.message || "Failed to reorder community links" });
     }
   });
 

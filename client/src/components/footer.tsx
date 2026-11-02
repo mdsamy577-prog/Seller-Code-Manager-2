@@ -23,6 +23,7 @@ export function Footer({ showLinks = true }: FooterProps) {
             <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-6 font-medium">
               <a href="/#verify" className="hover:text-orange-400 transition-colors">যাচাই করুন</a>
               <a href="/#directory" className="hover:text-orange-400 transition-colors">সেলার তালিকা</a>
+              <a href="/#community" className="hover:text-orange-400 transition-colors">কমিউনিটি</a>
               <Link href="/apply" className="hover:text-orange-400 transition-colors">নতুন আবেদন</Link>
               <Link href="/renew" className="hover:text-orange-400 transition-colors">নবায়ন পোর্টাল</Link>
             </div>

@@ -40,8 +40,10 @@ import {
   Image as ImageIcon,
   Loader2,
   FileText,
+  Share2,
 } from "lucide-react";
 import { NidViewerModal } from "@/components/nid-viewer-modal";
+import { CommunitySettingsDialog } from "@/components/community-settings-dialog";
 import { compressImage, isCompressibleImage } from "@/lib/image-compressor";
 import { SiMeta } from "react-icons/si";
 import { useLocation } from "wouter";
@@ -1353,7 +1355,7 @@ export default function SellerCodeManager() {
   const [editingCodeValue, setEditingCodeValue] = useState("");
   const [emailDialogSeller, setEmailDialogSeller] = useState<Seller | undefined>();
   const [emailDialogInput, setEmailDialogInput] = useState("");
-  const [settingsPanel, setSettingsPanel] = useState<"registration" | "email" | "group-rules" | "discount" | null>(null);
+  const [settingsPanel, setSettingsPanel] = useState<"registration" | "email" | "group-rules" | "discount" | "community" | null>(null);
   const [extendSeller, setExtendSeller] = useState<Seller | undefined>();
   const [extendMonths, setExtendMonths] = useState<number>(1);
   const [archivedOpen, setArchivedOpen] = useState(false);
@@ -1897,18 +1899,19 @@ export default function SellerCodeManager() {
 
         <Card>
           <CardContent className="p-2">
-            <div className="grid grid-cols-4 divide-x">
+            <div className="grid grid-cols-2 sm:grid-cols-5 divide-y sm:divide-y-0 sm:divide-x">
               {([
                 { key: "registration", icon: Link, label: "Registration Link" },
                 { key: "email", icon: Settings, label: "Settings" },
                 { key: "group-rules", icon: BookOpen, label: "Group Rules" },
                 { key: "discount", icon: Tag, label: "Global Discount" },
+                { key: "community", icon: Share2, label: "Social & Community" },
               ] as const).map(({ key, icon: Icon, label }) => (
                 <button
                   key={key}
                   type="button"
                   onClick={() => setSettingsPanel(key)}
-                  className="flex flex-col items-center gap-1.5 py-3 px-2 hover:bg-muted rounded-none transition-colors first:rounded-l-lg last:rounded-r-lg"
+                  className="flex flex-col items-center gap-1.5 py-3 px-2 hover:bg-muted transition-colors"
                   data-testid={`button-settings-${key}`}
                 >
                   <Icon className="h-4 w-4 text-muted-foreground" />
@@ -1976,6 +1979,22 @@ export default function SellerCodeManager() {
                 <p className="text-sm font-semibold mb-3">Email Settings</p>
                 <EmailSettings />
               </div>
+              <div className="border-t pt-4">
+                <p className="text-sm font-semibold mb-2">Community Settings</p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full justify-between h-10 rounded-xl"
+                  onClick={() => setSettingsPanel("community")}
+                  data-testid="button-open-community-settings"
+                >
+                  <span className="flex items-center gap-2 text-xs font-medium">
+                    <Share2 className="w-4 h-4 text-orange-600" />
+                    Social Media & Community Links
+                  </span>
+                  <ExternalLink className="w-3.5 h-3.5 text-muted-foreground" />
+                </Button>
+              </div>
             </div>
           </DialogContent>
         </Dialog>
@@ -1997,6 +2016,11 @@ export default function SellerCodeManager() {
             <GlobalDiscount />
           </DialogContent>
         </Dialog>
+
+        <CommunitySettingsDialog
+          open={settingsPanel === "community"}
+          onOpenChange={(o) => { if (!o) setSettingsPanel(null); }}
+        />
 
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogContent className="w-[calc(100vw-2rem)] max-w-lg sm:w-full rounded-xl sm:rounded-lg" aria-describedby={undefined}>

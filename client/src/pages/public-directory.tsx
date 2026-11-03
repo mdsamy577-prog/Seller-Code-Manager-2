@@ -37,6 +37,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { Footer } from "@/components/footer";
 import { SocialCommunitySection } from "@/components/social-community-section";
+import { PWAInstallButton } from "@/components/pwa-install-banner";
 
 interface PublicSeller {
   id: number;
@@ -127,15 +128,13 @@ export default function PublicDirectory() {
     queryFn: async () => {
       const res = await fetch("/api/public/verified-sellers", {
         headers: { Accept: "application/json" },
-        cache: "no-store",
       });
       if (!res.ok) {
         throw new Error("Failed to load verified sellers");
       }
       return res.json();
     },
-    staleTime: 1000 * 30,
-    refetchOnMount: true,
+    staleTime: 1000 * 60,
   });
 
   const handleCopyCode = (code: string) => {
@@ -403,6 +402,8 @@ export default function PublicDirectory() {
 
           {/* Action Buttons */}
           <div className="flex items-center gap-2">
+            <PWAInstallButton variant="header" className="hidden sm:inline-flex" />
+
             <Link href="/apply">
               <Button size="sm" className="text-xs h-9 font-semibold rounded-xl bg-orange-600 hover:bg-orange-700 active:bg-orange-800 text-white shadow-sm shadow-orange-600/20 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]">
                 আবেদন করুন
@@ -470,6 +471,9 @@ export default function PublicDirectory() {
             >
               🔄 কোড নবায়ন করুন
             </Link>
+            <div className="pt-2 border-t border-slate-200 dark:border-slate-800">
+              <PWAInstallButton variant="button" className="w-full justify-center" />
+            </div>
           </div>
         )}
       </header>
@@ -619,6 +623,10 @@ export default function PublicDirectory() {
                             <img
                               src={activeVerification.seller.profileImage}
                               alt={activeVerification.seller.name}
+                              loading="lazy"
+                              decoding="async"
+                              width={48}
+                              height={48}
                               className="w-12 h-12 sm:w-14 sm:h-14 rounded-full object-cover border-2 border-red-400 opacity-80 grayscale shadow-2xs"
                               data-testid="img-expired-seller-profile-photo"
                             />
@@ -719,6 +727,10 @@ export default function PublicDirectory() {
                             <img
                               src={activeVerification.seller.profileImage}
                               alt={activeVerification.seller.name}
+                              loading="lazy"
+                              decoding="async"
+                              width={48}
+                              height={48}
                               className="w-12 h-12 sm:w-14 sm:h-14 rounded-full object-cover border-2 border-emerald-500 shadow-xs"
                               data-testid="img-seller-profile-photo"
                             />
@@ -1008,6 +1020,10 @@ export default function PublicDirectory() {
                             <img
                               src={seller.profileImage}
                               alt={seller.name}
+                              loading="lazy"
+                              decoding="async"
+                              width={48}
+                              height={48}
                               className="w-12 h-12 rounded-full object-cover shrink-0"
                             />
                           )}

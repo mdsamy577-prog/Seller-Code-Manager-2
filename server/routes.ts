@@ -359,6 +359,7 @@ export async function registerRoutes(
       // Silent 15-minute deterministic fair rotation
       const timeSlot = Math.floor(Date.now() / (15 * 60 * 1000));
       const rotated = rotateArray(sanitized, timeSlot);
+      res.setHeader("Cache-Control", "public, max-age=30, stale-while-revalidate=120");
       res.json(rotated);
     } catch (error: any) {
       console.error("[API] Error fetching verified sellers:", error);
@@ -1800,6 +1801,7 @@ export async function registerRoutes(
       const links = await storage.getActiveSocialCommunityLinks();
       // Ensure only safe http/https URLs are returned
       const safeLinks = links.filter((l) => isValidSafeUrl(l.invitationUrl));
+      res.setHeader("Cache-Control", "public, max-age=60, stale-while-revalidate=300");
       res.json(safeLinks);
     } catch (error) {
       console.error("[Community] Error fetching public community links:", error);

@@ -1,4 +1,4 @@
-import React, { Component, useEffect, type ErrorInfo, type ReactNode } from "react";
+import React, { Component, useEffect, lazy, Suspense, type ErrorInfo, type ReactNode } from "react";
 import { Switch, Route, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider, useQuery } from "@tanstack/react-query";
@@ -6,15 +6,30 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/not-found";
 import PublicDirectory from "@/pages/public-directory";
-import SellerCodeManager from "@/pages/seller-code-manager";
-import SellerApplication from "@/pages/seller-application";
-import SellerApplications from "@/pages/seller-applications";
-import RenewalPage from "@/pages/renewal";
-import RenewalApplications from "@/pages/renewal-applications";
-import EmailLogsPage from "@/pages/email-logs";
-import Login from "@/pages/login";
-import AdminSetup from "@/pages/admin-setup";
 import { usePWA } from "@/hooks/use-pwa";
+import { PWAInstallButton } from "@/components/pwa-install-banner";
+import { OfflineIndicator } from "@/components/offline-indicator";
+
+// Lazy load secondary routes for high performance and minimal initial bundle size
+const SellerCodeManager = lazy(() => import("@/pages/seller-code-manager"));
+const SellerApplication = lazy(() => import("@/pages/seller-application"));
+const SellerApplications = lazy(() => import("@/pages/seller-applications"));
+const RenewalPage = lazy(() => import("@/pages/renewal"));
+const RenewalApplications = lazy(() => import("@/pages/renewal-applications"));
+const EmailLogsPage = lazy(() => import("@/pages/email-logs"));
+const Login = lazy(() => import("@/pages/login"));
+const AdminSetup = lazy(() => import("@/pages/admin-setup"));
+
+function PageLoader() {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-background">
+      <div className="flex flex-col items-center gap-3">
+        <div className="w-8 h-8 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+        <span className="text-xs text-muted-foreground font-medium">লোড হচ্ছে...</span>
+      </div>
+    </div>
+  );
+}
 
 interface ErrorBoundaryProps {
   children: ReactNode;
@@ -102,42 +117,44 @@ function AppRoutes() {
   usePWA();
 
   return (
-    <Switch>
-      {/* Public Landing & Verified Directory */}
-      <Route path="/" component={PublicDirectory} />
-      <Route path="/verify/:code" component={PublicDirectory} />
+    <Suspense fallback={<PageLoader />}>
+      <Switch>
+        {/* Public Landing & Verified Directory */}
+        <Route path="/" component={PublicDirectory} />
+        <Route path="/verify/:code" component={PublicDirectory} />
 
-      {/* Public Applicant Routes */}
-      <Route path="/apply" component={SellerApplication} />
-      <Route path="/renew" component={RenewalPage} />
+        {/* Public Applicant Routes */}
+        <Route path="/apply" component={SellerApplication} />
+        <Route path="/renew" component={RenewalPage} />
 
-      {/* Secret Admin Routes (/.tanny.admin) */}
-      <Route path="/.tanny.admin/login" component={Login} />
-      <Route path="/.tanny.admin/setup" component={AdminSetup} />
-      <Route path="/.tanny.admin/dashboard">{() => <ProtectedRoute component={SellerCodeManager} />}</Route>
-      <Route path="/.tanny.admin/sellers">{() => <ProtectedRoute component={SellerCodeManager} />}</Route>
-      <Route path="/.tanny.admin/applications">{() => <ProtectedRoute component={SellerApplications} />}</Route>
-      <Route path="/.tanny.admin/renewals">{() => <ProtectedRoute component={RenewalApplications} />}</Route>
-      <Route path="/.tanny.admin/email-logs">{() => <ProtectedRoute component={EmailLogsPage} />}</Route>
-      <Route path="/.tanny.admin">{() => <ProtectedRoute component={SellerCodeManager} />}</Route>
+        {/* Secret Admin Routes (/.tanny.admin) */}
+        <Route path="/.tanny.admin/login" component={Login} />
+        <Route path="/.tanny.admin/setup" component={AdminSetup} />
+        <Route path="/.tanny.admin/dashboard">{() => <ProtectedRoute component={SellerCodeManager} />}</Route>
+        <Route path="/.tanny.admin/sellers">{() => <ProtectedRoute component={SellerCodeManager} />}</Route>
+        <Route path="/.tanny.admin/applications">{() => <ProtectedRoute component={SellerApplications} />}</Route>
+        <Route path="/.tanny.admin/renewals">{() => <ProtectedRoute component={RenewalApplications} />}</Route>
+        <Route path="/.tanny.admin/email-logs">{() => <ProtectedRoute component={EmailLogsPage} />}</Route>
+        <Route path="/.tanny.admin">{() => <ProtectedRoute component={SellerCodeManager} />}</Route>
 
-      {/* Secondary Alias Admin Routes (/tanny-admin fallback) */}
-      <Route path="/tanny-admin/login" component={Login} />
-      <Route path="/tanny-admin/setup" component={AdminSetup} />
-      <Route path="/tanny-admin/dashboard">{() => <ProtectedRoute component={SellerCodeManager} />}</Route>
-      <Route path="/tanny-admin/sellers">{() => <ProtectedRoute component={SellerCodeManager} />}</Route>
-      <Route path="/tanny-admin/applications">{() => <ProtectedRoute component={SellerApplications} />}</Route>
-      <Route path="/tanny-admin/renewals">{() => <ProtectedRoute component={RenewalApplications} />}</Route>
-      <Route path="/tanny-admin/email-logs">{() => <ProtectedRoute component={EmailLogsPage} />}</Route>
-      <Route path="/tanny-admin">{() => <ProtectedRoute component={SellerCodeManager} />}</Route>
+        {/* Secondary Alias Admin Routes (/tanny-admin fallback) */}
+        <Route path="/tanny-admin/login" component={Login} />
+        <Route path="/tanny-admin/setup" component={AdminSetup} />
+        <Route path="/tanny-admin/dashboard">{() => <ProtectedRoute component={SellerCodeManager} />}</Route>
+        <Route path="/tanny-admin/sellers">{() => <ProtectedRoute component={SellerCodeManager} />}</Route>
+        <Route path="/tanny-admin/applications">{() => <ProtectedRoute component={SellerApplications} />}</Route>
+        <Route path="/tanny-admin/renewals">{() => <ProtectedRoute component={RenewalApplications} />}</Route>
+        <Route path="/tanny-admin/email-logs">{() => <ProtectedRoute component={EmailLogsPage} />}</Route>
+        <Route path="/tanny-admin">{() => <ProtectedRoute component={SellerCodeManager} />}</Route>
 
-      {/* Block Standard /admin Routes - returns 404 (Not Found) without disclosing portal */}
-      <Route path="/admin" component={NotFound} />
-      <Route path="/admin/:rest*" component={NotFound} />
+        {/* Block Standard /admin Routes - returns 404 (Not Found) without disclosing portal */}
+        <Route path="/admin" component={NotFound} />
+        <Route path="/admin/:rest*" component={NotFound} />
 
-      {/* 404 Fallback */}
-      <Route component={NotFound} />
-    </Switch>
+        {/* 404 Fallback */}
+        <Route component={NotFound} />
+      </Switch>
+    </Suspense>
   );
 }
 
@@ -146,8 +163,10 @@ function App() {
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
         <TooltipProvider>
+          <OfflineIndicator />
           <Toaster />
           <AppRoutes />
+          <PWAInstallButton variant="banner" />
         </TooltipProvider>
       </QueryClientProvider>
     </ErrorBoundary>

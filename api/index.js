@@ -36099,13 +36099,14 @@ var init_drizzle_zod = __esm({
 });
 
 // shared/schema.ts
-var users, insertUserSchema, sellers, emailReminderLog, insertSellerSchema, appSettings, sellerApplications, insertSellerApplicationSchema, sellerRenewalApplications, insertSellerRenewalApplicationSchema, emailSchedule, emailLogs;
+var users, insertUserSchema, sellers, emailReminderLog, insertSellerSchema, appSettings, sellerApplications, insertSellerApplicationSchema, sellerRenewalApplications, insertSellerRenewalApplicationSchema, emailSchedule, emailLogs, socialCommunityLinks, insertSocialCommunityLinkSchema;
 var init_schema2 = __esm({
   "shared/schema.ts"() {
     "use strict";
     init_drizzle_orm();
     init_pg_core();
     init_drizzle_zod();
+    init_zod();
     users = pgTable("users", {
       id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
       username: text("username").notNull().unique(),
@@ -36232,6 +36233,39 @@ var init_schema2 = __esm({
       status: text("status").notNull().default("sent"),
       sentAt: text("sent_at").notNull(),
       updatedAt: text("updated_at").notNull()
+    });
+    socialCommunityLinks = pgTable("social_community_links", {
+      id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+      platform: text("platform").notNull(),
+      // 'facebook' | 'messenger' | 'whatsapp' | 'telegram' | 'other'
+      groupName: text("group_name").notNull(),
+      description: text("description"),
+      invitationUrl: text("invitation_url").notNull(),
+      isActive: boolean("is_active").notNull().default(true),
+      displayOrder: integer("display_order").notNull().default(0),
+      createdAt: text("created_at").notNull().default(sql`now()`),
+      updatedAt: text("updated_at").notNull().default(sql`now()`)
+    }, (table) => [
+      index("social_community_platform_idx").on(table.platform),
+      index("social_community_order_idx").on(table.displayOrder)
+    ]);
+    insertSocialCommunityLinkSchema = createInsertSchema(socialCommunityLinks).pick({
+      platform: true,
+      groupName: true,
+      description: true,
+      invitationUrl: true,
+      isActive: true,
+      displayOrder: true
+    }).extend({
+      platform: external_exports.enum(["facebook", "messenger", "whatsapp", "telegram", "other"]),
+      groupName: external_exports.string().min(1, "Group name is required").max(120),
+      description: external_exports.string().max(300).optional().nullable(),
+      invitationUrl: external_exports.string().url("Must be a valid URL").refine(
+        (url) => url.startsWith("https://") || url.startsWith("http://"),
+        "URL must start with https:// or http://"
+      ),
+      isActive: external_exports.boolean().optional().default(true),
+      displayOrder: external_exports.number().int().optional().default(0)
     });
   }
 });
@@ -61978,17 +62012,27 @@ var require_lib5 = __commonJS({
 function escapeXml(str) {
   return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&apos;");
 }
+function cleanDisplayValue(val, fallbackPlaceholder) {
+  if (!val) return fallbackPlaceholder;
+  const trimmed = String(val).trim();
+  if (trimmed === "" || trimmed === "0" || trimmed === "000" || /^0+$/.test(trimmed) || trimmed.toLowerCase() === "undefined" || trimmed.toLowerCase() === "null" || trimmed.toLowerCase() === "n/a") {
+    return fallbackPlaceholder;
+  }
+  return trimmed;
+}
 async function stampTextOnImage(fileBuffer, sellerName, phone) {
   const metadata = await (0, import_sharp.default)(fileBuffer).metadata();
   const width = metadata.width || 800;
   const height = metadata.height || 600;
   const boxHeight = 72;
   const overlayY = Math.max(0, height - boxHeight);
+  const cleanName = cleanDisplayValue(sellerName, "Verified Seller");
+  const cleanPhone = cleanDisplayValue(phone, "Not Provided");
   const svgText = `
 <svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${boxHeight}">
   <rect width="${width}" height="${boxHeight}" fill="rgba(0,0,0,0.72)" />
-  <text x="14" y="26" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="bold" fill="#facc15">Name: ${escapeXml(sellerName)}</text>
-  <text x="14" y="56" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="bold" fill="#facc15">Phone: ${escapeXml(phone)}</text>
+  <text x="14" y="26" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="bold" fill="#facc15">Name: ${escapeXml(cleanName)}</text>
+  <text x="14" y="56" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="bold" fill="#facc15">Phone: ${escapeXml(cleanPhone)}</text>
 </svg>`;
   const overlayBuffer = Buffer.from(svgText);
   return (0, import_sharp.default)(fileBuffer).composite([{ input: overlayBuffer, top: overlayY, left: 0 }]).jpeg({ quality: 92 }).toBuffer();
@@ -62155,6 +62199,17 @@ function initStorage() {
     };
     const pool = new esm_default.Pool(poolConfig);
     pool.query(`
+      CREATE TABLE IF NOT EXISTS social_community_links (
+        id integer PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+        platform text NOT NULL,
+        group_name text NOT NULL,
+        description text,
+        invitation_url text NOT NULL,
+        is_active boolean NOT NULL DEFAULT true,
+        display_order integer NOT NULL DEFAULT 0,
+        created_at text NOT NULL DEFAULT now(),
+        updated_at text NOT NULL DEFAULT now()
+      );
       ALTER TABLE IF EXISTS sellers ADD COLUMN IF NOT EXISTS profile_image text;
       ALTER TABLE IF EXISTS sellers ADD COLUMN IF NOT EXISTS hide_profile_photo boolean DEFAULT false;
       ALTER TABLE IF EXISTS sellers ADD COLUMN IF NOT EXISTS nid_document text;
@@ -62221,6 +62276,8 @@ var init_storage = __esm({
       currentRenewalId = 1;
       currentScheduleId = 1;
       currentEmailLogId = 1;
+      communityLinks = /* @__PURE__ */ new Map();
+      currentCommunityLinkId = 1;
       async getUser(id) {
         return this.users.get(id);
       }
@@ -62572,6 +62629,56 @@ var init_storage = __esm({
       async clearEmailLogs() {
         this.emailLogsList = [];
       }
+      async getAllSocialCommunityLinks() {
+        return Array.from(this.communityLinks.values()).sort((a, b) => a.displayOrder - b.displayOrder || a.id - b.id);
+      }
+      async getActiveSocialCommunityLinks() {
+        return Array.from(this.communityLinks.values()).filter((l) => l.isActive).sort((a, b) => a.displayOrder - b.displayOrder || a.id - b.id);
+      }
+      async getSocialCommunityLinkById(id) {
+        return this.communityLinks.get(id);
+      }
+      async createSocialCommunityLink(data) {
+        const id = this.currentCommunityLinkId++;
+        const now = (/* @__PURE__ */ new Date()).toISOString();
+        const link = {
+          id,
+          platform: data.platform,
+          groupName: data.groupName,
+          description: data.description ?? null,
+          invitationUrl: data.invitationUrl,
+          isActive: data.isActive ?? true,
+          displayOrder: data.displayOrder ?? 0,
+          createdAt: now,
+          updatedAt: now
+        };
+        this.communityLinks.set(id, link);
+        return link;
+      }
+      async updateSocialCommunityLink(id, data) {
+        const existing = this.communityLinks.get(id);
+        if (!existing) return void 0;
+        const updated = {
+          ...existing,
+          ...data,
+          updatedAt: (/* @__PURE__ */ new Date()).toISOString()
+        };
+        this.communityLinks.set(id, updated);
+        return updated;
+      }
+      async deleteSocialCommunityLink(id) {
+        return this.communityLinks.delete(id);
+      }
+      async reorderSocialCommunityLinks(orderedIds) {
+        orderedIds.forEach((id, index2) => {
+          const link = this.communityLinks.get(id);
+          if (link) {
+            link.displayOrder = index2;
+            link.updatedAt = (/* @__PURE__ */ new Date()).toISOString();
+            this.communityLinks.set(id, link);
+          }
+        });
+      }
     };
     DatabaseStorage = class {
       db;
@@ -62836,6 +62943,48 @@ var init_storage = __esm({
       async clearEmailLogs() {
         await this.db.delete(emailLogs);
       }
+      async getAllSocialCommunityLinks() {
+        return await this.db.select().from(socialCommunityLinks).orderBy(asc(socialCommunityLinks.displayOrder), asc(socialCommunityLinks.id));
+      }
+      async getActiveSocialCommunityLinks() {
+        return await this.db.select().from(socialCommunityLinks).where(eq(socialCommunityLinks.isActive, true)).orderBy(asc(socialCommunityLinks.displayOrder), asc(socialCommunityLinks.id));
+      }
+      async getSocialCommunityLinkById(id) {
+        const res = await this.db.select().from(socialCommunityLinks).where(eq(socialCommunityLinks.id, id));
+        return res[0];
+      }
+      async createSocialCommunityLink(data) {
+        const now = (/* @__PURE__ */ new Date()).toISOString();
+        const res = await this.db.insert(socialCommunityLinks).values({
+          platform: data.platform,
+          groupName: data.groupName,
+          description: data.description ?? null,
+          invitationUrl: data.invitationUrl,
+          isActive: data.isActive ?? true,
+          displayOrder: data.displayOrder ?? 0,
+          createdAt: now,
+          updatedAt: now
+        }).returning();
+        return res[0];
+      }
+      async updateSocialCommunityLink(id, data) {
+        const now = (/* @__PURE__ */ new Date()).toISOString();
+        const res = await this.db.update(socialCommunityLinks).set({
+          ...data,
+          updatedAt: now
+        }).where(eq(socialCommunityLinks.id, id)).returning();
+        return res[0];
+      }
+      async deleteSocialCommunityLink(id) {
+        const res = await this.db.delete(socialCommunityLinks).where(eq(socialCommunityLinks.id, id)).returning();
+        return res.length > 0;
+      }
+      async reorderSocialCommunityLinks(orderedIds) {
+        const now = (/* @__PURE__ */ new Date()).toISOString();
+        for (let i = 0; i < orderedIds.length; i++) {
+          await this.db.update(socialCommunityLinks).set({ displayOrder: i, updatedAt: now }).where(eq(socialCommunityLinks.id, orderedIds[i]));
+        }
+      }
     };
     ResilientStorage = class {
       dbStorage = null;
@@ -63012,6 +63161,27 @@ var init_storage = __esm({
       }
       clearEmailLogs() {
         return this.execute((s) => s.clearEmailLogs());
+      }
+      getAllSocialCommunityLinks() {
+        return this.execute((s) => s.getAllSocialCommunityLinks());
+      }
+      getActiveSocialCommunityLinks() {
+        return this.execute((s) => s.getActiveSocialCommunityLinks());
+      }
+      getSocialCommunityLinkById(id) {
+        return this.execute((s) => s.getSocialCommunityLinkById(id));
+      }
+      createSocialCommunityLink(data) {
+        return this.execute((s) => s.createSocialCommunityLink(data));
+      }
+      updateSocialCommunityLink(id, data) {
+        return this.execute((s) => s.updateSocialCommunityLink(id, data));
+      }
+      deleteSocialCommunityLink(id) {
+        return this.execute((s) => s.deleteSocialCommunityLink(id));
+      }
+      reorderSocialCommunityLinks(orderedIds) {
+        return this.execute((s) => s.reorderSocialCommunityLinks(orderedIds));
       }
     };
     storage = initStorage();
@@ -91876,31 +92046,39 @@ async function registerRoutes(httpServer2, app2) {
   app2.get("/health", (_req, res) => {
     res.status(200).json({ status: "ok", timestamp: (/* @__PURE__ */ new Date()).toISOString() });
   });
-  app2.get(["/manifest.json", "/manifest.webmanifest"], (_req, res) => {
+  app2.get(["/admin-manifest.json", "/manifest.json", "/manifest.webmanifest"], (_req, res) => {
     res.setHeader("Content-Type", "application/manifest+json; charset=utf-8");
     res.setHeader("Cache-Control", "public, max-age=60");
     res.json({
-      name: "Seller Code Manager",
-      short_name: "Admin Manager",
-      description: "Seller Code Registry & Admin Portal",
+      id: "/.tanny.admin/dashboard",
+      name: "Seller Code Admin Portal | \u09B8\u09C7\u09B2\u09BE\u09B0 \u0995\u09CB\u09A1 \u0985\u09CD\u09AF\u09BE\u09A1\u09AE\u09BF\u09A8",
+      short_name: "Admin Portal",
+      description: "\u0985\u09A8\u09C1\u09AE\u09CB\u09A6\u09BF\u09A4 \u09AB\u09C7\u09B8\u09AC\u09C1\u0995 \u0997\u09CD\u09B0\u09C1\u09AA \u09B8\u09C7\u09B2\u09BE\u09B0 \u09B0\u09C7\u099C\u09BF\u09B8\u09CD\u099F\u09CD\u09B0\u09BF \u0985\u09CD\u09AF\u09BE\u09A1\u09AE\u09BF\u09A8 \u0995\u09A8\u09CD\u099F\u09CD\u09B0\u09CB\u09B2 \u09AA\u09CD\u09AF\u09BE\u09A8\u09C7\u09B2 \u0993 \u09AD\u09C7\u09B0\u09BF\u09AB\u09BF\u0995\u09C7\u09B6\u09A8 \u09AE\u09CD\u09AF\u09BE\u09A8\u09C7\u099C\u09AE\u09C7\u09A8\u09CD\u099F",
       start_url: "/.tanny.admin/dashboard",
       scope: "/",
       display: "standalone",
       orientation: "portrait-primary",
-      background_color: "#ffffff",
-      theme_color: "#000000",
+      background_color: "#090d16",
+      theme_color: "#0f172a",
+      categories: ["utilities", "business", "productivity"],
       icons: [
         {
-          src: "/favicon.png",
+          src: "/pwa-192x192.png",
           sizes: "192x192",
           type: "image/png",
           purpose: "any"
         },
         {
-          src: "/favicon.png",
+          src: "/pwa-512x512.png",
           sizes: "512x512",
           type: "image/png",
-          purpose: "any maskable"
+          purpose: "any"
+        },
+        {
+          src: "/pwa-maskable-512x512.png",
+          sizes: "512x512",
+          type: "image/png",
+          purpose: "maskable"
         }
       ]
     });
@@ -92002,6 +92180,63 @@ async function registerRoutes(httpServer2, app2) {
       res.status(500).json({ message: "Failed to process recovery" });
     }
   });
+  let cachedPublicStats = null;
+  let cachedPublicStatsTime = 0;
+  const invalidatePublicStatsCache = () => {
+    cachedPublicStats = null;
+    cachedPublicStatsTime = 0;
+  };
+  const getOrComputePublicStats = async () => {
+    const now = Date.now();
+    if (cachedPublicStats && now - cachedPublicStatsTime < 3e4) {
+      return cachedPublicStats;
+    }
+    const [activeSellers, communityLinks] = await Promise.all([
+      storage.getAllSellers().catch(() => []),
+      storage.getActiveSocialCommunityLinks().catch(() => [])
+    ]);
+    const todayDate = /* @__PURE__ */ new Date();
+    const todayStr = `${todayDate.getFullYear()}-${String(todayDate.getMonth() + 1).padStart(2, "0")}-${String(todayDate.getDate()).padStart(2, "0")}`;
+    const validSellers = activeSellers.filter((s) => {
+      if (s.status !== "active") return false;
+      if (!s.expiryDate) return false;
+      const isDateExpired = s.expiryDate <= todayStr || new Date(s.expiryDate).getTime() <= todayDate.getTime();
+      return !isDateExpired;
+    });
+    const safeCommunities = (communityLinks || []).filter((l) => {
+      try {
+        const u = new URL(l.invitationUrl);
+        return u.protocol === "http:" || u.protocol === "https:";
+      } catch {
+        return false;
+      }
+    });
+    cachedPublicStats = {
+      totalVerifiedSellers: validSellers.length,
+      activeSellersCount: validSellers.length,
+      totalCommunities: safeCommunities.length,
+      securityScore: 100,
+      lastUpdated: (/* @__PURE__ */ new Date()).toISOString()
+    };
+    cachedPublicStatsTime = now;
+    return cachedPublicStats;
+  };
+  app2.get(["/api/public/stats", "/api/public/summary"], async (_req, res) => {
+    try {
+      const stats = await getOrComputePublicStats();
+      res.setHeader("Cache-Control", "public, max-age=60, stale-while-revalidate=300");
+      res.json(stats);
+    } catch (error) {
+      console.error("[API] Error generating public stats:", error);
+      res.status(500).json({
+        totalVerifiedSellers: 0,
+        activeSellersCount: 0,
+        totalCommunities: 0,
+        securityScore: 100,
+        lastUpdated: (/* @__PURE__ */ new Date()).toISOString()
+      });
+    }
+  });
   app2.get("/api/public/verified-sellers", async (_req, res) => {
     try {
       const activeSellers = await storage.getAllSellers();
@@ -92035,6 +92270,7 @@ async function registerRoutes(httpServer2, app2) {
       });
       const timeSlot = Math.floor(Date.now() / (15 * 60 * 1e3));
       const rotated = rotateArray(sanitized, timeSlot);
+      res.setHeader("Cache-Control", "public, max-age=30, stale-while-revalidate=120");
       res.json(rotated);
     } catch (error) {
       console.error("[API] Error fetching verified sellers:", error);
@@ -93087,18 +93323,18 @@ async function registerRoutes(httpServer2, app2) {
         return res.status(400).json({ message: "No file uploaded" });
       }
       const { phone, name } = req.body;
-      if (!phone) {
-        return res.status(400).json({ message: "phone is required" });
-      }
+      const cleanName = cleanDisplayValue(name, "Verified Seller");
+      const cleanPhone = cleanDisplayValue(phone, "Not Provided");
       const ext = req.file.mimetype === "image/png" ? "png" : "jpg";
       const timestamp2 = Math.floor(Date.now() / 1e3);
-      const publicId = `TEMP_${phone}_${timestamp2}.${ext}`;
+      const safePhoneForId = cleanPhone.replace(/[^0-9+]/g, "") || "doc";
+      const publicId = `TEMP_${safePhoneForId}_${timestamp2}.${ext}`;
       const secureUrl = await uploadNidFile(
         req.file.buffer,
         req.file.mimetype,
         publicId,
-        name || "",
-        phone
+        cleanName,
+        cleanPhone
       );
       res.json({ url: secureUrl });
     } catch (error) {
@@ -93248,6 +93484,170 @@ async function registerRoutes(httpServer2, app2) {
       res.json({ message: "Email logs cleared" });
     } catch (error) {
       res.status(500).json({ message: "Failed to clear email logs" });
+    }
+  });
+  const isValidSafeUrl = (urlStr) => {
+    try {
+      const u = new URL(urlStr);
+      return u.protocol === "http:" || u.protocol === "https:";
+    } catch {
+      return false;
+    }
+  };
+  app2.get("/api/public/community-links", async (_req, res) => {
+    try {
+      const links = await storage.getActiveSocialCommunityLinks();
+      const safeLinks = links.filter((l) => isValidSafeUrl(l.invitationUrl));
+      res.setHeader("Cache-Control", "public, max-age=60, stale-while-revalidate=300");
+      res.json(safeLinks);
+    } catch (error) {
+      console.error("[Community] Error fetching public community links:", error);
+      res.status(500).json({ message: "Failed to fetch community links" });
+    }
+  });
+  app2.get("/api/admin/community-links", requireAuth, async (_req, res) => {
+    try {
+      const links = await storage.getAllSocialCommunityLinks();
+      res.json(links);
+    } catch (error) {
+      console.error("[Community] Error fetching admin community links:", error);
+      res.status(500).json({ message: "Failed to fetch community links" });
+    }
+  });
+  app2.post("/api/admin/community-links", requireAuth, async (req, res) => {
+    try {
+      const parsed = insertSocialCommunityLinkSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({
+          message: parsed.error.errors[0]?.message || "Invalid community link data"
+        });
+      }
+      const { platform, groupName, description, invitationUrl, isActive, displayOrder } = parsed.data;
+      if (!isValidSafeUrl(invitationUrl)) {
+        return res.status(400).json({
+          message: "Invitation URL must start with http:// or https:// and be a valid web address"
+        });
+      }
+      if (platform === "facebook") {
+        const allLinks = await storage.getAllSocialCommunityLinks();
+        const fbCount = allLinks.filter((l) => l.platform === "facebook").length;
+        if (fbCount >= 5) {
+          return res.status(400).json({
+            message: "\u09AB\u09C7\u09B8\u09AC\u09C1\u0995 \u0997\u09CD\u09B0\u09C1\u09AA\u09C7\u09B0 \u09B8\u09B0\u09CD\u09AC\u09CB\u099A\u09CD\u099A \u09B8\u09C0\u09AE\u09BE (\u09EB\u099F\u09BF) \u09AA\u09C2\u09B0\u09CD\u09A3 \u09B9\u09DF\u09C7\u099B\u09C7\u0964 \u09A8\u09A4\u09C1\u09A8 \u0997\u09CD\u09B0\u09C1\u09AA \u09AF\u09CB\u0997 \u0995\u09B0\u09A4\u09C7 \u0995\u09CB\u09A8\u09CB \u0997\u09CD\u09B0\u09C1\u09AA \u09A1\u09BF\u09B2\u09BF\u099F \u0995\u09B0\u09C1\u09A8\u0964"
+          });
+        }
+      }
+      let order = displayOrder ?? 0;
+      if (order === 0) {
+        const allLinks = await storage.getAllSocialCommunityLinks();
+        order = allLinks.length > 0 ? Math.max(...allLinks.map((l) => l.displayOrder)) + 1 : 0;
+      }
+      const created = await storage.createSocialCommunityLink({
+        platform,
+        groupName: groupName.trim(),
+        description: description ? description.trim() : null,
+        invitationUrl: invitationUrl.trim(),
+        isActive: isActive ?? true,
+        displayOrder: order
+      });
+      res.status(201).json(created);
+    } catch (error) {
+      console.error("[Community] Error creating community link:", error);
+      res.status(500).json({ message: error?.message || "Failed to create community link" });
+    }
+  });
+  app2.put("/api/admin/community-links/:id", requireAuth, async (req, res) => {
+    try {
+      const id = parseInt(String(req.params.id), 10);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid ID" });
+      }
+      const existing = await storage.getSocialCommunityLinkById(id);
+      if (!existing) {
+        return res.status(404).json({ message: "Community link not found" });
+      }
+      const parsed = insertSocialCommunityLinkSchema.partial().safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({
+          message: parsed.error.errors[0]?.message || "Invalid update data"
+        });
+      }
+      const updates = parsed.data;
+      if (updates.invitationUrl && !isValidSafeUrl(updates.invitationUrl)) {
+        return res.status(400).json({
+          message: "Invitation URL must start with http:// or https:// and be a valid web address"
+        });
+      }
+      if (updates.platform === "facebook" && existing.platform !== "facebook") {
+        const allLinks = await storage.getAllSocialCommunityLinks();
+        const fbCount = allLinks.filter((l) => l.platform === "facebook").length;
+        if (fbCount >= 5) {
+          return res.status(400).json({
+            message: "\u09AB\u09C7\u09B8\u09AC\u09C1\u0995 \u0997\u09CD\u09B0\u09C1\u09AA\u09C7\u09B0 \u09B8\u09B0\u09CD\u09AC\u09CB\u099A\u09CD\u099A \u09B8\u09C0\u09AE\u09BE (\u09EB\u099F\u09BF) \u09AA\u09C2\u09B0\u09CD\u09A3 \u09B9\u09DF\u09C7\u099B\u09C7\u0964"
+          });
+        }
+      }
+      const updated = await storage.updateSocialCommunityLink(id, {
+        ...updates.platform && { platform: updates.platform },
+        ...updates.groupName && { groupName: updates.groupName.trim() },
+        ...updates.description !== void 0 && { description: updates.description ? updates.description.trim() : null },
+        ...updates.invitationUrl && { invitationUrl: updates.invitationUrl.trim() },
+        ...updates.isActive !== void 0 && { isActive: updates.isActive },
+        ...updates.displayOrder !== void 0 && { displayOrder: updates.displayOrder }
+      });
+      res.json(updated);
+    } catch (error) {
+      console.error("[Community] Error updating community link:", error);
+      res.status(500).json({ message: error?.message || "Failed to update community link" });
+    }
+  });
+  app2.patch("/api/admin/community-links/:id/toggle", requireAuth, async (req, res) => {
+    try {
+      const id = parseInt(String(req.params.id), 10);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid ID" });
+      }
+      const existing = await storage.getSocialCommunityLinkById(id);
+      if (!existing) {
+        return res.status(404).json({ message: "Community link not found" });
+      }
+      const updated = await storage.updateSocialCommunityLink(id, {
+        isActive: !existing.isActive
+      });
+      res.json(updated);
+    } catch (error) {
+      console.error("[Community] Error toggling community link status:", error);
+      res.status(500).json({ message: error?.message || "Failed to toggle status" });
+    }
+  });
+  app2.delete("/api/admin/community-links/:id", requireAuth, async (req, res) => {
+    try {
+      const id = parseInt(String(req.params.id), 10);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid ID" });
+      }
+      const existing = await storage.getSocialCommunityLinkById(id);
+      if (!existing) {
+        return res.status(404).json({ message: "Community link not found" });
+      }
+      await storage.deleteSocialCommunityLink(id);
+      res.json({ message: "Community link deleted successfully" });
+    } catch (error) {
+      console.error("[Community] Error deleting community link:", error);
+      res.status(500).json({ message: error?.message || "Failed to delete community link" });
+    }
+  });
+  app2.post("/api/admin/community-links/reorder", requireAuth, async (req, res) => {
+    try {
+      const { orderedIds } = req.body;
+      if (!Array.isArray(orderedIds)) {
+        return res.status(400).json({ message: "orderedIds must be an array of link IDs" });
+      }
+      await storage.reorderSocialCommunityLinks(orderedIds.map((id) => Number(id)));
+      res.json({ message: "Community links reordered successfully" });
+    } catch (error) {
+      console.error("[Community] Error reordering community links:", error);
+      res.status(500).json({ message: error?.message || "Failed to reorder community links" });
     }
   });
   app2.post("/api/webhooks/resend", async (req, res) => {

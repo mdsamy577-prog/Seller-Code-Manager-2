@@ -188,31 +188,39 @@ export async function registerRoutes(
     res.status(200).json({ status: "ok", timestamp: new Date().toISOString() });
   });
 
-  app.get(["/manifest.json", "/manifest.webmanifest"], (_req, res) => {
+  app.get(["/admin-manifest.json", "/manifest.json", "/manifest.webmanifest"], (_req, res) => {
     res.setHeader("Content-Type", "application/manifest+json; charset=utf-8");
     res.setHeader("Cache-Control", "public, max-age=60");
     res.json({
-      name: "Seller Code Manager",
-      short_name: "Admin Manager",
-      description: "Seller Code Registry & Admin Portal",
+      id: "/.tanny.admin/dashboard",
+      name: "Seller Code Admin Portal | সেলার কোড অ্যাডমিন",
+      short_name: "Admin Portal",
+      description: "অনুমোদিত ফেসবুক গ্রুপ সেলার রেজিস্ট্রি অ্যাডমিন কন্ট্রোল প্যানেল ও ভেরিফিকেশন ম্যানেজমেন্ট",
       start_url: "/.tanny.admin/dashboard",
       scope: "/",
       display: "standalone",
       orientation: "portrait-primary",
-      background_color: "#ffffff",
-      theme_color: "#000000",
+      background_color: "#090d16",
+      theme_color: "#0f172a",
+      categories: ["utilities", "business", "productivity"],
       icons: [
         {
-          src: "/favicon.png",
+          src: "/pwa-192x192.png",
           sizes: "192x192",
           type: "image/png",
           purpose: "any"
         },
         {
-          src: "/favicon.png",
+          src: "/pwa-512x512.png",
           sizes: "512x512",
           type: "image/png",
-          purpose: "any maskable"
+          purpose: "any"
+        },
+        {
+          src: "/pwa-maskable-512x512.png",
+          sizes: "512x512",
+          type: "image/png",
+          purpose: "maskable"
         }
       ]
     });
@@ -317,6 +325,80 @@ export async function registerRoutes(
       res.json({ message: "Password reset successful. You can now login with your new password." });
     } catch (error) {
       res.status(500).json({ message: "Failed to process recovery" });
+    }
+  });
+
+  // --- Public Statistics Snapshot Cache (30s TTL) for Instant First Screen ---
+  let cachedPublicStats: {
+    totalVerifiedSellers: number;
+    activeSellersCount: number;
+    totalCommunities: number;
+    securityScore: number;
+    lastUpdated: string;
+  } | null = null;
+  let cachedPublicStatsTime = 0;
+
+  const invalidatePublicStatsCache = () => {
+    cachedPublicStats = null;
+    cachedPublicStatsTime = 0;
+  };
+
+  const getOrComputePublicStats = async () => {
+    const now = Date.now();
+    if (cachedPublicStats && now - cachedPublicStatsTime < 30_000) {
+      return cachedPublicStats;
+    }
+
+    const [activeSellers, communityLinks] = await Promise.all([
+      storage.getAllSellers().catch(() => []),
+      storage.getActiveSocialCommunityLinks().catch(() => []),
+    ]);
+
+    const todayDate = new Date();
+    const todayStr = `${todayDate.getFullYear()}-${String(todayDate.getMonth() + 1).padStart(2, "0")}-${String(todayDate.getDate()).padStart(2, "0")}`;
+
+    const validSellers = activeSellers.filter((s) => {
+      if (s.status !== "active") return false;
+      if (!s.expiryDate) return false;
+      const isDateExpired = s.expiryDate <= todayStr || new Date(s.expiryDate).getTime() <= todayDate.getTime();
+      return !isDateExpired;
+    });
+
+    const safeCommunities = (communityLinks || []).filter((l) => {
+      try {
+        const u = new URL(l.invitationUrl);
+        return u.protocol === "http:" || u.protocol === "https:";
+      } catch {
+        return false;
+      }
+    });
+
+    cachedPublicStats = {
+      totalVerifiedSellers: validSellers.length,
+      activeSellersCount: validSellers.length,
+      totalCommunities: safeCommunities.length,
+      securityScore: 100,
+      lastUpdated: new Date().toISOString(),
+    };
+    cachedPublicStatsTime = now;
+    return cachedPublicStats;
+  };
+
+  // Instant Snapshot/Summary Public Endpoint (fast header & hero statistics)
+  app.get(["/api/public/stats", "/api/public/summary"], async (_req, res) => {
+    try {
+      const stats = await getOrComputePublicStats();
+      res.setHeader("Cache-Control", "public, max-age=60, stale-while-revalidate=300");
+      res.json(stats);
+    } catch (error) {
+      console.error("[API] Error generating public stats:", error);
+      res.status(500).json({
+        totalVerifiedSellers: 0,
+        activeSellersCount: 0,
+        totalCommunities: 0,
+        securityScore: 100,
+        lastUpdated: new Date().toISOString(),
+      });
     }
   });
 

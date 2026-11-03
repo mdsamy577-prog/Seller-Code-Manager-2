@@ -1,8 +1,8 @@
-const CACHE_NAME = 'seller-code-v2';
+const CACHE_NAME = 'seller-code-v3';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
-  '/manifest.json',
+  '/admin-manifest.json',
   '/pwa-192x192.png',
   '/pwa-512x512.png',
   '/pwa-maskable-512x512.png',

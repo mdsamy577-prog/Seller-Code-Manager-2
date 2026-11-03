@@ -18,6 +18,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { LogIn, KeyRound, Eye, EyeOff } from "lucide-react";
+import { PWAInstallButton } from "@/components/pwa-install-banner";
 
 const loginSchema = z.object({
   username: z.string().min(1, "Username is required"),
@@ -244,7 +245,8 @@ export default function Login() {
             </form>
           )}
 
-          <div className="mt-6 pt-4 border-t border-border text-center">
+          <div className="mt-6 pt-4 border-t border-border flex flex-col items-center gap-3 text-center">
+            <PWAInstallButton variant="admin" />
             <a
               href="/"
               className="text-xs text-muted-foreground hover:text-foreground inline-flex items-center gap-1 font-medium transition-colors"

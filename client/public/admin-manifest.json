@@ -1,0 +1,33 @@
+{
+  "id": "/.tanny.admin/dashboard",
+  "name": "Seller Code Admin Portal | সেলার কোড অ্যাডমিন",
+  "short_name": "Admin Portal",
+  "description": "অনুমোদিত ফেসবুক গ্রুপ সেলার রেজিস্ট্রি অ্যাডমিন কন্ট্রোল প্যানেল ও ভেরিফিকেশন ম্যানেজমেন্ট",
+  "start_url": "/.tanny.admin/dashboard",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#090d16",
+  "theme_color": "#0f172a",
+  "categories": ["utilities", "business", "productivity"],
+  "icons": [
+    {
+      "src": "/pwa-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/pwa-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/pwa-maskable-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

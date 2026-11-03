@@ -6,8 +6,6 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/not-found";
 import PublicDirectory from "@/pages/public-directory";
-import { usePWA } from "@/hooks/use-pwa";
-import { PWAInstallButton } from "@/components/pwa-install-banner";
 import { OfflineIndicator } from "@/components/offline-indicator";
 
 // Lazy load secondary routes for high performance and minimal initial bundle size
@@ -114,8 +112,6 @@ function ProtectedRoute({ component: Component }: { component: React.ComponentTy
 }
 
 function AppRoutes() {
-  usePWA();
-
   return (
     <Suspense fallback={<PageLoader />}>
       <Switch>
@@ -166,7 +162,6 @@ function App() {
           <OfflineIndicator />
           <Toaster />
           <AppRoutes />
-          <PWAInstallButton variant="banner" />
         </TooltipProvider>
       </QueryClientProvider>
     </ErrorBoundary>

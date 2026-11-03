@@ -44,6 +44,7 @@ import {
 } from "lucide-react";
 import { NidViewerModal } from "@/components/nid-viewer-modal";
 import { CommunitySettingsDialog } from "@/components/community-settings-dialog";
+import { PWAInstallButton } from "@/components/pwa-install-banner";
 import { compressImage, isCompressibleImage } from "@/lib/image-compressor";
 import { SiMeta } from "react-icons/si";
 import { useLocation } from "wouter";
@@ -1635,6 +1636,8 @@ export default function SellerCodeManager() {
               </div>
               <span className="hidden sm:inline">Seller Applications</span>
             </Button>
+
+            <PWAInstallButton variant="admin" className="h-9" />
 
             <Button size="sm" onClick={handleAdd} data-testid="button-add-seller" className="h-9">
               <Plus className="w-4 h-4 sm:mr-2" />

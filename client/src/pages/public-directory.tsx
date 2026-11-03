@@ -37,7 +37,14 @@ import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { Footer } from "@/components/footer";
 import { SocialCommunitySection } from "@/components/social-community-section";
-import { PWAInstallButton } from "@/components/pwa-install-banner";
+
+interface PublicStats {
+  totalVerifiedSellers: number;
+  activeSellersCount: number;
+  totalCommunities: number;
+  securityScore: number;
+  lastUpdated: string;
+}
 
 interface PublicSeller {
   id: number;
@@ -117,7 +124,38 @@ export default function PublicDirectory() {
     return () => clearInterval(interval);
   }, []);
 
-  // Explicit, immediate public API fetch with no-cache and immediate execution
+  // Safe snapshot helper for instant first paint
+  const getStoredStats = (): PublicStats | undefined => {
+    if (typeof window === "undefined") return undefined;
+    try {
+      const raw = localStorage.getItem("seller_registry_public_stats");
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (typeof parsed?.totalVerifiedSellers === "number") return parsed;
+      }
+    } catch {}
+    return undefined;
+  };
+
+  // Instant snapshot/summary public statistics query
+  const { data: publicStats } = useQuery<PublicStats>({
+    queryKey: ["/api/public/stats"],
+    queryFn: async () => {
+      const res = await fetch("/api/public/stats", {
+        headers: { Accept: "application/json" },
+      });
+      if (!res.ok) throw new Error("Failed to load public stats");
+      const json = await res.json();
+      try {
+        localStorage.setItem("seller_registry_public_stats", JSON.stringify(json));
+      } catch {}
+      return json;
+    },
+    initialData: getStoredStats(),
+    staleTime: 1000 * 30,
+  });
+
+  // Explicit, immediate public API fetch with progressive loading
   const {
     data: verifiedSellers = [],
     isLoading: isLoadingSellers,
@@ -402,8 +440,6 @@ export default function PublicDirectory() {
 
           {/* Action Buttons */}
           <div className="flex items-center gap-2">
-            <PWAInstallButton variant="header" className="hidden sm:inline-flex" />
-
             <Link href="/apply">
               <Button size="sm" className="text-xs h-9 font-semibold rounded-xl bg-orange-600 hover:bg-orange-700 active:bg-orange-800 text-white shadow-sm shadow-orange-600/20 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]">
                 আবেদন করুন
@@ -440,7 +476,7 @@ export default function PublicDirectory() {
             >
               <span>📋 ভেরিফাইড সেলার তালিকা</span>
               <Badge variant="secondary" className="text-xs bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
-                {verifiedSellers.length} জন
+                {(publicStats?.totalVerifiedSellers ?? verifiedSellers.length)} জন
               </Badge>
             </a>
             <a
@@ -471,9 +507,6 @@ export default function PublicDirectory() {
             >
               🔄 কোড নবায়ন করুন
             </Link>
-            <div className="pt-2 border-t border-slate-200 dark:border-slate-800">
-              <PWAInstallButton variant="button" className="w-full justify-center" />
-            </div>
           </div>
         )}
       </header>
@@ -508,7 +541,7 @@ export default function PublicDirectory() {
             <div className="flex items-center gap-2 bg-emerald-50/90 dark:bg-emerald-950/40 text-emerald-900 dark:text-emerald-300 px-3.5 py-1.5 rounded-full border border-emerald-500/25 shadow-xs font-medium">
               <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
               <span className="font-bold text-emerald-950 dark:text-white">
-                {verifiedSellers.length}+
+                {publicStats?.totalVerifiedSellers ?? (verifiedSellers.length > 0 ? verifiedSellers.length : "...")}+
               </span>{" "}
               <span>সক্রিয় ভেরিফাইড সেলার</span>
             </div>
